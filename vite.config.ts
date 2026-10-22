@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import pkg from "./package.json";
 const host = process.env.TAURI_DEV_HOST;
 
@@ -11,6 +12,10 @@ export default defineConfig(() => ({
   plugins: [react(), tailwindcss()],
 
   // The app shows the version from package.json (see App.tsx)
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
+
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
