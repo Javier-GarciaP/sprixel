@@ -2,7 +2,14 @@
 pub fn run() {
     tauri::Builder::default()
         .on_menu_event(|app, event| menu::forward(app, &event.id().0))
-        .invoke_handler(tauri::generate_handler![ipc::set_menu])
+        .invoke_handler(tauri::generate_handler![
+            ipc::set_menu,
+            ipc::load_preferences,
+            ipc::save_settings,
+            ipc::add_recent_project,
+            ipc::remove_recent_project,
+            ipc::folder_exists
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

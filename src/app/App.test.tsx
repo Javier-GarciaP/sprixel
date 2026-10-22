@@ -13,4 +13,16 @@ describe("App", () => {
     expect(screen.getByText("Sprixel")).toBeTruthy();
     expect(screen.getByText(`v${__APP_VERSION__}`)).toBeTruthy();
   });
+
+  // Checks the spec scenario: with no project the Welcome screen is shown and
+  // the Editor, Export and Agents tabs are disabled.
+  it("shows the Welcome screen and disabled tabs when no project is open", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+    for (const name of [/Editor/, /Export|Exportar/, /Agent/]) {
+      const tab = screen.getByRole("button", { name });
+      expect((tab as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
 });

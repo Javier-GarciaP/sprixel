@@ -24,7 +24,7 @@
 
 ## 5. Welcome and projects
 
-- [ ] 5.1 Build the Welcome screen, recent projects and the moved-folder message and verify the scenarios in the spec
+- [x] 5.1 Build the Welcome screen, recent projects and the moved-folder message and verify the scenarios in the spec
 - [ ] 5.2 Build the New project dialog and Open project flow on top of the storage layer and verify creating and opening a project end to end
 
 ## 6. Settings

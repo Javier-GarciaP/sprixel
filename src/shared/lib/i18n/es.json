@@ -56,5 +56,13 @@
   "shortcuts.group.project": "Proyecto",
   "shortcuts.group.tools": "Herramientas",
   "shortcuts.group.editor": "Editor y vista",
-  "shortcuts.title": "Atajos de teclado"
+  "shortcuts.title": "Atajos de teclado",
+  "welcome.title": "Empieza un proyecto",
+  "welcome.subtitle": "Dibuja a mano o pídeselo a tu IA.",
+  "welcome.new": "Nuevo proyecto",
+  "welcome.open": "Abrir proyecto",
+  "welcome.recent": "Proyectos recientes",
+  "welcome.recentEmpty": "Aún no has abierto ningún proyecto.",
+  "welcome.folderMissing": "No se encontró la carpeta: {path}",
+  "welcome.removeFromList": "Quitar de la lista"
 }
