@@ -546,6 +546,16 @@ impl Project {
         }
     }
 
+    /// Finds a sprite ignoring case in names.
+    pub fn find_sprite(&self, sprite: &SpriteRef) -> Option<&Sprite> {
+        let (folder, index) = self.locate(sprite).ok()?;
+        Some(&self.folder(&folder).sprites[index])
+    }
+
+    pub fn has_folder(&self, path: &[String]) -> bool {
+        self.canonical_folder(path).is_ok()
+    }
+
     /// Follows a folder path ignoring case and returns it with the real names.
     fn canonical_folder(&self, path: &[String]) -> Result<Vec<String>, DocError> {
         let mut folder = &self.root;
