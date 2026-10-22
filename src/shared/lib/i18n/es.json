@@ -28,5 +28,7 @@
   "command.project.showInFolder": "Mostrar en la carpeta",
   "command.project.export": "Exportar...",
   "command.project.close": "Cerrar proyecto",
-  "menu.autosave": "El proyecto se guarda solo."
+  "menu.autosave": "El proyecto se guarda solo.",
+  "menu.file": "Archivo",
+  "menu.edit": "Editar"
 }

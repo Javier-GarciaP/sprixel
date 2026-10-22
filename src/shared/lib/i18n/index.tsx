@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import en from "./en.json";
 import es from "./es.json";
 import { translate, type Language } from "./translate";
@@ -38,5 +38,9 @@ export function I18nProvider({
 // Returns a function bound to the current language: `const t = useT()`.
 export function useT() {
   const language = useContext(LanguageContext);
-  return (key: TranslationKey, params?: Params) => t(language, key, params);
+  // Same function until the language changes, so effects can depend on it.
+  return useMemo(
+    () => (key: TranslationKey, params?: Params) => t(language, key, params),
+    [language],
+  );
 }

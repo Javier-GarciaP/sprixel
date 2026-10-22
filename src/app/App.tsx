@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useT } from "@/shared/lib/i18n";
 import { defaultPreferences } from "@/shared/lib/preferences";
+import { useNativeMenu } from "./commands/nativeMenu";
 import { AppProviders } from "./AppProviders";
 import { Shell } from "./shell/Shell";
 import type { Tab } from "./shell/TopBar";
@@ -11,6 +12,9 @@ function Main() {
   const [tab, setTab] = useState<Tab>("project");
   const [settingsOpen, setSettingsOpen] = useState(false);
   useWindowTitle(null);
+  // What each command does; New and Open arrive with the storage layer.
+  const handlers = useMemo<Record<string, () => void>>(() => ({}), []);
+  useNativeMenu(handlers);
 
   return (
     <Shell
