@@ -64,5 +64,13 @@
   "welcome.recent": "Proyectos recientes",
   "welcome.recentEmpty": "Aún no has abierto ningún proyecto.",
   "welcome.folderMissing": "No se encontró la carpeta: {path}",
-  "welcome.removeFromList": "Quitar de la lista"
+  "welcome.removeFromList": "Quitar de la lista",
+  "settings.title": "Ajustes",
+  "settings.page.appearance": "Apariencia e idioma",
+  "settings.theme": "Tema",
+  "settings.language": "Idioma",
+  "settings.canvas": "Lienzo",
+  "settings.pixelGrid": "Mostrar rejilla de píxeles al hacer zoom",
+  "language.option.en": "English",
+  "language.option.es": "Español"
 }

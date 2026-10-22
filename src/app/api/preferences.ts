@@ -2,6 +2,8 @@
 // browser (`npm run dev`) there is no core, so nothing is saved and the
 // recent list is empty.
 
+import type { Preferences } from "@/shared/lib/preferences";
+
 export type RecentProject = { path: string; name: string };
 
 export type StoredSettings = {
@@ -44,3 +46,15 @@ export const removeRecentProject = (path: string) =>
 
 export const folderExists = (path: string) =>
   call<boolean>("folder_exists", { path }, true);
+
+// Starts from the defaults and applies the choices the user already saved.
+export function mergePreferences(
+  defaults: Preferences,
+  stored: StoredSettings,
+): Preferences {
+  return {
+    language: stored.language ?? defaults.language,
+    theme: stored.theme ?? defaults.theme,
+    pixelGrid: stored.pixelGrid ?? defaults.pixelGrid,
+  };
+}

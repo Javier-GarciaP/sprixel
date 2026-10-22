@@ -64,5 +64,13 @@
   "welcome.recent": "Recent projects",
   "welcome.recentEmpty": "You have not opened any project yet.",
   "welcome.folderMissing": "Folder not found: {path}",
-  "welcome.removeFromList": "Remove from the list"
+  "welcome.removeFromList": "Remove from the list",
+  "settings.title": "Settings",
+  "settings.page.appearance": "Appearance and language",
+  "settings.theme": "Theme",
+  "settings.language": "Language",
+  "settings.canvas": "Canvas",
+  "settings.pixelGrid": "Show a pixel grid when zooming in",
+  "language.option.en": "English",
+  "language.option.es": "Español"
 }
