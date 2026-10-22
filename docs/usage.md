@@ -17,6 +17,7 @@
 - [Work with an AI](#work-with-an-ai)
 - [Export](#export)
 - [Settings](#settings)
+- [Keyboard shortcuts](#keyboard-shortcuts)
 - [The `sprixel` command](#the-sprixel-command)
 - [Where your files are](#where-your-files-are)
 - [Troubleshooting](#troubleshooting)
@@ -42,7 +43,16 @@ A project is a folder on your computer. It holds all your sprites.
 Open a project you already have with **Open project**. Recent projects appear
 on the Welcome screen.
 
-The project saves by itself. The top bar shows **Saved** or **Saving...**.
+> **Built so far:** the Welcome screen lists your recent projects. **New
+> project** and **Open project** arrive with the storage layer (task 5.2 of the
+> `app-shell-and-settings` spec), so those two buttons do not work yet.
+
+If the folder of a recent project was moved or deleted, a message says the
+folder was not found and you can remove it from the list.
+
+The project saves by itself. The top bar shows **Saved** or **Saving...**. If
+saving fails it shows **Error saving** and a message with the reason and
+**Retry**.
 
 ## Create a sprite
 
@@ -152,14 +162,76 @@ Press **Export**. When it finishes, press **Open folder**.
 
 ## Settings
 
-Open **Settings** from the bottom left corner of the window.
+Open **Settings** from the bottom left corner of the window. It has two pages.
 
-- **Theme:** light, dark or follow the system.
-- **Language:** Spanish or English.
-- **Pixel grid:** show a grid when zoomed in.
-- **Keyboard shortcuts:** see the full list.
+**Appearance and language**
+
+- **Theme:** Light, Dark or Follow the system. With "Follow the system" the
+  app changes when your operating system changes. The choice applies at once.
+- **Language:** Spanish or English. On the first start Sprixel uses your system
+  language if it is Spanish or English, and English otherwise. Text changes at
+  once, with no restart.
+- **Canvas:** show a pixel grid when you zoom in (on by default).
+
+**Keyboard shortcuts:** the full list, grouped by area (see below).
 
 Theme and language also have quick buttons in the bottom bar.
+
+Your preferences and your recent projects are saved on your computer, in the
+Sprixel config folder (for example `~/.config/com.sprixel.app/preferences.json`
+on Linux). They are never saved inside a project, so a project copied to
+another computer does not carry them.
+
+## Keyboard shortcuts
+
+On macOS use `Cmd` instead of `Ctrl`. The same list is in
+**Settings > Keyboard shortcuts**.
+
+**Project**
+
+| Command | Shortcut |
+| --- | --- |
+| New project | `Ctrl+N` |
+| Open... | `Ctrl+O` |
+| Export... | `Ctrl+E` |
+| Open in editor | `Enter` |
+| Rename | `F2` |
+| Duplicate | `Ctrl+D` |
+| Delete | `Delete` |
+
+**Tools**
+
+| Command | Shortcut |
+| --- | --- |
+| Pencil | `B` |
+| Eraser | `E` |
+| Bucket | `G` |
+| Eyedropper | `I` |
+| Line | `L` |
+| Rectangle | `R` |
+| Ellipse | `C` |
+| Select | `M` |
+| Move | `V` |
+
+**Editor and view**
+
+| Command | Shortcut |
+| --- | --- |
+| Undo | `Ctrl+Z` |
+| Redo | `Ctrl+Shift+Z` |
+| Previous frame | `,` |
+| Next frame | `.` |
+| Zoom in | `+` |
+| Zoom out | `-` |
+| Fit to window | `Ctrl+0` |
+| Move the view | `Space` |
+| Onion skin | `O` |
+
+The project menu (click the project name) and the window menu have the same
+commands: New project, Open, Open recent, Rename project, Save a copy as, Show
+in folder, Export and Close project. There is no Save command because the
+project saves by itself. Some commands work only when the feature that owns
+them is built.
 
 ## The `sprixel` command
 

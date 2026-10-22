@@ -30,4 +30,4 @@
 ## 6. Settings
 
 - [x] 6.1 Build the Settings screen (appearance and language, shortcuts), the theme setting with System and the pixel grid option, and verify persistence after a restart
-- [ ] 6.2 Document the settings and shortcuts in `docs/usage.md` and verify they match the app
+- [x] 6.2 Document the settings and shortcuts in `docs/usage.md` and verify they match the app
