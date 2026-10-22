@@ -17,6 +17,7 @@ function Main() {
           <span className="text-sm text-text-muted">{t("project.none")}</span>
         ),
         status: null,
+        hasProject: false,
         activeTab: settingsOpen ? null : tab,
         onTab: (next) => {
           setSettingsOpen(false);

@@ -13,7 +13,7 @@
 ## 3. Window layout
 
 - [x] 3.1 Build the top bar, tabs, body and bottom bar and verify the layout at 1024x640 and 1440x900
-- [ ] 3.2 Add the disabled tab behavior with no project and verify a test that clicks a disabled tab
+- [x] 3.2 Add the disabled tab behavior with no project and verify a test that clicks a disabled tab
 - [ ] 3.3 Add the save status area and the window title and verify the states Saved, Saving and Error
 
 ## 4. Commands, menus and shortcuts

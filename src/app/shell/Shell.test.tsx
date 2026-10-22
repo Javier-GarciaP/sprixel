@@ -12,6 +12,7 @@ function renderShell(overrides: Partial<Parameters<typeof Shell>[0]> = {}) {
     topBar: {
       project: <span>Dungeon Kit</span>,
       status: <span>Saved</span>,
+      hasProject: true,
       activeTab: "project" as const,
       onTab: vi.fn(),
     },
@@ -77,5 +78,28 @@ describe("Shell layout", () => {
         .getByRole("button", { name: /Settings/ })
         .getAttribute("aria-pressed"),
     ).toBe("true");
+  });
+
+  // Checks the spec scenario: with no project the Editor, Export and Agents
+  // tabs are disabled and a click on them does nothing; Project still works.
+  it("disables Editor, Export and Agents when there is no project", () => {
+    const props = renderShell({
+      topBar: {
+        project: <span>No project</span>,
+        status: null,
+        hasProject: false,
+        activeTab: "project",
+        onTab: vi.fn(),
+      },
+    });
+    for (const tab of ["Editor", "Export", "Agents"]) {
+      const button = screen.getByRole("button", { name: tab });
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.click(button);
+    }
+    expect(props.topBar.onTab).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Project" }));
+    expect(props.topBar.onTab).toHaveBeenCalledWith("project");
   });
 });

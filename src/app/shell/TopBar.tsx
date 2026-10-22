@@ -16,12 +16,20 @@ type Props = {
   // The project name area (and its menu) and the save status.
   project: ReactNode;
   status: ReactNode;
+  // Without a project only the Project tab can be used.
+  hasProject: boolean;
   // The tab that is shown, or null when another screen (Settings) is open.
   activeTab: Tab | null;
   onTab: (tab: Tab) => void;
 };
 
-export function TopBar({ project, status, activeTab, onTab }: Props) {
+export function TopBar({
+  project,
+  status,
+  hasProject,
+  activeTab,
+  onTab,
+}: Props) {
   const t = useT();
   return (
     <header className="relative flex h-12 shrink-0 items-center justify-between border-b border-border bg-bg px-4">
@@ -41,9 +49,10 @@ export function TopBar({ project, status, activeTab, onTab }: Props) {
           <button
             key={id}
             type="button"
+            disabled={id !== "project" && !hasProject}
             aria-current={activeTab === id ? "page" : undefined}
             onClick={() => onTab(id)}
-            className={`h-full border-b-2 px-1 text-sm ${activeTab === id ? "border-amber font-semibold text-text" : "border-transparent text-text-muted"}`}
+            className={`h-full border-b-2 px-1 text-sm disabled:cursor-not-allowed disabled:opacity-40 ${activeTab === id ? "border-amber font-semibold text-text" : "border-transparent text-text-muted"}`}
           >
             {t(labelKey)}
           </button>
