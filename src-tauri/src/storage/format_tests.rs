@@ -40,7 +40,7 @@ fn goblin() -> Sprite {
         width: 4,
         height: 4,
         palette: "dungeon16".to_string(),
-        frame_durations: vec![83, 120],
+        frame_durations: vec![100, 120],
         layers: vec![Layer {
             name: "Layer 1".to_string(),
             frames: vec![
@@ -61,7 +61,7 @@ fn goblin() -> Sprite {
 fn manifest() -> Manifest {
     Manifest {
         name: "Dungeon Kit".to_string(),
-        active_palette: Some("dungeon16".to_string()),
+        active_palette: None,
     }
 }
 
@@ -129,16 +129,19 @@ fn writing_twice_gives_the_same_text() {
     assert_eq!(sprite_to_text(&goblin()), sprite_to_text(&goblin()));
 }
 
-// Checks that a manifest without an active palette leaves that field out.
+// Checks that an active palette is written when set and left out when not.
 #[test]
-fn manifest_without_active_palette() {
-    let manifest = Manifest {
-        name: "Empty".to_string(),
-        active_palette: None,
+fn manifest_active_palette_is_optional() {
+    let without = manifest();
+    assert!(!manifest_to_text(&without).contains("activePalette"));
+    assert_eq!(manifest_from_text(&manifest_to_text(&without)).unwrap(), without);
+
+    let with = Manifest {
+        active_palette: Some("dungeon16".to_string()),
+        ..manifest()
     };
-    let text = manifest_to_text(&manifest);
-    assert!(!text.contains("activePalette"));
-    assert_eq!(manifest_from_text(&text).unwrap(), manifest);
+    assert!(manifest_to_text(&with).contains("\"activePalette\": \"dungeon16\""));
+    assert_eq!(manifest_from_text(&manifest_to_text(&with)).unwrap(), with);
 }
 
 // Checks that a sprite file with rows of the wrong length is refused with a reason.

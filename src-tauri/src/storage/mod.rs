@@ -54,3 +54,5 @@ mod watch_tests;
 mod open_tests;
 #[cfg(test)]
 mod listing_tests;
+#[cfg(test)]
+mod docs_tests;
