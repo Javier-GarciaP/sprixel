@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useT } from "@/shared/lib/i18n";
 import { defaultPreferences } from "@/shared/lib/preferences";
 import { useNativeMenu } from "./commands/nativeMenu";
+import { detectPlatform } from "./commands/shortcut";
+import { useShortcuts } from "./commands/useShortcuts";
 import { AppProviders } from "./AppProviders";
 import { Shell } from "./shell/Shell";
 import type { Tab } from "./shell/TopBar";
@@ -15,6 +17,7 @@ function Main() {
   // What each command does; New and Open arrive with the storage layer.
   const handlers = useMemo<Record<string, () => void>>(() => ({}), []);
   useNativeMenu(handlers);
+  useShortcuts(handlers, detectPlatform());
 
   return (
     <Shell
