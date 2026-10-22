@@ -10,10 +10,15 @@ export type MenuItem = {
   onSelect: () => void;
 };
 
-type Props = { items: MenuItem[]; onClose: () => void };
+type Props = {
+  items: MenuItem[];
+  onClose: () => void;
+  // A small note under the list.
+  footer?: string;
+};
 
 // A drop-down list of commands. Escape or a click outside closes it.
-export function Menu({ items, onClose }: Props) {
+export function Menu({ items, onClose, footer }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,6 +62,11 @@ export function Menu({ items, onClose }: Props) {
           </button>
         </div>
       ))}
+      {footer && (
+        <p className="mt-1 border-t border-border px-3 pt-1.5 text-xs text-text-faint">
+          {footer}
+        </p>
+      )}
     </div>
   );
 }

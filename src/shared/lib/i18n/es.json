@@ -19,5 +19,14 @@
   "save.saving": "Guardando...",
   "save.error": "Error al guardar",
   "save.retry": "Reintentar",
-  "save.errorMessage": "No se pudo guardar: {reason}"
+  "save.errorMessage": "No se pudo guardar: {reason}",
+  "command.project.new": "Nuevo proyecto",
+  "command.project.open": "Abrir...",
+  "command.project.openRecent": "Abrir reciente",
+  "command.project.rename": "Renombrar proyecto...",
+  "command.project.saveCopy": "Guardar copia como...",
+  "command.project.showInFolder": "Mostrar en la carpeta",
+  "command.project.export": "Exportar...",
+  "command.project.close": "Cerrar proyecto",
+  "menu.autosave": "El proyecto se guarda solo."
 }

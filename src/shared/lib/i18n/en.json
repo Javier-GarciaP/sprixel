@@ -19,5 +19,14 @@
   "save.saving": "Saving...",
   "save.error": "Error saving",
   "save.retry": "Retry",
-  "save.errorMessage": "Could not save: {reason}"
+  "save.errorMessage": "Could not save: {reason}",
+  "command.project.new": "New project",
+  "command.project.open": "Open...",
+  "command.project.openRecent": "Open recent",
+  "command.project.rename": "Rename project...",
+  "command.project.saveCopy": "Save a copy as...",
+  "command.project.showInFolder": "Show in folder",
+  "command.project.export": "Export...",
+  "command.project.close": "Close project",
+  "menu.autosave": "The project saves by itself."
 }
