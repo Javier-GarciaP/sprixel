@@ -2,15 +2,41 @@ import { Switch } from "@/shared/components";
 import { useT, type Language, type TranslationKey } from "@/shared/lib/i18n";
 import { usePreferences, type Theme } from "@/shared/lib/preferences";
 
-const themes: { id: Theme; labelKey: TranslationKey; preview: string }[] = [
-  { id: "light", labelKey: "theme.light", preview: "bg-[#f3efe6]" },
-  { id: "dark", labelKey: "theme.dark", preview: "bg-[#17171c]" },
-  {
-    id: "system",
-    labelKey: "theme.system",
-    preview: "bg-gradient-to-r from-[#f3efe6] from-50% to-[#17171c] to-50%",
-  },
+const themes: { id: Theme; labelKey: TranslationKey }[] = [
+  { id: "light", labelKey: "theme.light" },
+  { id: "dark", labelKey: "theme.dark" },
+  { id: "system", labelKey: "theme.system" },
 ];
+
+// A small mock window: a frame, a sidebar, a content block and a yellow bar.
+// The fixed data-theme makes it use the real color tokens of that theme.
+function MockWindow({ theme }: { theme: "light" | "dark" }) {
+  return (
+    <div
+      data-theme={theme}
+      data-preview={theme}
+      className="flex h-full w-full gap-1.5 rounded border border-border bg-bg p-1.5"
+    >
+      <div className="w-1/4 rounded-sm bg-surface" />
+      <div className="relative flex-1 rounded-sm bg-surface-2">
+        <div className="absolute right-1.5 top-1.5 h-1 w-1/3 rounded-sm bg-amber" />
+      </div>
+    </div>
+  );
+}
+
+function ThemePreview({ theme }: { theme: Theme }) {
+  if (theme !== "system") return <MockWindow theme={theme} />;
+  // System: the left half is light and the right half is dark.
+  return (
+    <div className="relative h-full w-full">
+      <MockWindow theme="light" />
+      <div className="absolute inset-0 [clip-path:inset(0_0_0_50%)]">
+        <MockWindow theme="dark" />
+      </div>
+    </div>
+  );
+}
 
 // Spanish first, like the design.
 const languageOrder: Language[] = ["es", "en"];
@@ -34,7 +60,7 @@ export function AppearancePage() {
           aria-label={t("settings.theme")}
           className="grid grid-cols-3 gap-3"
         >
-          {themes.map(({ id, labelKey, preview }) => (
+          {themes.map(({ id, labelKey }) => (
             <button
               key={id}
               type="button"
@@ -43,9 +69,9 @@ export function AppearancePage() {
               onClick={() => update({ theme: id })}
               className={cardClass(preferences.theme === id)}
             >
-              <div
-                className={`mb-2 h-16 rounded border border-border ${preview}`}
-              />
+              <div className="mb-2 h-20">
+                <ThemePreview theme={id} />
+              </div>
               {t(labelKey)}
             </button>
           ))}

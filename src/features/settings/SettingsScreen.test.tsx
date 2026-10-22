@@ -101,3 +101,20 @@ describe("SettingsScreen", () => {
     );
   });
 });
+
+describe("theme cards", () => {
+  // Checks that each theme card draws a mock window preview with its own
+  // fixed theme, and that System shows both a light and a dark half.
+  it("shows a preview in each of the three cards", () => {
+    show();
+    const preview = (name: RegExp) =>
+      [
+        ...screen
+          .getByRole("radio", { name })
+          .querySelectorAll("[data-preview]"),
+      ].map((el) => el.getAttribute("data-preview"));
+    expect(preview(/Light/)).toEqual(["light"]);
+    expect(preview(/Dark/)).toEqual(["dark"]);
+    expect(preview(/Follow the system/)).toEqual(["light", "dark"]);
+  });
+});
