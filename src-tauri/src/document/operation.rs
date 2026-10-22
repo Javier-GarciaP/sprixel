@@ -552,8 +552,10 @@ impl Project {
         Some(&self.folder(&folder).sprites[index])
     }
 
-    pub fn has_folder(&self, path: &[String]) -> bool {
-        self.canonical_folder(path).is_ok()
+    /// Finds a folder by its path, ignoring case in names. An empty path is the root.
+    pub fn find_folder(&self, path: &[String]) -> Option<&Folder> {
+        let real = self.canonical_folder(path).ok()?;
+        Some(self.folder(&real))
     }
 
     /// Follows a folder path ignoring case and returns it with the real names.

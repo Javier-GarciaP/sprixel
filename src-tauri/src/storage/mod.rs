@@ -10,6 +10,7 @@ mod files;
 mod format;
 mod migrate;
 mod session;
+mod trash;
 
 pub use atomic::{DiskWriter, FileWriter, write_atomic};
 pub use autosave::{Autosave, DEFAULT_DEBOUNCE};
@@ -40,3 +41,5 @@ mod session_tests;
 mod autosave_tests;
 #[cfg(test)]
 mod save_error_tests;
+#[cfg(test)]
+mod trash_tests;

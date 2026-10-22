@@ -1,8 +1,12 @@
 use super::atomic::{DiskWriter, FileWriter};
 use super::error::StorageError;
-use super::files::{write_manifest, write_palette, write_sprite};
+use super::files::{
+    palette_path, sprite_path, write_manifest, write_palette, write_sprite,
+};
+use super::format::{palette_to_text, sprite_to_text};
 use super::format::Manifest;
-use crate::document::{DocError, Operation, Project, Target, validate_name};
+use super::trash::Trash;
+use crate::document::{DocError, Folder, Operation, Project, Target, validate_name};
 use crate::history::History;
 use std::collections::BTreeSet;
 use std::fs;
@@ -28,6 +32,7 @@ pub struct Session {
     /// The parts of the project changed since they were last saved.
     pending: BTreeSet<Target>,
     writer: Arc<dyn FileWriter>,
+    trash: Trash,
     status: Arc<Mutex<SaveStatus>>,
 }
 
@@ -54,12 +59,14 @@ impl Session {
     }
 
     fn new(root: PathBuf, project: Project) -> Session {
+        let trash = Trash::new(&root);
         Session {
             root,
             project,
             history: History::new(),
             pending: BTreeSet::new(),
             writer: Arc::new(DiskWriter),
+            trash,
             status: Arc::new(Mutex::new(SaveStatus::Saved)),
         }
     }
@@ -146,28 +153,85 @@ impl Session {
         *self.status.lock().unwrap() = status;
     }
 
-    // Saves one part of the project as it is now in memory.
-    fn save(&self, target: &Target) -> Result<(), StorageError> {
-        let writer = &*self.writer;
+    // Brings the disk in line with one part of the project as it is in memory:
+    // written when it exists, moved to the trash when it was deleted, and moved
+    // back from the trash when a deletion was undone.
+    fn save(&mut self, target: &Target) -> Result<(), StorageError> {
+        let writer = self.writer.clone();
         match target {
             Target::Sprite(sprite_ref) => {
-                if let Some(sprite) = self.project.find_sprite(sprite_ref) {
-                    write_sprite(writer, &self.root, sprite_ref, sprite)?;
+                let path = sprite_path(&self.root, sprite_ref);
+                match self.project.find_sprite(sprite_ref) {
+                    Some(sprite) => {
+                        let text = sprite_to_text(sprite);
+                        self.trash.take_back(&path, |trashed| has_text(trashed, &text))?;
+                        write_sprite(&*writer, &self.root, sprite_ref, sprite)?;
+                    }
+                    None => self.trash.throw_away(&path)?,
                 }
             }
             Target::Palette(name) => {
-                if let Some(palette) = self.project.palette(name) {
-                    write_palette(writer, &self.root, palette)?;
+                let path = palette_path(&self.root, name);
+                match self.project.palette(name) {
+                    Some(palette) => {
+                        let text = palette_to_text(palette);
+                        self.trash.take_back(&path, |trashed| has_text(trashed, &text))?;
+                        write_palette(&*writer, &self.root, palette)?;
+                    }
+                    None => self.trash.throw_away(&path)?,
                 }
             }
-            Target::Folder(path) => {
-                if self.project.has_folder(path) {
-                    let mut folder = self.root.join("sprites");
-                    folder.extend(path);
-                    fs::create_dir_all(&folder).map_err(|e| StorageError::io(&folder, &e))?;
+            Target::Folder(names) => {
+                let mut path = self.root.join("sprites");
+                path.extend(names);
+                match self.project.find_folder(names) {
+                    Some(folder) => {
+                        let wanted = names_in_folder(folder, "");
+                        self.trash
+                            .take_back(&path, |trashed| names_on_disk(trashed) == wanted)?;
+                        fs::create_dir_all(&path).map_err(|e| StorageError::io(&path, &e))?;
+                    }
+                    None => self.trash.throw_away(&path)?,
                 }
             }
         }
         Ok(())
     }
+}
+
+fn has_text(path: &Path, text: &str) -> bool {
+    fs::read_to_string(path).is_ok_and(|saved| saved == text)
+}
+
+// The sprites and folders inside a folder, as lowercase relative paths. It is
+// used to tell if a trashed folder is the one that Undo wants back.
+fn names_in_folder(folder: &Folder, prefix: &str) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for sprite in &folder.sprites {
+        names.insert(format!("{prefix}{}.sprite.json", sprite.name).to_lowercase());
+    }
+    for child in &folder.folders {
+        names.insert(format!("{prefix}{}", child.name).to_lowercase());
+        names.extend(names_in_folder(child, &format!("{prefix}{}/", child.name)));
+    }
+    names
+}
+
+fn names_on_disk(dir: &Path) -> BTreeSet<String> {
+    fn walk(dir: &Path, prefix: &str, names: &mut BTreeSet<String>) {
+        let Ok(entries) = fs::read_dir(dir) else { return };
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let path = entry.path();
+            if path.is_dir() {
+                names.insert(format!("{prefix}{name}").to_lowercase());
+                walk(&path, &format!("{prefix}{name}/"), names);
+            } else if name.ends_with(".sprite.json") {
+                names.insert(format!("{prefix}{name}").to_lowercase());
+            }
+        }
+    }
+    let mut names = BTreeSet::new();
+    walk(dir, "", &mut names);
+    names
 }
