@@ -2,7 +2,7 @@
 
 ## 1. Developer prerequisites
 
-- [ ] 1.1 Install the Rust toolchain with `rustup` and the Tauri system libraries, then verify `rustc --version` and a `cargo check` of an empty Tauri app succeed
+- [x] 1.1 Install the Rust toolchain with `rustup` and the Tauri system libraries, then verify `rustc --version` and a `cargo check` of an empty Tauri app succeed
 - [ ] 1.2 Document the prerequisites for Linux, Windows and macOS in `CONTRIBUTING.md` and verify the steps on the Fedora machine
 
 ## 2. App skeleton
