@@ -15,14 +15,48 @@ The project is proprietary (see `LICENSE`). Everything is written in English
 
 ## Status and commands
 
-The project is in the **planning stage**: the design (`docs/design/`), the docs
-(`docs/`) and the version 1 specs (`openspec/changes/`) exist, and there is no
-code yet. The first spec to build is `project-foundation`.
+The **foundation** spec (`project-foundation`) is built: the app skeleton
+(Tauri 2 with Vite, React, TypeScript and Tailwind), the Go CLI in `cli/`, the
+tooling, CI and the drawing benchmark. The feature folders are still empty
+placeholders. The next specs follow `docs/roadmap.md`.
 
-Commands do not exist yet. `project-foundation` creates them, and its last task
-updates this section with the real commands to run, test and build.
+Commands run from the repository root. The package manager is **npm**; run
+`npm ci` once first to install the JS dependencies.
 
-Available now:
+```sh
+npm run tauri dev      # the full app (opens the window; the first run
+                       # compiles Rust and takes minutes)
+npm run dev            # UI only in a browser at http://localhost:1420
+                       # (no Rust core)
+npm test               # Vitest (UI and scripts) + cargo test (Rust core)
+                       # + go test (CLI); the exit code reflects the result
+npm run lint           # ESLint, includes the import-boundary rules
+npm run format         # Prettier write
+npm run format:check   # Prettier check
+npm run build          # type-check and build the UI only
+npm run build:cli      # builds the sprixel command to bin/sprixel
+                       # (bin/sprixel.exe on Windows), version from package.json
+npm run build:release  # Tauri bundle for the current system (Linux: .deb,
+                       # .rpm and .AppImage in src-tauri/target/release/bundle/)
+                       # plus bin/sprixel
+npm run benchmark      # 512x512 drawing benchmark in the real app window;
+                       # prints the median latency; exit code 1 if above 16 ms
+```
+
+Single tests:
+
+```sh
+npx vitest run <path>                            # one UI or scripts test
+cargo test --manifest-path src-tauri/Cargo.toml  # Rust core
+go test -C cli ./...                             # CLI
+```
+
+**Version:** the single source is the `version` field of `package.json`.
+`tauri.conf.json` reads it (`"../package.json"`), the Go command gets it at
+build time with `-ldflags` (`scripts/build-cli.mjs`) and `Cargo.toml` must
+have the same value (a test checks it).
+
+Other commands:
 
 ```sh
 openspec list                 # specs in progress

@@ -1,8 +1,11 @@
 # Architecture
 
-> **Status: planned.** Nothing is built yet. This document describes the design
-> that the version 1 specs in [`openspec/`](../openspec/) follow. If a spec and
-> this document disagree, the spec wins.
+> **Status: foundation built.** The app skeleton (Tauri 2 + Vite + React +
+> TypeScript + Tailwind), the Go CLI, the tooling, CI and the drawing
+> benchmark exist. The editor features, the Rust core modules and the MCP
+> server are still planned and follow the version 1 specs in
+> [`openspec/`](../openspec/). If a spec and this document disagree, the spec
+> wins.
 
 ## Overview
 
@@ -183,38 +186,61 @@ More detail in [AI and MCP](ai-and-mcp.md).
 Tauri uses the system web view (WebKitGTK on Linux). Pixel canvas performance
 on large sprites (512x512) is checked early in the `project-foundation` spec.
 
-## Planned repository layout
+## Drawing performance
 
-Following the project structure rules (organize by feature, not by file type):
+The benchmark (`npm run benchmark`) checks that drawing stays fast.
+
+- **Method.** One 512x512 sprite held as a `Uint8Array` of palette indexes and
+  one canvas. Only the changed area is repainted with `putImageData`. A stroke
+  of 300 points with a round brush of radius 4, each point arriving at a random
+  moment of the frame. Latency is measured until just after the next frame is
+  painted.
+- **Budget.** Median of 16 ms or less. The command exits with code 1 above it.
+
+| Platform | Median | Result |
+| --- | --- | --- |
+| Linux (Fedora 44, WebKitGTK, 60 Hz) | 9.5 to 10.0 ms in 3 runs (p95 16 ms) | Meets the budget |
+| Windows | not measured | Skipped by decision of the maintainer |
+| macOS | not measured | Skipped by decision of the maintainer |
+
+Windows and macOS were not measured. If you run `npm run benchmark` there, add the numbers to this table.
+
+## Repository layout
+
+Following the project structure rules (organize by feature, not by file type).
+Folders marked *(empty)* exist with only a `.gitkeep` file; their content
+arrives with the specs that build them.
 
 ```
 sprixel/
-├── src/                        React UI
-│   ├── app/                    main.tsx, App.tsx, providers, i18n setup
-│   ├── features/
-│   │   ├── project-browser/    components/, hooks/, api/, types.ts, index.ts
-│   │   ├── canvas-editor/
+├── src/                        React UI (exists)
+│   ├── app/                    main.tsx, App.tsx, index.css, benchmark/
+│   ├── features/               8 feature folders (all empty for now)
+│   │   ├── project-browser/    later: components/, hooks/, api/, types.ts,
+│   │   ├── canvas-editor/      index.ts per feature
 │   │   ├── frames-animations/
 │   │   ├── palette-editor/
 │   │   ├── text-view/
 │   │   ├── export/
 │   │   ├── agents/
 │   │   └── settings/
-│   ├── shared/                 components/, hooks/, lib/, types/
-│   └── assets/
-├── src-tauri/                  Rust core
-│   └── src/
-│       ├── document/           model and operations
-│       ├── history/            undo and redo
-│       ├── storage/            project files, autosave, trash, file watching
-│       ├── render/             PNG and GIF rendering
-│       ├── export/             sprite sheet and JSON
-│       ├── mcp/                server, tools, auth, permissions, activity
-│       └── ipc/                Tauri commands and events
-├── cli/                        Go module for the `sprixel` command
-│   ├── cmd/sprixel/main.go
-│   └── internal/               runtime, bridge, clients, doctor, update
-├── scripts/                    install.sh, install.ps1, version bump
+│   ├── shared/                 components/, hooks/, lib/, types/ (empty)
+│   └── assets/                 (empty)
+├── src-tauri/                  Rust core (exists)
+│   └── src/                    lib.rs, main.rs, plus the module folders:
+│       ├── document/           model and operations (empty)
+│       ├── history/            undo and redo (empty)
+│       ├── storage/            project files, autosave, trash, file watching (empty)
+│       ├── render/             PNG and GIF rendering (empty)
+│       ├── export/             sprite sheet and JSON (empty)
+│       ├── mcp/                server, tools, auth, permissions, activity (empty)
+│       └── ipc/                Tauri commands and events (empty)
+├── cli/                        Go module github.com/Javier-GarciaP/sprixel/cli
+│   ├── cmd/sprixel/main.go     sprixel version (more commands come later)
+│   └── internal/               command/, version/ (runtime, bridge, clients,
+│                               doctor and update come with later specs)
+├── scripts/                    build-cli.mjs, benchmark.mjs, version.test.js
+│                               (install.sh and install.ps1 come with later specs)
 ├── docs/
 ├── openspec/
 └── README.md  LICENSE  CONTRIBUTING.md  CHANGELOG.md  AGENTS.md
@@ -222,8 +248,15 @@ sprixel/
 
 Rules:
 
+- The alias `@/x` means `src/x` (TypeScript paths and the Vite alias).
 - A feature never imports from another feature. It uses `shared/` or the other
-  feature's `index.ts`.
+  feature's `index.ts`, so a cross-feature import must be `@/features/<name>`.
+  The ESLint rule `no-restricted-imports` enforces this.
 - `shared/` never imports from `features/`.
 - `cmd/sprixel/main.go` has almost no logic.
-- Tests live next to the code they test.
+- Tests live next to the code they test (`*.test.ts` and `*.test.tsx`), plus
+  `eslint.config.test.js` in the root and `scripts/version.test.js`.
+
+CI (`.github/workflows/ci.yml`) runs `format:check`, `lint`, `test` and
+`build:release` on Linux, Windows and macOS for pull requests into `dev` and
+`main`. The package manager is npm.

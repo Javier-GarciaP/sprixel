@@ -1,0 +1,40 @@
+// Runs the drawing benchmark inside the real app window and prints the result.
+// Exit code is 0 when the median is within the 16 ms budget, 1 otherwise.
+import { spawn, execFileSync } from "node:child_process";
+
+const BUDGET_MS = 16;
+const isWindows = process.platform === "win32";
+
+const child = spawn("npm", ["run", "tauri", "dev"], {
+  env: { ...process.env, VITE_BENCHMARK: "1" },
+  shell: isWindows,
+  detached: !isWindows,
+  stdio: ["ignore", "pipe", "inherit"],
+});
+
+function stopApp() {
+  if (isWindows) {
+    execFileSync("taskkill", ["/pid", String(child.pid), "/T", "/F"]);
+  } else {
+    process.kill(-child.pid); // the whole process group
+  }
+}
+
+let buffer = "";
+child.stdout.on("data", (chunk) => {
+  buffer += chunk;
+  const lines = buffer.split("\n");
+  buffer = lines.pop();
+  for (const line of lines) {
+    const marker = line.indexOf("BENCHMARK_RESULT ");
+    if (marker === -1) continue;
+    const result = JSON.parse(line.slice(marker + "BENCHMARK_RESULT ".length));
+    console.log(JSON.stringify(result, null, 2));
+    const ok = result.medianMs <= BUDGET_MS;
+    console.log(
+      `\nMedian ${result.medianMs.toFixed(1)} ms, budget ${BUDGET_MS} ms: ${ok ? "OK" : "TOO SLOW"}`,
+    );
+    stopApp();
+    process.exit(ok ? 0 : 1);
+  }
+});
