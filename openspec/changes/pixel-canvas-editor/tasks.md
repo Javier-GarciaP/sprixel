@@ -1,0 +1,34 @@
+# Tasks
+
+## 1. Canvas rendering
+
+- [ ] 1.1 Build the canvas renderer with exact scaling and the neutral checkerboard and verify screenshots in both themes
+- [ ] 1.2 Add zoom (keys, wheel, buttons, Fit) and panning with the pointer kept fixed, and verify with tests
+- [ ] 1.3 Add the pixel grid option and the coordinates display and verify the 600% rule
+
+## 2. Editor layout
+
+- [ ] 2.1 Build the editor layout (tools, frames column placeholder, canvas bar, right panel) and verify against screens 18 and 19
+- [ ] 2.2 Show the size next to the name, the active tool and the undo and redo buttons, and verify the bar contents
+
+## 3. Tools
+
+- [ ] 3.1 Build the drawing controller, the Pencil and the Eraser with gap-free strokes and verify the fast stroke test
+- [ ] 3.2 Build the colors (main, secondary, swap, right button) and the Eyedropper and verify the scenarios
+- [ ] 3.3 Build the Bucket and verify the closed outline test and the 512x512 timing
+- [ ] 3.4 Build Line, Rectangle and Ellipse with preview, Shift and fill options, and verify the Shift scenarios
+- [ ] 3.5 Build Select and Move with clipping and verify the move test
+
+## 4. History and onion skin
+
+- [ ] 4.1 Send each stroke as one operation and wire undo and redo, and verify a 30-pixel stroke undoes in one step
+- [ ] 4.2 Build onion skin with the switch and the opacity slider and verify frame 1 and frame 2 behavior
+
+## 5. Agents and speed
+
+- [ ] 5.1 Show the agent marker, the busy frame and the Stop button from core events, and verify with a simulated agent
+- [ ] 5.2 Run the 512x512 speed benchmark with the real editor and verify the 16 ms budget on each system
+
+## 6. Documentation
+
+- [ ] 6.1 Update `docs/usage.md` (tools, shortcuts, onion skin) and verify it matches the app
