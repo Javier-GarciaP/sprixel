@@ -4,7 +4,7 @@ This is the plan to reach **version 1.0.0**, the first stable release. Every
 item is a spec in [`openspec/changes/`](../openspec/changes/). The code is
 written spec by spec, in the order below.
 
-> **Status:** planning. All specs are written. No code has been started.
+> **Status:** spec 1 (`project-foundation`) is built and archived. Specs 2 to 13 are written and not started.
 
 ## The goal of version 1
 
@@ -21,7 +21,7 @@ You can:
 
 | # | Spec | What it delivers | Needs |
 | --- | --- | --- | --- |
-| 1 | [`project-foundation`](../openspec/changes/project-foundation/) | The Tauri + React + Go skeleton, folders, tooling and builds on 3 systems | |
+| 1 | [`project-foundation`](../openspec/changes/archive/2026-10-22-project-foundation/) | The Tauri + React + Go skeleton, folders, tooling and builds on 3 systems | |
 | 2 | [`project-format-and-storage`](../openspec/changes/project-format-and-storage/) | The document model, the project folder, autosave, trash and migrations | 1 |
 | 3 | [`app-shell-and-settings`](../openspec/changes/app-shell-and-settings/) | Window layout, tabs, light and dark theme, Spanish and English, settings and shortcuts | 1 |
 | 4 | [`project-browser`](../openspec/changes/project-browser/) | Folders and sprites: create, rename, duplicate, move, delete, multi-select | 2, 3 |

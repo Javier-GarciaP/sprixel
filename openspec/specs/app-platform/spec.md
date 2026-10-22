@@ -1,4 +1,4 @@
-# Spec Delta
+# app-platform Specification
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Defines the platform the app runs on: the supported systems, how it is built
 and checked, the single version number, and the drawing speed budget that the
 rest of the product must respect.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Supported systems
 The app SHALL run on Linux (x64), Windows (x64) and macOS (Apple silicon and Intel) and open a main window that shows the app name and version.
@@ -53,6 +53,8 @@ Import rules SHALL be checked automatically: a feature MUST NOT import from anot
 
 ### Requirement: Drawing speed budget
 Painting a stroke on a 512x512 sprite SHALL stay smooth: the median time from pointer movement to the pixel being visible MUST be 16 ms or less on the reference machine, on every supported system.
+
+The budget was verified on Linux only (median 9.5 to 10 ms on Fedora with WebKitGTK). By decision of the maintainer, Windows and macOS were not measured when this requirement was accepted; the budget still applies to them and `npm run benchmark` measures it there.
 
 #### Scenario: Benchmark on a large sprite
 - **WHEN** the drawing benchmark paints a continuous stroke across a 512x512 sprite
