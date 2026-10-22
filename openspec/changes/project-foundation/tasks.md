@@ -33,4 +33,4 @@
 
 ## 7. Documentation
 
-- [ ] 7.1 Update `AGENTS.md` and `docs/architecture.md` with the real commands and structure and verify every documented command runs as written
+- [x] 7.1 Update `AGENTS.md` and `docs/architecture.md` with the real commands and structure and verify every documented command runs as written
