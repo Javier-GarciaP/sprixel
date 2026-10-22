@@ -7,7 +7,7 @@
 
 ## 2. Translation
 
-- [ ] 2.1 Add the i18n layer with Spanish and English files and the fallback rule, and verify tests for fallback and missing key detection
+- [x] 2.1 Add the i18n layer with Spanish and English files and the fallback rule, and verify tests for fallback and missing key detection
 - [ ] 2.2 Add the language setting, the system language detection and the quick button, and verify switching without a restart
 
 ## 3. Window layout
