@@ -269,3 +269,13 @@ pub(super) fn canonical_text(kind: FileKind, value: Value) -> Result<String, Str
         FileKind::Sprite => rewrite::<SpriteFile>(value),
     }
 }
+
+/// The palette name written in a sprite file. Read first, to find the palette
+/// that the whole file is checked against.
+pub fn sprite_palette_name(text: &str) -> Result<String, String> {
+    let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    match value.get("palette").and_then(Value::as_str) {
+        Some(name) => Ok(name.to_string()),
+        None => Err("the sprite file has no palette".to_string()),
+    }
+}

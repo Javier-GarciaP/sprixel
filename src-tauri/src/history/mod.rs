@@ -112,4 +112,11 @@ impl History {
             Some(_) => self.undo(project),
         }
     }
+
+    /// Forgets all the history. Used when the project changes in a way the
+    /// inverses do not know about (a file reloaded from disk).
+    pub fn clear(&mut self) {
+        self.entries.clear();
+        self.undone.clear();
+    }
 }

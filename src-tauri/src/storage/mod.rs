@@ -11,6 +11,7 @@ mod format;
 mod migrate;
 mod session;
 mod trash;
+mod watch;
 
 pub use atomic::{DiskWriter, FileWriter, write_atomic};
 pub use autosave::{Autosave, DEFAULT_DEBOUNCE};
@@ -19,7 +20,7 @@ pub use files::{
     palette_path, read_manifest, read_palette, read_sprite, sprite_path, write_manifest,
     write_palette, write_sprite,
 };
-pub use session::{SaveStatus, Session};
+pub use session::{ConflictChoice, ExternalChange, SaveStatus, Session};
 pub use migrate::{FileKind, Migration, Migrator, Step, migrate_project};
 pub use format::{
     FORMAT_VERSION, Manifest, manifest_from_text, manifest_to_text, palette_from_text,
@@ -43,3 +44,5 @@ mod autosave_tests;
 mod save_error_tests;
 #[cfg(test)]
 mod trash_tests;
+#[cfg(test)]
+mod watch_tests;

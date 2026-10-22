@@ -546,6 +546,18 @@ impl Project {
         }
     }
 
+    pub(super) fn locate_sprite(&self, sprite: &SpriteRef) -> Option<(Vec<String>, usize)> {
+        self.locate(sprite).ok()
+    }
+
+    pub(super) fn folder_at_mut(&mut self, path: &[String]) -> &mut Folder {
+        self.folder_mut(path)
+    }
+
+    pub(super) fn all_sprites(&self) -> impl Iterator<Item = &Sprite> {
+        all_sprites(&self.root)
+    }
+
     /// Finds a sprite ignoring case in names.
     pub fn find_sprite(&self, sprite: &SpriteRef) -> Option<&Sprite> {
         let (folder, index) = self.locate(sprite).ok()?;
@@ -595,7 +607,7 @@ impl Project {
     }
 
     /// Finds a sprite ignoring case. Returns its real folder path and its index.
-    fn locate(&self, sprite: &SpriteRef) -> Result<(Vec<String>, usize), DocError> {
+    pub(super) fn locate(&self, sprite: &SpriteRef) -> Result<(Vec<String>, usize), DocError> {
         let folder = self.canonical_folder(&sprite.folder)?;
         let index = self
             .folder(&folder)
