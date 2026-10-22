@@ -136,6 +136,12 @@ impl Session {
         SaveStatus::Saved
     }
 
+    /// The "Retry" action after a save error. The changes are still in
+    /// memory, so this tries to write them again.
+    pub fn retry(&mut self) -> SaveStatus {
+        self.flush()
+    }
+
     fn set_status(&self, status: SaveStatus) {
         *self.status.lock().unwrap() = status;
     }

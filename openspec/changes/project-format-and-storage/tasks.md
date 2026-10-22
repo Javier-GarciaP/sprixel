@@ -20,7 +20,7 @@
 
 - [x] 4.1 Implement atomic writes and verify a test that kills the writer mid-save leaves a valid file
 - [x] 4.2 Implement debounced autosave and the saved, saving and error statuses and verify the one-second scenario
-- [ ] 4.3 Implement save error handling with retry and verify data stays in memory when the disk is full (simulated)
+- [x] 4.3 Implement save error handling with retry and verify data stays in memory when the disk is full (simulated)
 
 ## 5. Trash and outside changes
 

@@ -60,6 +60,11 @@ impl Autosave {
         result
     }
 
+    /// The "Retry" action after a save error: saves now, without waiting.
+    pub fn retry(&self) -> SaveStatus {
+        self.shared.session.lock().unwrap().retry()
+    }
+
     pub fn status(&self) -> SaveStatus {
         self.status.lock().unwrap().clone()
     }

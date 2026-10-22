@@ -38,3 +38,5 @@ mod atomic_tests;
 mod session_tests;
 #[cfg(test)]
 mod autosave_tests;
+#[cfg(test)]
+mod save_error_tests;
