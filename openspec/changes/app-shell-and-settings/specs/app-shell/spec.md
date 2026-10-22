@@ -51,7 +51,7 @@ Opening a project SHALL let the user pick a folder and MUST check that it is a S
 - **THEN** a message says "This folder is not a Sprixel project" and nothing is opened
 
 ### Requirement: Project menu
-The project menu, opened from the project name, SHALL offer New project, Open, Open recent, Rename project, Save a copy as, Show in folder, Export and Close project, with shortcuts, and the same commands MUST be available in the native window menu.
+The project menu, opened from the project name, SHALL offer New project, Open, Open recent, Rename project, Save a copy as, Show in folder, Export and Close project, with shortcuts. The app SHALL NOT show a native window menu bar.
 
 #### Scenario: Open the menu
 - **WHEN** the user clicks the project name in the top bar

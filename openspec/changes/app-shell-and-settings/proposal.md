@@ -12,7 +12,7 @@ language and theme for the whole app.
   status, tabs, agents indicator), body and bottom bar (settings, language,
   theme, context).
 - Build the Welcome screen, the New project dialog, Open project and the list of
-  recent projects, and the project menu with a matching native window menu.
+  recent projects, and the project menu.
 - Disable the Editor, Export and Agents tabs when no project is open.
 - Add light, dark and system themes, and Spanish and English with translation
   files.

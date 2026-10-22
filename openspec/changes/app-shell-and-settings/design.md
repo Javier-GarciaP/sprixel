@@ -23,10 +23,11 @@ color tokens with a dark and a light value.
 - **A small i18n layer** with JSON files per language and typed keys.
   Alternative: a large library (more dependencies, not needed for two
   languages). The decision is confirmed when the dependency is approved.
-- **Native menu from Tauri** built from the same list of commands as the
-  project menu, so there is one source for command names and shortcuts.
-- **A command registry** (id, label key, shortcut, action) used by menus,
-  shortcuts, the shortcuts page and tests.
+- **No native window menu.** Every command lives in the project menu and keeps
+  its shortcut, handled inside the app. Alternative: a native menu built from
+  the same list (more code, and menus differ across systems).
+- **A command registry** (id, label key, shortcut, action) used by the project
+  menu, shortcuts, the shortcuts page and tests.
 - **Preferences in the Tauri app config directory.**
 - **The shell leaves the body to features.** Tabs map to features through
   `index.ts` exports only.
@@ -37,4 +38,3 @@ color tokens with a dark and a light value.
   in English and warns when it is missing in Spanish.
 - [Shortcuts clash with the system or the web view] → keep the list short and
   test the main ones on each system.
-- [Native menus differ across systems] → keep only the common commands there.

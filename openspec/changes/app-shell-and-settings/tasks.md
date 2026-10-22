@@ -19,7 +19,7 @@
 ## 4. Commands, menus and shortcuts
 
 - [x] 4.1 Build the command registry and the project menu (anchored to the project name) and verify there is no Save item
-- [x] 4.2 Build the native window menu from the same registry and verify the commands match the project menu
+- [ ] 4.2 Remove the native window menu; every command stays in the project menu and keeps its shortcut
 - [x] 4.3 Add the shortcuts for the platform (Control or Command) and verify the shortcuts page lists them
 
 ## 5. Welcome and projects
