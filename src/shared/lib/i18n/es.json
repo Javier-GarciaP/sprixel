@@ -14,5 +14,10 @@
   "theme.system": "Según el sistema",
   "theme.setLight": "Tema claro",
   "theme.setDark": "Tema oscuro",
-  "body.soon": "Esta parte aún no está construida."
+  "body.soon": "Esta parte aún no está construida.",
+  "save.saved": "Guardado",
+  "save.saving": "Guardando...",
+  "save.error": "Error al guardar",
+  "save.retry": "Reintentar",
+  "save.errorMessage": "No se pudo guardar: {reason}"
 }

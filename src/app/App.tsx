@@ -4,11 +4,13 @@ import { defaultPreferences } from "@/shared/lib/preferences";
 import { AppProviders } from "./AppProviders";
 import { Shell } from "./shell/Shell";
 import type { Tab } from "./shell/TopBar";
+import { useWindowTitle } from "./shell/windowTitle";
 
 function Main() {
   const t = useT();
   const [tab, setTab] = useState<Tab>("project");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useWindowTitle(null);
 
   return (
     <Shell

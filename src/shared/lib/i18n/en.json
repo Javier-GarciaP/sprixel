@@ -14,5 +14,10 @@
   "theme.system": "Follow the system",
   "theme.setLight": "Light theme",
   "theme.setDark": "Dark theme",
-  "body.soon": "This part is not built yet."
+  "body.soon": "This part is not built yet.",
+  "save.saved": "Saved",
+  "save.saving": "Saving...",
+  "save.error": "Error saving",
+  "save.retry": "Retry",
+  "save.errorMessage": "Could not save: {reason}"
 }
