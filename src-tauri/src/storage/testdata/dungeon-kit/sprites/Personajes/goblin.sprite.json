@@ -1,0 +1,38 @@
+{
+  "formatVersion": 1,
+  "width": 4,
+  "height": 4,
+  "palette": "dungeon16",
+  "frameDurations": [
+    83,
+    120
+  ],
+  "layers": [
+    {
+      "name": "Layer 1",
+      "frames": [
+        [
+          "..RR",
+          ".RRR",
+          "NPNP",
+          "NPPN"
+        ],
+        [
+          "RR..",
+          "RRR.",
+          "PNPN",
+          "NPPN"
+        ]
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "walk",
+      "from": 1,
+      "to": 2,
+      "fps": 12,
+      "mode": "loop"
+    }
+  ]
+}

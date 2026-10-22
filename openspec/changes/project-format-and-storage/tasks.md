@@ -13,7 +13,7 @@
 
 ## 3. File format
 
-- [ ] 3.1 Implement reading and writing of `sprixel.json`, palette files and sprite files and verify golden file tests, including a one-pixel diff test
+- [x] 3.1 Implement reading and writing of `sprixel.json`, palette files and sprite files and verify golden file tests, including a one-pixel diff test
 - [ ] 3.2 Implement `formatVersion` checks, migration with backup and the newer-version refusal and verify tests for each path
 
 ## 4. Saving
