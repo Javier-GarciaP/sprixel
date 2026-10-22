@@ -63,11 +63,11 @@ fn file_stem(path: &Path, suffix: &str) -> String {
     name.strip_suffix(suffix).unwrap_or(&name).to_string()
 }
 
-fn read_text(path: &Path) -> Result<String, StorageError> {
+pub(super) fn read_text(path: &Path) -> Result<String, StorageError> {
     fs::read_to_string(path).map_err(|e| StorageError::io(path, &e))
 }
 
-fn write_text(path: &Path, text: &str) -> Result<(), StorageError> {
+pub(super) fn write_text(path: &Path, text: &str) -> Result<(), StorageError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| StorageError::io(parent, &e))?;
     }

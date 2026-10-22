@@ -7,6 +7,8 @@ pub enum StorageError {
     Io { path: PathBuf, message: String },
     /// A file exists but its content is not valid.
     Invalid { path: PathBuf, reason: String },
+    /// The project was saved by a newer Sprixel. It is left untouched.
+    NewerVersion { found: u32, current: u32 },
 }
 
 impl StorageError {
@@ -30,6 +32,10 @@ impl fmt::Display for StorageError {
         match self {
             StorageError::Io { path, message } => write!(f, "{}: {message}", path.display()),
             StorageError::Invalid { path, reason } => write!(f, "{}: {reason}", path.display()),
+            StorageError::NewerVersion { found, current } => write!(
+                f,
+                "This project was saved with a newer Sprixel (format version {found}, this app reads up to {current}). Update Sprixel to open it."
+            ),
         }
     }
 }

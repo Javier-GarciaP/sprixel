@@ -6,12 +6,14 @@
 mod error;
 mod files;
 mod format;
+mod migrate;
 
 pub use error::StorageError;
 pub use files::{
     palette_path, read_manifest, read_palette, read_sprite, sprite_path, write_manifest,
     write_palette, write_sprite,
 };
+pub use migrate::{FileKind, Migration, Migrator, Step, migrate_project};
 pub use format::{
     FORMAT_VERSION, Manifest, manifest_from_text, manifest_to_text, palette_from_text,
     palette_to_text, sprite_from_text, sprite_to_text,
@@ -19,3 +21,6 @@ pub use format::{
 
 #[cfg(test)]
 mod format_tests;
+
+#[cfg(test)]
+mod migrate_tests;

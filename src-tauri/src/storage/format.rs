@@ -1,5 +1,7 @@
 use crate::document::{Color, Frame, Layer, Palette, Sprite, Tag, TagMode};
+use super::migrate::FileKind;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// The `formatVersion` that this app reads and writes.
 pub const FORMAT_VERSION: u32 = 1;
@@ -230,6 +232,40 @@ fn to_text<T: Serialize>(file: &T) -> String {
     text
 }
 
+/// Reads a file of the current version. Other versions are refused with a
+/// reason: older files must be migrated first, newer ones need a newer app.
 fn from_text<T: for<'de> Deserialize<'de>>(text: &str) -> Result<T, String> {
-    serde_json::from_str(text).map_err(|e| e.to_string())
+    let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    match version_of(&value)? {
+        v if v > FORMAT_VERSION => Err(format!(
+            "saved with a newer Sprixel (format version {v}); update the app"
+        )),
+        v if v < FORMAT_VERSION => Err(format!(
+            "format version {v} is old and needs a migration"
+        )),
+        _ => serde_json::from_value(value).map_err(|e| e.to_string()),
+    }
+}
+
+/// The `formatVersion` of a parsed file.
+pub(super) fn version_of(value: &Value) -> Result<u32, String> {
+    let version = value
+        .get("formatVersion")
+        .and_then(Value::as_u64)
+        .ok_or("the file has no formatVersion")?;
+    Ok(u32::try_from(version).unwrap_or(u32::MAX))
+}
+
+/// The text of a file of the current version, written in the canonical
+/// field order. Used after a migration.
+pub(super) fn canonical_text(kind: FileKind, value: Value) -> Result<String, String> {
+    fn rewrite<T: Serialize + for<'de> Deserialize<'de>>(value: Value) -> Result<String, String> {
+        let file: T = serde_json::from_value(value).map_err(|e| e.to_string())?;
+        Ok(to_text(&file))
+    }
+    match kind {
+        FileKind::Manifest => rewrite::<ManifestFile>(value),
+        FileKind::Palette => rewrite::<PaletteFile>(value),
+        FileKind::Sprite => rewrite::<SpriteFile>(value),
+    }
 }
