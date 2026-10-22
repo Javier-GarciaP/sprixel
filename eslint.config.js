@@ -44,6 +44,13 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...featureRules,
   {
+    // Node scripts and config files run in Node, not in the browser.
+    files: ["scripts/**/*.mjs", "*.js"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly" },
+    },
+  },
+  {
     // `shared/` must not depend on any feature.
     files: ["src/shared/**/*.{ts,tsx}"],
     rules: {

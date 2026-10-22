@@ -19,7 +19,7 @@
 
 ## 4. Version and build
 
-- [ ] 4.1 Add the single version source and pass it to the app and the Go command at build time, and verify they print the same value
+- [x] 4.1 Add the single version source and pass it to the app and the Go command at build time, and verify they print the same value
 - [ ] 4.2 Add the documented build command and verify it produces an app bundle and a `sprixel` executable on Linux
 
 ## 5. Continuous integration
