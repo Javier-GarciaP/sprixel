@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run && cargo test --manifest-path src-tauri/Cargo.toml && go test -C cli ./...",
-    "build:cli": "node scripts/build-cli.mjs"
+    "build:cli": "node scripts/build-cli.mjs",
+    "build:release": "tauri build && npm run build:cli"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
