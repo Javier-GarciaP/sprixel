@@ -8,7 +8,7 @@
 ## 2. App skeleton
 
 - [x] 2.1 Ask for approval of each new dependency, then scaffold Tauri 2 with Vite, React, TypeScript and Tailwind and verify the dev command opens a window
-- [ ] 2.2 Create the `src/app`, `src/features`, `src/shared` and `src-tauri/src` folders from `docs/architecture.md` and verify they match the document
+- [x] 2.2 Create the `src/app`, `src/features`, `src/shared` and `src-tauri/src` folders from `docs/architecture.md` and verify they match the document
 - [ ] 2.3 Show the app name and version in the window and add a test that checks the text
 
 ## 3. Tooling and rules
