@@ -14,7 +14,7 @@
 ## 3. Tooling and rules
 
 - [x] 3.1 Add Prettier and ESLint with the import-boundary rules and verify a forbidden import fails the lint step (add a test fixture for it)
-- [ ] 3.2 Add Vitest and `cargo test` setups with one passing test each and verify the documented test command runs both
+- [x] 3.2 Add Vitest and `cargo test` setups with one passing test each and verify the documented test command runs both
 - [x] 3.3 Create the Go module in `cli/` with `sprixel version` and one test, and verify `go test ./...` passes
 
 ## 4. Version and build
