@@ -38,6 +38,19 @@ function ThemePreview({ theme }: { theme: Theme }) {
   );
 }
 
+// The round mark of a radio option: a ring, with a yellow dot when selected.
+function RadioIndicator({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-indicator={selected ? "on" : "off"}
+      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-amber" : "border-border-strong"}`}
+    >
+      {selected && <span className="h-2 w-2 rounded-full bg-amber" />}
+    </span>
+  );
+}
+
 // Spanish first, like the design.
 const languageOrder: Language[] = ["es", "en"];
 
@@ -94,8 +107,9 @@ export function AppearancePage() {
               role="radio"
               aria-checked={preferences.language === language}
               onClick={() => update({ language })}
-              className={cardClass(preferences.language === language)}
+              className={`flex items-center gap-3 ${cardClass(preferences.language === language)}`}
             >
+              <RadioIndicator selected={preferences.language === language} />
               {t(`language.option.${language}`)}
             </button>
           ))}

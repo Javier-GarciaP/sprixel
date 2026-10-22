@@ -118,3 +118,27 @@ describe("theme cards", () => {
     expect(preview(/Follow the system/)).toEqual(["light", "dark"]);
   });
 });
+
+describe("language options", () => {
+  // Checks that the selected language shows the filled indicator and
+  // aria-checked, and the other one shows an empty ring.
+  it("marks the selected language with its indicator", () => {
+    show(vi.fn(), { language: "es" });
+    const spanish = screen.getByRole("radio", { name: "Español" });
+    const english = screen.getByRole("radio", { name: "English" });
+
+    expect(spanish.getAttribute("aria-checked")).toBe("true");
+    expect(
+      spanish.querySelector("[data-indicator]")?.getAttribute("data-indicator"),
+    ).toBe("on");
+    expect(english.getAttribute("aria-checked")).toBe("false");
+    expect(
+      english.querySelector("[data-indicator]")?.getAttribute("data-indicator"),
+    ).toBe("off");
+
+    fireEvent.click(english);
+    expect(
+      english.querySelector("[data-indicator]")?.getAttribute("data-indicator"),
+    ).toBe("on");
+  });
+});
