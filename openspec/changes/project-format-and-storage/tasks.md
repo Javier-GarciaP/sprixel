@@ -26,7 +26,7 @@
 
 - [x] 5.1 Implement the trash move and restore on undo and verify a delete-and-undo test
 - [x] 5.2 Implement file watching with self-write filtering and the reload or keep notice and verify a test that edits a file externally
-- [ ] 5.3 Implement damaged file handling and verify a project with one broken sprite still opens
+- [x] 5.3 Implement damaged file handling and verify a project with one broken sprite still opens
 
 ## 6. Performance and documentation
 

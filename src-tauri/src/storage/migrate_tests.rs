@@ -33,14 +33,14 @@ fn version_0_to_1(value: &mut Value, kind: FileKind) -> Result<(), String> {
     }
 }
 
-fn test_migrator() -> Migrator {
+pub(super) fn test_migrator() -> Migrator {
     Migrator::new(vec![Step {
         from: 0,
         run: version_0_to_1,
     }])
 }
 
-const MANIFEST_V0: &str = r##"{ "formatVersion": 0, "title": "Old Kit" }"##;
+pub(super) const MANIFEST_V0: &str = r##"{ "formatVersion": 0, "title": "Old Kit" }"##;
 const PALETTE_V0: &str = r##"{ "formatVersion": 0, "colors": [ { "key": "N", "name": "black", "color": "#000000" } ] }"##;
 const SPRITE_V0: &str = r##"{ "formatVersion": 0, "width": 2, "height": 1, "palette": "dungeon16",
   "frameDurations": [100], "layers": [ { "name": "Layer 1", "frames": [ [ "N." ] ] } ],
@@ -52,7 +52,7 @@ fn write(root: &Path, relative: &str, text: &str) {
     fs::write(path, text).unwrap();
 }
 
-fn old_project(root: &Path) {
+pub(super) fn old_project(root: &Path) {
     write(root, "sprixel.json", MANIFEST_V0);
     write(root, "palettes/dungeon16.palette.json", PALETTE_V0);
     write(root, "sprites/Personajes/hero.sprite.json", SPRITE_V0);

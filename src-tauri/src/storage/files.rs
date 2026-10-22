@@ -5,7 +5,9 @@ use super::format::{
     sprite_from_text, sprite_to_text,
 };
 use crate::document::{Palette, Sprite, SpriteRef};
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 const SPRITE_SUFFIX: &str = ".sprite.json";
@@ -87,4 +89,11 @@ pub(super) fn write_text(
         fs::create_dir_all(parent).map_err(|e| StorageError::io(parent, &e))?;
     }
     write_atomic(writer, path, text.as_bytes()).map_err(|e| StorageError::io(path, &e))
+}
+
+/// A fingerprint of the content of a file, to know if it changed.
+pub(super) fn hash_bytes(bytes: &[u8]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    bytes.hash(&mut hasher);
+    hasher.finish()
 }

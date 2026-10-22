@@ -1,21 +1,21 @@
 use super::atomic::{DiskWriter, FileWriter};
 use super::error::StorageError;
 use super::files::{
-    palette_path, sprite_path, write_manifest, write_palette, write_sprite,
+    hash_bytes, palette_path, sprite_path, write_manifest, write_palette, write_sprite,
 };
 use super::format::{
     palette_from_text, palette_to_text, sprite_from_text, sprite_palette_name, sprite_to_text,
 };
 use super::watch::Watcher;
 use super::format::Manifest;
+use super::load::{Damaged, load_project};
+use super::migrate::{Migration, Migrator, migrate_project};
 use super::trash::Trash;
 use crate::document::{
     DocError, Folder, Operation, Project, SpriteRef, Target, validate_name,
 };
 use crate::history::History;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeSet, HashMap};
-use std::hash::{Hash, Hasher};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -67,6 +67,9 @@ pub struct Session {
     /// this fingerprint is the app's own write, or nothing new.
     known: HashMap<PathBuf, Option<u64>>,
     watcher: Option<Watcher>,
+    /// Files that could not be loaded when the project was opened.
+    damaged: Vec<Damaged>,
+    migration: Option<Migration>,
     status: Arc<Mutex<SaveStatus>>,
 }
 
@@ -92,6 +95,34 @@ impl Session {
         Ok(Session::new(root, Project::new(name)))
     }
 
+    /// Opens a project folder.
+    pub fn open(root: &Path) -> Result<Session, StorageError> {
+        Session::open_with(root, &Migrator::app())
+    }
+
+    /// Opens a project folder, migrating old files with the given steps (see
+    /// `migrate_project`). A project from a newer Sprixel is refused. Files
+    /// that cannot be loaded do not stop the opening: see `damaged`.
+    pub fn open_with(root: &Path, migrator: &Migrator) -> Result<Session, StorageError> {
+        let root = fs::canonicalize(root).map_err(|e| StorageError::io(root, &e))?;
+        let migration = migrate_project(&root, migrator)?;
+        let loaded = load_project(&root)?;
+        let mut session = Session::new(root, loaded.project);
+        session.known = loaded.known;
+        session.damaged = loaded.damaged;
+        session.migration = migration;
+        Ok(session)
+    }
+
+    pub fn damaged(&self) -> &[Damaged] {
+        &self.damaged
+    }
+
+    /// What the migration did when the project was opened, if there was one.
+    pub fn migration(&self) -> Option<&Migration> {
+        self.migration.as_ref()
+    }
+
     fn new(root: PathBuf, project: Project) -> Session {
         let trash = Trash::new(&root);
         Session {
@@ -103,6 +134,8 @@ impl Session {
             trash,
             known: HashMap::new(),
             watcher: None,
+            damaged: Vec::new(),
+            migration: None,
             status: Arc::new(Mutex::new(SaveStatus::Saved)),
         }
     }
@@ -418,10 +451,7 @@ fn names_on_disk(dir: &Path) -> BTreeSet<String> {
 }
 
 fn file_hash(path: &Path) -> Option<u64> {
-    let bytes = fs::read(path).ok()?;
-    let mut hasher = DefaultHasher::new();
-    bytes.hash(&mut hasher);
-    Some(hasher.finish())
+    fs::read(path).ok().map(|bytes| hash_bytes(&bytes))
 }
 
 // A new folder can get its files before the system starts watching it, so
