@@ -1,0 +1,17 @@
+//! The document model: project, folders, sprites, palettes, frames, layers
+//! and animation tags, with their rules. Plain Rust, no Tauri types.
+
+// Nothing outside the tests uses this module yet (IPC and MCP come later).
+#![allow(dead_code, unused_imports)]
+
+mod error;
+mod model;
+
+pub use error::DocError;
+pub use model::{
+    Color, Folder, Frame, Layer, MAX_COLORS, MAX_SIZE, Palette, Project, Sprite, TRANSPARENT, Tag,
+    TagMode,
+};
+
+#[cfg(test)]
+mod model_tests;
