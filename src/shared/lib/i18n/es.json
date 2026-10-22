@@ -1,5 +1,18 @@
 {
   "app.name": "Sprixel",
   "language.current": "Español",
-  "language.switch": "Cambiar idioma"
+  "language.switch": "Cambiar idioma",
+  "tab.project": "Proyecto",
+  "tab.editor": "Editor",
+  "tab.export": "Exportar",
+  "tab.agents": "Agentes",
+  "project.none": "Sin proyecto",
+  "agents.none": "Sin agentes",
+  "bottom.settings": "Ajustes",
+  "theme.light": "Claro",
+  "theme.dark": "Oscuro",
+  "theme.system": "Según el sistema",
+  "theme.setLight": "Tema claro",
+  "theme.setDark": "Tema oscuro",
+  "body.soon": "Esta parte aún no está construida."
 }

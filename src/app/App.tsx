@@ -1,8 +1,40 @@
+import { useState } from "react";
+import { useT } from "@/shared/lib/i18n";
+import { defaultPreferences } from "@/shared/lib/preferences";
+import { AppProviders } from "./AppProviders";
+import { Shell } from "./shell/Shell";
+import type { Tab } from "./shell/TopBar";
+
+function Main() {
+  const t = useT();
+  const [tab, setTab] = useState<Tab>("project");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  return (
+    <Shell
+      topBar={{
+        project: (
+          <span className="text-sm text-text-muted">{t("project.none")}</span>
+        ),
+        status: null,
+        activeTab: settingsOpen ? null : tab,
+        onTab: (next) => {
+          setSettingsOpen(false);
+          setTab(next);
+        },
+      }}
+      settingsOpen={settingsOpen}
+      onSettings={() => setSettingsOpen(true)}
+    >
+      <p className="p-6 text-text-muted">{t("body.soon")}</p>
+    </Shell>
+  );
+}
+
 export default function App() {
   return (
-    <main className="flex h-screen flex-col items-center justify-center gap-2">
-      <h1 className="text-3xl font-bold">Sprixel</h1>
-      <p className="text-sm opacity-70">v{__APP_VERSION__}</p>
-    </main>
+    <AppProviders initial={defaultPreferences(navigator.language)}>
+      <Main />
+    </AppProviders>
   );
 }
