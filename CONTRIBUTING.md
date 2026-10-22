@@ -21,6 +21,7 @@ versions and releases.
 - [Releasing a version](#releasing-a-version)
 - [Changelog](#changelog)
 - [Tests](#tests)
+- [Prerequisites](#prerequisites)
 - [Code style and structure](#code-style-and-structure)
 
 ## The golden rules
@@ -216,6 +217,59 @@ and release a new `PATCH` version in the same way.
   `#[cfg(test)]` modules).
 - A bug fix starts with a test that fails.
 - Each test should check one thing and have a clear name.
+
+## Prerequisites
+
+To build and run Sprixel on your machine you need, on every operating
+system:
+
+- **Node and npm** (for the UI: Vite, React, TypeScript, Tailwind).
+- **Go** (for the `sprixel` command).
+- **Git**.
+- **Rust** (`rustc` and `cargo`), for the Tauri core.
+
+Then install the system pieces for your platform.
+
+### Fedora Linux
+
+These commands were run on Fedora and work:
+
+```sh
+sudo dnf install -y webkit2gtk4.1-devel openssl-devel curl wget file \
+  libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+sudo dnf group install -y c-development
+sudo dnf install -y rust cargo
+```
+
+On other distros the package names are different. They are listed in the
+Tauri 2 prerequisites page:
+[https://v2.tauri.app/start/prerequisites/](https://v2.tauri.app/start/prerequisites/).
+
+### Windows
+
+- Install **Microsoft C++ Build Tools** with the "Desktop development with C++"
+  workload.
+- **WebView2** is already included in Windows 10 and Windows 11.
+- Install **Rust** with rustup: [https://rustup.rs](https://rustup.rs).
+
+### macOS
+
+- Install the **Xcode Command Line Tools**:
+
+  ```sh
+  xcode-select --install
+  ```
+
+- Install **Rust** with rustup: [https://rustup.rs](https://rustup.rs).
+
+### Verify
+
+After installing, check that Rust is ready:
+
+```sh
+rustc --version
+cargo --version
+```
 
 ## Code style and structure
 
