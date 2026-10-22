@@ -28,7 +28,7 @@
 
 ## 6. Drawing benchmark
 
-- [ ] 6.1 Build the 512x512 drawing benchmark with a typed array and a single canvas and verify it prints the median latency
+- [x] 6.1 Build the 512x512 drawing benchmark with a typed array and a single canvas and verify it prints the median latency
 - [ ] 6.2 Run it on Linux, Windows and macOS, record the numbers in `docs/architecture.md` and verify the 16 ms budget is met (or open a decision on the fallback)
 
 ## 7. Documentation

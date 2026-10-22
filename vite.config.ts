@@ -1,15 +1,33 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import pkg from "./package.json";
+import pkg from "./package.json" with { type: "json" };
 const host = process.env.TAURI_DEV_HOST;
+
+// Dev only: prints the result sent by the drawing benchmark in the terminal.
+function benchmarkReporter(): Plugin {
+  return {
+    name: "benchmark-reporter",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__benchmark", (req, res) => {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          console.log(`BENCHMARK_RESULT ${body}`);
+          res.end("ok");
+        });
+      });
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), benchmarkReporter()],
 
   // The app shows the version from package.json (see App.tsx)
   resolve: {
