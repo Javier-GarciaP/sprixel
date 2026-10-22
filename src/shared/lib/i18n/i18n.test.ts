@@ -1,18 +1,13 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "./en.json";
 import es from "./es.json";
 import { detectLanguage, translate } from "./translate";
 
-// Collects every .ts and .tsx source file (not tests) under a folder.
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) return sourceFiles(path);
-    return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
-  });
-}
+// Every source file (not tests) of the app, read as text.
+const sources = import.meta.glob(
+  ["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}"],
+  { query: "?raw", import: "default", eager: true },
+) as Record<string, string>;
 
 describe("translate", () => {
   const dicts = {
@@ -69,8 +64,7 @@ describe("translation files", () => {
   // exists in English. A missing English key fails the checks.
   it("has every key used in the code in English", () => {
     const used = new Set<string>();
-    for (const file of sourceFiles("src")) {
-      const code = readFileSync(file, "utf8");
+    for (const code of Object.values(sources)) {
       for (const m of code.matchAll(/\bt\(\s*["']([\w.]+)["']/g))
         used.add(m[1]);
       for (const m of code.matchAll(/labelKey:\s*["']([\w.]+)["']/g))

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync("src/app/index.css", "utf8");
 
 // Returns the color variables declared inside the block with this selector.
-function tokensOf(selector: string): string[] {
+function tokensOf(selector) {
   const start = css.indexOf(`${selector} {`);
   const end = css.indexOf("}", start);
   const block = css.slice(start, end);
