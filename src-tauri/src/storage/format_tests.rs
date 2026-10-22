@@ -186,9 +186,9 @@ fn files_are_written_and_read_back_in_the_project_folder() {
     let root = dir.path();
     let sprite_ref = SpriteRef::new(&["Personajes"], "goblin");
 
-    write_manifest(root, &manifest()).unwrap();
-    write_palette(root, &dungeon16()).unwrap();
-    write_sprite(root, &sprite_ref, &goblin()).unwrap();
+    write_manifest(&DiskWriter, root, &manifest()).unwrap();
+    write_palette(&DiskWriter, root, &dungeon16()).unwrap();
+    write_sprite(&DiskWriter, root, &sprite_ref, &goblin()).unwrap();
 
     assert!(root.join("sprixel.json").is_file());
     assert!(root.join("palettes/dungeon16.palette.json").is_file());

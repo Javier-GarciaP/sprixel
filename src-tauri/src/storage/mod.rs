@@ -3,11 +3,13 @@
 // Nothing outside the tests uses this module yet (IPC and MCP come later).
 #![allow(dead_code, unused_imports)]
 
+mod atomic;
 mod error;
 mod files;
 mod format;
 mod migrate;
 
+pub use atomic::{DiskWriter, FileWriter, write_atomic};
 pub use error::StorageError;
 pub use files::{
     palette_path, read_manifest, read_palette, read_sprite, sprite_path, write_manifest,
@@ -24,3 +26,6 @@ mod format_tests;
 
 #[cfg(test)]
 mod migrate_tests;
+
+#[cfg(test)]
+mod atomic_tests;

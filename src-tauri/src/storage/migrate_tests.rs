@@ -70,7 +70,7 @@ fn backups(root: &Path) -> Vec<std::path::PathBuf> {
 fn a_current_project_is_not_migrated() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path();
-    write_manifest(root, &Manifest { name: "Kit".into(), active_palette: None }).unwrap();
+    write_manifest(&DiskWriter, root, &Manifest { name: "Kit".into(), active_palette: None }).unwrap();
     let before = fs::read_to_string(root.join("sprixel.json")).unwrap();
 
     assert_eq!(migrate_project(root, &test_migrator()).unwrap(), None);

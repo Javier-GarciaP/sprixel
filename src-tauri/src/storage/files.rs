@@ -1,3 +1,4 @@
+use super::atomic::{DiskWriter, FileWriter, write_atomic};
 use super::error::StorageError;
 use super::format::{
     Manifest, manifest_from_text, manifest_to_text, palette_from_text, palette_to_text,
@@ -25,8 +26,8 @@ pub fn sprite_path(root: &Path, sprite: &SpriteRef) -> PathBuf {
     path.join(format!("{}{SPRITE_SUFFIX}", sprite.name))
 }
 
-pub fn write_manifest(root: &Path, manifest: &Manifest) -> Result<(), StorageError> {
-    write_text(&manifest_path(root), &manifest_to_text(manifest))
+pub fn write_manifest(writer: &dyn FileWriter, root: &Path, manifest: &Manifest) -> Result<(), StorageError> {
+    write_text(writer, &manifest_path(root), &manifest_to_text(manifest))
 }
 
 pub fn read_manifest(root: &Path) -> Result<Manifest, StorageError> {
@@ -34,8 +35,12 @@ pub fn read_manifest(root: &Path) -> Result<Manifest, StorageError> {
     manifest_from_text(&read_text(&path)?).map_err(|reason| StorageError::invalid(&path, reason))
 }
 
-pub fn write_palette(root: &Path, palette: &Palette) -> Result<(), StorageError> {
-    write_text(&palette_path(root, &palette.name), &palette_to_text(palette))
+pub fn write_palette(writer: &dyn FileWriter, root: &Path, palette: &Palette) -> Result<(), StorageError> {
+    write_text(
+        writer,
+        &palette_path(root, &palette.name),
+        &palette_to_text(palette),
+    )
 }
 
 /// Reads a palette file. The palette name is the file name without `.palette.json`.
@@ -44,8 +49,13 @@ pub fn read_palette(path: &Path) -> Result<Palette, StorageError> {
     palette_from_text(&name, &read_text(path)?).map_err(|reason| StorageError::invalid(path, reason))
 }
 
-pub fn write_sprite(root: &Path, sprite_ref: &SpriteRef, sprite: &Sprite) -> Result<(), StorageError> {
-    write_text(&sprite_path(root, sprite_ref), &sprite_to_text(sprite))
+pub fn write_sprite(
+    writer: &dyn FileWriter,
+    root: &Path,
+    sprite_ref: &SpriteRef,
+    sprite: &Sprite,
+) -> Result<(), StorageError> {
+    write_text(writer, &sprite_path(root, sprite_ref), &sprite_to_text(sprite))
 }
 
 pub fn read_sprite(
@@ -67,9 +77,14 @@ pub(super) fn read_text(path: &Path) -> Result<String, StorageError> {
     fs::read_to_string(path).map_err(|e| StorageError::io(path, &e))
 }
 
-pub(super) fn write_text(path: &Path, text: &str) -> Result<(), StorageError> {
+/// Writes a file atomically. Parent folders are created when missing.
+pub(super) fn write_text(
+    writer: &dyn FileWriter,
+    path: &Path,
+    text: &str,
+) -> Result<(), StorageError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| StorageError::io(parent, &e))?;
     }
-    fs::write(path, text).map_err(|e| StorageError::io(path, &e))
+    write_atomic(writer, path, text.as_bytes()).map_err(|e| StorageError::io(path, &e))
 }

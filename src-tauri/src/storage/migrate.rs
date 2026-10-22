@@ -1,3 +1,4 @@
+use super::atomic::DiskWriter;
 use super::error::StorageError;
 use super::files::{manifest_path, read_text, write_text};
 use super::format::{FORMAT_VERSION, canonical_text, version_of};
@@ -103,10 +104,10 @@ pub fn migrate_project(root: &Path, migrator: &Migrator) -> Result<Option<Migrat
     for (path, kind) in files {
         let upgraded = read_text(&path).ok().and_then(|t| migrator.upgrade_text(&t, kind).ok());
         if let Some(Some(new_text)) = upgraded {
-            write_text(&path, &new_text)?;
+            write_text(&DiskWriter, &path, &new_text)?;
         }
     }
-    write_text(&manifest, &new_manifest)?;
+    write_text(&DiskWriter, &manifest, &new_manifest)?;
     Ok(Some(Migration {
         from_version,
         backup,
