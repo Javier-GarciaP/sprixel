@@ -140,6 +140,11 @@ fn names_that_differ_only_in_case_are_not_loaded_twice() {
     let root = saved_project(parent.path());
     let original = sprite_path(&root, &orc_ref());
     let twin = original.with_file_name("ORC.sprite.json");
+    // Where file names ignore case, the twin is the same file as the original.
+    // Copying a file onto itself fails on Windows, so skip before copying.
+    if twin.exists() {
+        return;
+    }
     fs::copy(&original, &twin).unwrap();
     if fs::read_dir(root.join("sprites")).unwrap().filter(|e| {
         e.as_ref().unwrap().file_name().to_string_lossy().to_lowercase() == "orc.sprite.json"
