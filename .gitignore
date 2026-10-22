@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+target/
+src-tauri/target/
+bin/
+*.exe
+
+# Logs and caches
+*.log
+.cache/
+coverage/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Sprixel local data (never commit)
+.sprixel/
