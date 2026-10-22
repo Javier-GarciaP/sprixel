@@ -2,7 +2,7 @@
 
 ## 1. Design tokens and fonts
 
-- [ ] 1.1 Add the color, type and spacing tokens with dark and light values and the three fonts, and verify a test page renders both themes
+- [x] 1.1 Add the color, type and spacing tokens with dark and light values and the three fonts, and verify a test page renders both themes
 - [ ] 1.2 Build the shared base components (button, chip, field, switch, dialog, menu, toast) and verify each in both themes by screenshot comparison with `docs/design/`
 
 ## 2. Translation
