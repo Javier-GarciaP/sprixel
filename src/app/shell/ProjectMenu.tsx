@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu } from "@/shared/components";
+import { Icon, Menu } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import { projectMenuCommands } from "../commands/registry";
 import { formatShortcut, type Platform } from "../commands/shortcut";
@@ -25,7 +25,7 @@ export function ProjectMenu({ projectName, platform, handlers }: Props) {
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-1 rounded-md px-2 py-1 text-sm ${open ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
       >
-        {projectName} <span aria-hidden>⌄</span>
+        {projectName} <Icon name="chevronDown" />
       </button>
       {open && (
         <Menu

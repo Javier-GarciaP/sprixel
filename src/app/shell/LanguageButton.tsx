@@ -1,3 +1,4 @@
+import { Icon } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 
@@ -15,7 +16,7 @@ export function LanguageButton() {
       }
       className="flex items-center gap-1.5 text-xs text-text-muted"
     >
-      <span aria-hidden>🌐</span>
+      <Icon name="globe" className="h-3.5 w-3.5" />
       {t("language.current")}
     </button>
   );

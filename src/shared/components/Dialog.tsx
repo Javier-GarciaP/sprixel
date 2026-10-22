@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { Icon } from "./Icon";
 
 type Props = {
   title: string;
@@ -31,7 +32,7 @@ export function Dialog({ title, closeLabel, onClose, children }: Props) {
             onClick={onClose}
             className="text-text-muted"
           >
-            ✕
+            <Icon name="close" />
           </button>
         </div>
         {children}

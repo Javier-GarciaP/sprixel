@@ -1,3 +1,4 @@
+import { Icon } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import { LanguageButton } from "./LanguageButton";
 import { ThemeButtons } from "./ThemeButtons";
@@ -13,9 +14,10 @@ export function BottomBar({ settingsOpen, onSettings }: Props) {
           type="button"
           aria-pressed={settingsOpen}
           onClick={onSettings}
-          className={`rounded px-1.5 text-xs ${settingsOpen ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
+          className={`flex items-center gap-1.5 rounded px-1.5 text-xs ${settingsOpen ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
         >
-          ⚙ {t("bottom.settings")}
+          <Icon name="gear" className="h-3.5 w-3.5" />
+          {t("bottom.settings")}
         </button>
         <LanguageButton />
         <ThemeButtons />

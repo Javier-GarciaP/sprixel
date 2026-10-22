@@ -1,6 +1,6 @@
 import { useState } from "react";
 import logo from "@/assets/sprixel-icon.png";
-import { Button } from "@/shared/components";
+import { Button, Icon } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import type { RecentProject } from "../api/preferences";
 
@@ -40,9 +40,13 @@ export function WelcomeScreen({
       <p className="text-text-muted">{t("welcome.subtitle")}</p>
       <div className="flex gap-3">
         <Button variant="primary" onClick={onNew}>
-          + {t("welcome.new")}
+          <Icon name="plus" />
+          {t("welcome.new")}
         </Button>
-        <Button onClick={onOpen}>{t("welcome.open")}</Button>
+        <Button onClick={onOpen}>
+          <Icon name="folder" />
+          {t("welcome.open")}
+        </Button>
       </div>
 
       <section className="mt-4 w-[520px] max-w-full rounded-lg border border-border bg-surface p-4">
