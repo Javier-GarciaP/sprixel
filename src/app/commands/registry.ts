@@ -9,14 +9,13 @@ export type Command = {
   group: Group;
   // "Mod+N": Mod is Control, or Command on macOS. See shortcut.ts.
   shortcut?: string;
-  // The commands of the project menu and of the native window menu.
+  // The commands of the project menu.
   inProjectMenu?: boolean;
-  // Draws a separator line above this item in the menus.
+  // Draws a separator line above this item in the project menu.
   separator?: boolean;
 };
 
-// The single list of commands. The project menu, the native window menu, the
-// shortcuts and the shortcuts page all read from it. There is no "Save"
+// The single list of commands. The project menu, the shortcuts and the shortcuts page all read from it. There is no "Save"
 // command on purpose: the project saves by itself.
 export const commands: Command[] = [
   {

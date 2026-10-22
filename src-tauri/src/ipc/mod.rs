@@ -2,24 +2,9 @@
 
 pub mod preferences;
 
-use crate::menu::{self, CommandSpec};
 use preferences::{Data, RecentProject, Settings};
 use std::path::PathBuf;
 use tauri::Manager;
-
-/// Replaces the native window menu. The UI calls it at start and whenever the
-/// language or the available commands change.
-#[tauri::command]
-pub fn set_menu(
-    app: tauri::AppHandle,
-    file_title: String,
-    edit_title: String,
-    commands: Vec<CommandSpec>,
-) -> Result<(), String> {
-    let menu = menu::build(&app, &file_title, &edit_title, &commands).map_err(|e| e.to_string())?;
-    app.set_menu(menu).map_err(|e| e.to_string())?;
-    Ok(())
-}
 
 /// The preferences file, in the app config folder (for example
 /// `~/.config/com.sprixel.app/preferences.json` on Linux).

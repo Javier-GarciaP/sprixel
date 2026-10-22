@@ -11,7 +11,6 @@ import {
   type RecentProject,
   type StoredPreferences,
 } from "./api/preferences";
-import { useNativeMenu } from "./commands/nativeMenu";
 import { detectPlatform } from "./commands/shortcut";
 import { shortcutGroups } from "./commands/shortcutGroups";
 import { useShortcuts } from "./commands/useShortcuts";
@@ -30,7 +29,6 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   useWindowTitle(null);
   // What each command does; New and Open arrive with the storage layer.
   const handlers = useMemo<Record<string, () => void>>(() => ({}), []);
-  useNativeMenu(handlers);
   useShortcuts(handlers, platform);
 
   const groups = shortcutGroups(platform).map((group) => ({

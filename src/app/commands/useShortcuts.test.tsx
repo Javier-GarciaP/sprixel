@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { commands } from "./registry";
 import { useShortcuts } from "./useShortcuts";
 
 afterEach(cleanup);
@@ -38,5 +39,36 @@ describe("useShortcuts", () => {
     fireEvent.keyDown(field, { key: "o", ctrlKey: true });
     expect(pencil).not.toHaveBeenCalled();
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  // Checks that every shortcut of the registry runs its own command (and no
+  // other) through the in-app dispatcher alone: there is no native menu.
+  it("runs the action of every registry shortcut without a native menu", () => {
+    const withShortcut = commands.filter((c) => c.shortcut);
+    const calls: string[] = [];
+    const handlers = Object.fromEntries(
+      withShortcut.map((c) => [c.id, () => calls.push(c.id)]),
+    );
+    render(<Probe handlers={handlers} />);
+
+    for (const command of withShortcut) {
+      const list =
+        command.shortcut === "+"
+          ? ["+"]
+          : (command.shortcut as string).split("+");
+      const key = list[list.length - 1];
+      calls.length = 0;
+      fireEvent.keyDown(window, {
+        key:
+          key === "Space"
+            ? " "
+            : list.includes("Shift")
+              ? key.toUpperCase()
+              : key,
+        ctrlKey: list.includes("Mod"),
+        shiftKey: list.includes("Shift"),
+      });
+      expect(calls, command.id).toEqual([command.id]);
+    }
   });
 });

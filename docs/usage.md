@@ -227,8 +227,7 @@ On macOS use `Cmd` instead of `Ctrl`. The same list is in
 | Move the view | `Space` |
 | Onion skin | `O` |
 
-The project menu (click the project name) and the window menu have the same
-commands: New project, Open, Open recent, Rename project, Save a copy as, Show
+The project menu (click the project name) has these commands: New project, Open, Open recent, Rename project, Save a copy as, Show
 in folder, Export and Close project. There is no Save command because the
 project saves by itself. Some commands work only when the feature that owns
 them is built.

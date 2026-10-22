@@ -29,8 +29,6 @@
   "command.project.export": "Exportar...",
   "command.project.close": "Cerrar proyecto",
   "menu.autosave": "El proyecto se guarda solo.",
-  "menu.file": "Archivo",
-  "menu.edit": "Editar",
   "command.sprite.open": "Abrir en el editor",
   "command.sprite.rename": "Renombrar",
   "command.sprite.duplicate": "Duplicar",
