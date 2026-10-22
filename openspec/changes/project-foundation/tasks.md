@@ -24,12 +24,12 @@
 
 ## 5. Continuous integration
 
-- [ ] 5.1 Add the GitHub Actions workflow for lint, test and build on Linux, Windows and macOS and verify all three jobs pass on a test pull request
+- [x] 5.1 Add the GitHub Actions workflow for lint, test and build on Linux, Windows and macOS and verify all three jobs pass on a test pull request
 
 ## 6. Drawing benchmark
 
 - [x] 6.1 Build the 512x512 drawing benchmark with a typed array and a single canvas and verify it prints the median latency
-- [ ] 6.2 Run it on Linux, Windows and macOS, record the numbers in `docs/architecture.md` and verify the 16 ms budget is met (or open a decision on the fallback)
+- [x] 6.2 Run it on Linux, Windows and macOS, record the numbers in `docs/architecture.md` and verify the 16 ms budget is met (or open a decision on the fallback). **Done on Linux only** (median 9.5 to 10 ms). By decision of the maintainer, Windows and macOS were not measured; run `npm run benchmark` there when needed
 
 ## 7. Documentation
 

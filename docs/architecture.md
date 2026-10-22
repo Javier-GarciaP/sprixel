@@ -200,10 +200,10 @@ The benchmark (`npm run benchmark`) checks that drawing stays fast.
 | Platform | Median | Result |
 | --- | --- | --- |
 | Linux (Fedora 44, WebKitGTK, 60 Hz) | 9.5 to 10.0 ms in 3 runs (p95 16 ms) | Meets the budget |
-| Windows | pending | |
-| macOS | pending | |
+| Windows | not measured | Skipped by decision of the maintainer |
+| macOS | not measured | Skipped by decision of the maintainer |
 
-Windows and macOS numbers are recorded when the benchmark is run there.
+Windows and macOS were not measured. If you run `npm run benchmark` there, add the numbers to this table.
 
 ## Repository layout
 
