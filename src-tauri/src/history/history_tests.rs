@@ -46,10 +46,10 @@ fn revision_grows_and_each_entry_keeps_its_author() {
     let start = project.revision;
 
     history
-        .apply(&mut project, USER, draw(&sprite, 0, 'N'))
+        .apply(&mut project, USER, vec![draw(&sprite, 0, 'N')])
         .unwrap();
     history
-        .apply(&mut project, "claude-code", draw(&sprite, 1, 'N'))
+        .apply(&mut project, "claude-code", vec![draw(&sprite, 1, 'N')])
         .unwrap();
 
     assert_eq!(project.revision, start + 2);
@@ -65,7 +65,7 @@ fn a_failed_operation_leaves_everything_unchanged() {
     let before = project.clone();
 
     let err = history
-        .apply(&mut project, USER, draw(&sprite, 0, 'X'))
+        .apply(&mut project, USER, vec![draw(&sprite, 0, 'X')])
         .unwrap_err();
 
     assert_eq!(err.code, "unknown_key");
@@ -80,7 +80,7 @@ fn an_entry_stores_the_inverse() {
     let mut history = History::new();
     let before = project.clone();
     history
-        .apply(&mut project, USER, draw(&sprite, 2, 'N'))
+        .apply(&mut project, USER, vec![draw(&sprite, 2, 'N')])
         .unwrap();
 
     let entry = &history.entries()[0];
@@ -88,4 +88,45 @@ fn an_entry_stores_the_inverse() {
         project.apply(op).unwrap();
     }
     assert_eq!(project.root, before.root);
+}
+
+// Checks that a group of changes becomes one history entry and one revision.
+#[test]
+fn a_group_is_one_entry_and_one_revision() {
+    let (mut project, sprite) = project_with_sprite();
+    let mut history = History::new();
+    let start = project.revision;
+    let ops = (0..5).map(|x| draw(&sprite, x % 4, 'N')).collect();
+
+    history.apply(&mut project, "claude-code", ops).unwrap();
+
+    assert_eq!(history.entries().len(), 1);
+    assert_eq!(history.entries()[0].forward.len(), 5);
+    assert_eq!(project.revision, start + 1);
+}
+
+// Checks that an AI call whose last step is invalid leaves the project and the history untouched.
+#[test]
+fn a_failed_group_leaves_project_and_history_untouched() {
+    let (mut project, sprite) = project_with_sprite();
+    let mut history = History::new();
+    let before = project.clone();
+    let mut ops: Vec<Operation> = (0..40).map(|i| draw(&sprite, i % 4, 'N')).collect();
+    ops.push(draw(&sprite, 0, 'X'));
+
+    assert!(history.apply(&mut project, "claude-code", ops).is_err());
+
+    assert_eq!(project, before);
+    assert!(history.entries().is_empty());
+}
+
+// Checks that an action with no operations adds no entry and no revision.
+#[test]
+fn an_empty_action_is_ignored() {
+    let (mut project, _) = project_with_sprite();
+    let mut history = History::new();
+    let start = project.revision;
+    history.apply(&mut project, USER, vec![]).unwrap();
+    assert!(history.entries().is_empty());
+    assert_eq!(project.revision, start);
 }

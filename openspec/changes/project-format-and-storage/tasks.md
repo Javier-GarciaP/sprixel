@@ -8,7 +8,7 @@
 ## 2. Operations and history
 
 - [x] 2.1 Implement operations with author, inverse and revision, and verify a failed operation leaves the project unchanged
-- [ ] 2.2 Implement grouped actions applied atomically and verify the 41st-pixel failure test
+- [x] 2.2 Implement grouped actions applied atomically and verify the 41st-pixel failure test
 - [ ] 2.3 Implement undo, redo and `undo_last_ai_action` with the `newer_changes` rule and verify the scenarios in the spec
 
 ## 3. File format

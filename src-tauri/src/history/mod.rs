@@ -35,19 +35,23 @@ impl History {
         &self.entries
     }
 
-    /// Applies an operation for `author` and records it. If the operation is
-    /// rejected, the project and the history do not change.
+    /// Applies the operations of one action (a stroke, an AI call) for
+    /// `author` as one entry. If one of them is rejected, none is applied and
+    /// the project and the history do not change.
     pub fn apply(
         &mut self,
         project: &mut Project,
         author: &str,
-        op: Operation,
+        ops: Vec<Operation>,
     ) -> Result<Vec<Target>, DocError> {
-        let applied = project.apply(&op)?;
+        if ops.is_empty() {
+            return Ok(Vec::new());
+        }
+        let applied = project.apply_group(&ops)?;
         self.entries.push(Entry {
             author: author.to_string(),
-            forward: vec![op],
-            inverse: vec![applied.inverse],
+            forward: ops,
+            inverse: applied.inverses,
         });
         Ok(applied.touched)
     }

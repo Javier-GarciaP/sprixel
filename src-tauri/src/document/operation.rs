@@ -119,7 +119,42 @@ pub struct Applied {
     pub touched: Vec<Target>,
 }
 
+/// The result of an applied group of operations.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppliedGroup {
+    /// Applying them in this order undoes the whole group.
+    pub inverses: Vec<Operation>,
+    pub touched: Vec<Target>,
+}
+
 impl Project {
+    /// Applies several operations as one step: all of them or none. The
+    /// revision grows by one. If an operation is rejected, the ones before it
+    /// are undone with their inverses and the error is returned.
+    pub fn apply_group(&mut self, ops: &[Operation]) -> Result<AppliedGroup, DocError> {
+        let mut inverses = Vec::with_capacity(ops.len());
+        let mut touched = Vec::new();
+        for op in ops {
+            match self.apply_op(op) {
+                Ok(applied) => {
+                    inverses.push(applied.inverse);
+                    touched.extend(applied.touched);
+                }
+                Err(error) => {
+                    for inverse in inverses.iter().rev() {
+                        self.apply_op(inverse).map_err(|e| {
+                            DocError::new("internal", format!("could not roll back: {e}"))
+                        })?;
+                    }
+                    return Err(error);
+                }
+            }
+        }
+        inverses.reverse();
+        self.revision += 1;
+        Ok(AppliedGroup { inverses, touched })
+    }
+
     /// Applies one operation. On success the revision grows by one. On error
     /// nothing changes, including the revision.
     pub fn apply(&mut self, op: &Operation) -> Result<Applied, DocError> {

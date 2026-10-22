@@ -418,3 +418,67 @@ fn palette_names_are_unique() {
         .unwrap_err();
     assert_eq!(err.code, "name_exists");
 }
+
+// Checks that a group is all or nothing: 41 changes where the 41st is invalid
+// apply none of them, and the revision does not move.
+#[test]
+fn a_group_with_an_invalid_41st_change_applies_nothing() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    let before = project.clone();
+    let mut ops: Vec<Operation> = (0..40)
+        .map(|i| set_pixels(&goblin_ref, vec![pixel(i % 4, i / 4 % 4, 'N')]))
+        .collect();
+    ops.push(set_pixels(&goblin_ref, vec![pixel(0, 0, 'X')]));
+
+    let err = project.apply_group(&ops).unwrap_err();
+
+    assert_eq!(err.code, "unknown_key");
+    assert_eq!(project, before);
+}
+
+// Checks that one operation with 41 pixels where the last is invalid changes no pixel.
+#[test]
+fn one_operation_with_an_invalid_41st_pixel_applies_nothing() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    let before = project.clone();
+    let mut pixels: Vec<PixelChange> = (0..40).map(|i| pixel(i % 4, i / 4 % 4, 'N')).collect();
+    pixels.push(pixel(0, 0, 'X'));
+
+    assert!(project.apply(&set_pixels(&goblin_ref, pixels)).is_err());
+    assert_eq!(project, before);
+}
+
+// Checks that a failing group also undoes steps that changed the structure
+// (a delete, a create), not only pixels.
+#[test]
+fn a_failing_group_rolls_back_structural_changes() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    let before = project.clone();
+    let ops = vec![
+        create_sprite(&["Personajes"], "orc", 4, 4),
+        Operation::DeleteSprite { sprite: goblin_ref },
+        create_sprite(&["Personajes"], "ORC", 4, 4),
+    ];
+
+    assert_eq!(project.apply_group(&ops).unwrap_err().code, "name_exists");
+    assert_eq!(project, before);
+}
+
+// Checks that a good group raises the revision by exactly 1 and its inverses undo all of it.
+#[test]
+fn a_good_group_is_one_revision_and_can_be_undone_together() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    let before = content(&project);
+    let start = project.revision;
+    let ops: Vec<Operation> = (0..3)
+        .map(|i| set_pixels(&goblin_ref, vec![pixel(i, 0, 'N')]))
+        .collect();
+
+    let applied = project.apply_group(&ops).unwrap();
+
+    assert_eq!(project.revision, start + 1);
+    for inverse in &applied.inverses {
+        project.apply(inverse).unwrap();
+    }
+    assert_eq!(content(&project), before);
+}
