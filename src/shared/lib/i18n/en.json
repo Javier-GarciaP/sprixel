@@ -1,3 +1,5 @@
 {
-  "app.name": "Sprixel"
+  "app.name": "Sprixel",
+  "language.current": "English",
+  "language.switch": "Change language"
 }
