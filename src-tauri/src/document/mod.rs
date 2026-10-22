@@ -7,9 +7,11 @@
 mod error;
 mod model;
 mod names;
+mod operation;
 
 pub use error::DocError;
 pub use names::{same_name, validate_name};
+pub use operation::{Applied, Operation, PixelChange, SpriteRef, Target};
 pub use model::{
     Color, Folder, Frame, Layer, MAX_COLORS, MAX_SIZE, Palette, Project, Sprite, TRANSPARENT, Tag,
     TagMode,
@@ -20,3 +22,6 @@ mod model_tests;
 
 #[cfg(test)]
 mod names_tests;
+
+#[cfg(test)]
+mod operation_tests;
