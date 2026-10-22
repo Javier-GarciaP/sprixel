@@ -3,7 +3,7 @@
 ## 1. Document model
 
 - [x] 1.1 Implement project, folder, sprite, palette, frame, layer and tag types with their validation rules and verify unit tests cover each rule in the spec
-- [ ] 1.2 Implement name rules (unique ignoring case, valid on all systems) and verify tests with reserved Windows names and accents
+- [x] 1.2 Implement name rules (unique ignoring case, valid on all systems) and verify tests with reserved Windows names and accents
 
 ## 2. Operations and history
 
