@@ -139,13 +139,13 @@ fn check_name(folder: &Folder, name: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn file_name(path: &Path) -> String {
+pub(super) fn file_name(path: &Path) -> String {
     path.file_name().unwrap_or_default().to_string_lossy().into_owned()
 }
 
 // The entries of a folder in a steady order (the system order is random).
 // A folder that does not exist has no entries.
-fn sorted_entries(dir: &Path) -> Vec<PathBuf> {
+pub(super) fn sorted_entries(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
     };

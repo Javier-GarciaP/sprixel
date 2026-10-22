@@ -8,6 +8,7 @@ mod autosave;
 mod error;
 mod files;
 mod format;
+mod listing;
 mod load;
 mod migrate;
 mod session;
@@ -22,6 +23,7 @@ pub use files::{
     write_palette, write_sprite,
 };
 pub use session::{ConflictChoice, ExternalChange, SaveStatus, Session};
+pub use listing::{Listing, SpriteInfo, list_project};
 pub use load::Damaged;
 pub use migrate::{FileKind, Migration, Migrator, Step, migrate_project};
 pub use format::{
@@ -50,3 +52,5 @@ mod trash_tests;
 mod watch_tests;
 #[cfg(test)]
 mod open_tests;
+#[cfg(test)]
+mod listing_tests;

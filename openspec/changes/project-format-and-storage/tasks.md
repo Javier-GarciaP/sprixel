@@ -30,5 +30,5 @@
 
 ## 6. Performance and documentation
 
-- [ ] 6.1 Add the 500-sprite project benchmark and verify it lists in 2 seconds or less
+- [x] 6.1 Add the 500-sprite project benchmark and verify it lists in 2 seconds or less
 - [ ] 6.2 Update `docs/architecture.md` with the final file format and verify the examples match the real files
