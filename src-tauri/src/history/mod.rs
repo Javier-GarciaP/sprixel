@@ -22,7 +22,10 @@ pub struct Entry {
 
 #[derive(Debug, Default)]
 pub struct History {
+    /// Done entries, oldest first. Undo takes from the end.
     entries: Vec<Entry>,
+    /// Undone entries. Redo takes from the end.
+    undone: Vec<Entry>,
 }
 
 impl History {
@@ -53,6 +56,60 @@ impl History {
             forward: ops,
             inverse: applied.inverses,
         });
+        self.undone.clear();
         Ok(applied.touched)
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.undone.is_empty()
+    }
+
+    /// Undoes the latest entry, whoever made it. Undo is a change too, so the
+    /// revision grows.
+    pub fn undo(&mut self, project: &mut Project) -> Result<Vec<Target>, DocError> {
+        let entry = self
+            .entries
+            .pop()
+            .ok_or_else(|| DocError::new("nothing_to_undo", "there is nothing to undo"))?;
+        match project.apply_group(&entry.inverse) {
+            Ok(applied) => {
+                self.undone.push(entry);
+                Ok(applied.touched)
+            }
+            Err(error) => {
+                self.entries.push(entry);
+                Err(error)
+            }
+        }
+    }
+
+    pub fn redo(&mut self, project: &mut Project) -> Result<Vec<Target>, DocError> {
+        let entry = self
+            .undone
+            .pop()
+            .ok_or_else(|| DocError::new("nothing_to_redo", "there is nothing to redo"))?;
+        match project.apply_group(&entry.forward) {
+            Ok(applied) => {
+                self.entries.push(entry);
+                Ok(applied.touched)
+            }
+            Err(error) => {
+                self.undone.push(entry);
+                Err(error)
+            }
+        }
+    }
+
+    /// Undoes the latest entry, but only when an AI made it. If something
+    /// newer exists (a change by the user), nothing is undone.
+    pub fn undo_last_ai_action(&mut self, project: &mut Project) -> Result<Vec<Target>, DocError> {
+        match self.entries.iter().rposition(|e| e.author != USER) {
+            None => Err(DocError::new("no_ai_action", "there is no AI action to undo")),
+            Some(i) if i + 1 < self.entries.len() => Err(DocError::new(
+                "newer_changes",
+                "something changed after the last AI action, so it was not undone",
+            )),
+            Some(_) => self.undo(project),
+        }
     }
 }
