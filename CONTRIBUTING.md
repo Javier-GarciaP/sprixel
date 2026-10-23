@@ -2,13 +2,28 @@
 
 Thank you for your interest in Sprixel.
 
-> **Read this first.** Sprixel is a proprietary project (see [LICENSE](LICENSE)).
-> Contributions are accepted **by invitation only**. If you were not invited by
-> the copyright holder, please do not open pull requests. You can ask for
-> permission through [GitHub](https://github.com/Javier-GarciaP).
+> **Contributions are welcome.** Sprixel is open source under the
+> [MIT License](LICENSE). You can open an issue, suggest an idea or send a pull
+> request. By sending a contribution you agree that it is released under the
+> same MIT License.
 
 This guide explains how we work: branches, specs, commits, pull requests,
 versions and releases.
+
+## How to contribute
+
+- **Found a bug or have an idea?** Open an issue. Say what you did, what you
+  expected and what happened. For an idea, say the problem it solves.
+- **Want to send code?** For something small (a bug fix, a typo, a test), open a
+  pull request. For a new feature, or a change that touches several files,
+  **open an issue first**: the project works spec by spec, and a feature needs an
+  approved spec before code (see [Specs first](#specs-first)).
+- **How:** fork the repository, create a branch from `dev`, and open the pull
+  request into `dev`. Follow the rules below for commits, tests and the pull
+  request description.
+- The maintainer reviews every pull request and may ask for changes. A pull
+  request that does not follow these rules can be closed with an explanation.
+- Be kind and patient. Everyone here is learning.
 
 ## Table of contents
 
@@ -27,7 +42,8 @@ versions and releases.
 ## The golden rules
 
 1. **Work only in `dev`.** Every change enters `dev` through a pull request.
-   Never commit or push directly to `dev` or `main`.
+   Never commit or push directly to `dev` or `main`. If you work from a fork,
+   branch from `dev` and open the pull request into `dev`.
 2. **`main` only holds stable releases.** It changes only when a release pull
    request from `dev` is merged.
 3. **Specs first.** A new feature, or any change that touches several files,
@@ -146,7 +162,9 @@ openspec/changes/<change>/ (task number)
 
 - Keep it small and focused. Squash or merge as you prefer, but keep the
   history readable.
-- All checks must pass before merging.
+- All checks must pass before merging. They run on Linux, Windows and macOS.
+- If you used an AI tool to write the code, you are still the author: read it,
+  run the tests and be ready to explain it.
 
 ## Versioning
 

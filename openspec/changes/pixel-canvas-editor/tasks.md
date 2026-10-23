@@ -1,5 +1,7 @@
 # Tasks
 
+> **Demo cut.** Every task is in the demo, including onion skin and Select and Move. Task 3.6 adds the color model: any color can be used and the palette grows by itself (see the `drawing-tools` and `palette-management` specs). See `docs/roadmap.md`.
+
 ## 1. Canvas rendering
 
 - [ ] 1.1 Build the canvas renderer with exact scaling and the neutral checkerboard and verify screenshots in both themes
@@ -18,6 +20,7 @@
 - [ ] 3.3 Build the Bucket and verify the closed outline test and the 512x512 timing
 - [ ] 3.4 Build Line, Rectangle and Ellipse with preview, Shift and fill options, and verify the Shift scenarios
 - [ ] 3.5 Build Select and Move with clipping and verify the move test
+- [ ] 3.6 Implement the growing palette in the core and use it for any color the user picks (next free key, palette `main` created when there is none, limit of 93 colors, one undo step with the stroke), and verify the new color, the full palette and the undo scenarios
 
 ## 4. History and onion skin
 

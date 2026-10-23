@@ -29,9 +29,11 @@ tool calls to operations.
 - **Origin and Host checks** on every request. No CORS headers are ever sent.
 - **Client identity is a label.** Approval is remembered by the client name and
   the declared version; the token is what protects, and this is documented.
-- **MCP implementation:** evaluate the official Rust SDK against a small
-  JSON-RPC layer; choose the smaller one that supports tool schemas and image
-  results. The dependency must be approved.
+- **MCP implementation:** a small hand-written JSON-RPC layer over HTTP, with
+  no MCP SDK. It supports `initialize`, `tools/list` and `tools/call`, tool
+  schemas and image results. The approved dependencies for task 1.1 are
+  `tiny_http` (the loopback server), `getrandom` (the token) and `png`
+  (`render_preview` and the export). The `gif` crate comes after the demo.
 - **Permissions in one place** (a policy checked before a tool runs).
 - **Writes through the core** as grouped operations, so undo, revisions and
   attribution come for free.

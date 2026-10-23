@@ -61,8 +61,8 @@ Running the installer again SHALL upgrade or repair the installation and MUST ke
 - **THEN** the program files are removed and the project folders are untouched
 
 ### Requirement: License notice
-The installers SHALL show the license notice (all rights reserved) before installing.
+The installers SHALL show the license notice (MIT License, open source) before installing, and every release bundle MUST include the `LICENSE` file and the third-party notices from `docs/third-party.md`, which the fonts (SIL Open Font License) require.
 
 #### Scenario: Notice shown
 - **WHEN** the installer starts
-- **THEN** it prints that the software is proprietary and where to read the license
+- **THEN** it prints that the software is released under the MIT License and where to read the license and the third-party notices

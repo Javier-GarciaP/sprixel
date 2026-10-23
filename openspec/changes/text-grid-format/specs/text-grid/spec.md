@@ -29,14 +29,26 @@ All rows of a frame MUST have the same length, the number of rows MUST match the
 - **THEN** the error `row_length` is returned with the message "line 15 (row 7 of frame 1): 7 columns, expected 8"
 
 ### Requirement: Key rules
-Every character other than `.` MUST be a key of the sprite's palette, case sensitive.
+Every character other than `.` MUST be a key of the sprite's palette, case sensitive, or a key that the grid itself defines in its `legend` block. A legend line has the form `<key> <name> #<hex>`. When a legend line has a hex value for a key that is NOT in the palette, applying the grid MUST add that color to the palette, in the same atomic action as the pixels. A color that already exists MUST never be changed by a grid, so a legend line for an existing key is only informational.
 
 #### Scenario: Unknown key
 - **WHEN** a row contains the character "X" and the palette has no key "X"
 - **THEN** the error `unknown_key` is returned with the line, row and column
 
+#### Scenario: The legend adds a color
+- **WHEN** a grid uses the key "Q" and its legend says `Q teal #1FB5A8`, and the palette has no key "Q"
+- **THEN** applying the grid adds the color `Q` to the palette and draws the pixels, as one undoable action
+
+#### Scenario: The legend never changes a color
+- **WHEN** the legend says `R red #00FF00` and the palette color `R` is `#F04545`
+- **THEN** the palette color `R` stays `#F04545` and the pixels use it
+
+#### Scenario: Legend color and a full palette
+- **WHEN** the legend adds a color and the palette already has 93 colors
+- **THEN** the error `palette_full` is returned and nothing is applied
+
 ### Requirement: Error reporting
-Every validation error SHALL include a code (`row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `too_big`, `region_out`), a human readable message and the line, row and column when they apply, and when a grid is invalid NOTHING MUST be applied.
+Every validation error SHALL include a code (`row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `too_big`, `region_out`, `palette_full`, `bad_legend`), a human readable message and the line, row and column when they apply, and when a grid is invalid NOTHING MUST be applied.
 
 #### Scenario: Several errors
 - **WHEN** a grid has two bad rows

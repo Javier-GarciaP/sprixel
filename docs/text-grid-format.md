@@ -42,8 +42,9 @@ pixels, then four red ones.
   `.`. Letters and digits are recommended (`A`-`Z`, `a`-`z`, `0`-`9`).
   Keys are **case sensitive**: `G` and `g` are different colors.
 - **`.` is always transparent.** It cannot be used as a color key.
-- Every key must exist in the palette. The palette defines the key, the name
-  and the color. A palette can have up to 93 colors.
+- Every key must exist in the palette, **or be defined by the grid's own
+  `legend`** (see below). The palette defines the key, the name and the color.
+  A palette can have up to 93 colors.
 
 ### Rows and size
 
@@ -60,7 +61,7 @@ A text grid has these parts, in this order:
 | Part | Required | Meaning |
 | --- | --- | --- |
 | `palette: <name>` | No | The palette the keys belong to. If missing, the project palette is used. |
-| `legend` block | No | Lines of `<key> <name> [#hex]`. Only informational: the palette is the truth. |
+| `legend` block | No | Lines of `<key> <name> [#hex]`. A line with a `#hex` for a key that is **not** in the palette adds that color when the grid is applied. For a key that already exists it is only informational: a grid never changes an existing color. |
 | `frame <n>` + rows | Yes, at least one | The pixels of frame number `n`. Frames are numbered from 1. |
 
 - Keywords (`palette`, `legend`, `frame`) are always **English**, even when the

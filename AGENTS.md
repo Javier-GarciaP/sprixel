@@ -10,11 +10,13 @@ use. It has three parts: the **app** (Tauri 2: Rust core + React, TypeScript,
 Vite and Tailwind UI), the **`sprixel` command** (Go) and **project folders**
 (plain text files).
 
-The project is proprietary (see `LICENSE`). Everything is written in English
+The project is open source under the MIT License (see `LICENSE`) and accepts
+contributions (see `CONTRIBUTING.md`). Everything is written in English
 (code, comments, commits, docs). The product UI is in Spanish and English.
 
 ## Status and commands
 
+The project is building its first public **demo** (see `docs/roadmap.md`).
 Specs 1 to 3 are built and archived: `project-foundation` (the app skeleton,
 the Go CLI in `cli/`, the tooling, CI and the drawing benchmark),
 `project-format-and-storage` (the document model, operations, undo and redo,
@@ -82,6 +84,34 @@ op start --file docs/design/sprixel.op   # open the design in OpenPencil
   at the moment its task starts.
 - If code and a spec disagree, stop and ask. The specs win over `docs/`, and
   `docs/` wins over the design images.
+
+## Working with agents
+
+For the demo, one phase at a time, an orchestrator gives each agent a written
+brief and audits the result. These rules came from real problems:
+
+- **One commit per task**, tests first, Conventional Commits, no `Co-Authored-By`
+  lines, `git add` with explicit paths, and no push by the agent.
+- **UI tests must not be flaky** (two CI runs failed before). Never read the DOM
+  right after a click, a render or an `await`: use `findBy...` or `vi.waitFor`.
+  Key listeners are attached in effects, so send the key inside `vi.waitFor`.
+  No fixed sleeps. Run the test files you touched 15 times, and once with the
+  CPU loaded.
+- **Rust tests must work on Linux, Windows and macOS**: `tempfile`, no hard-coded
+  path separators, no fixed sleeps. Case-insensitive file names behave
+  differently on each system.
+- **Color model**: any color can be used, the palette grows by itself, and a
+  sprite always has a palette (`main`). Preset names are generic, with no
+  trademarks. See `docs/roadmap.md`.
+- **Dependencies**: only the approved ones. An agent that needs another stops
+  and asks (`DEPENDENCY REQUEST:`); it is accepted only if a task needs it,
+  there is no standard option, the license is permissive and it is small.
+- **Audit checklist**: commits and trailers; files inside the ownership list;
+  only approved dependencies; format, lint, tests and build; a stress run of the
+  UI tests; every spec scenario has a test; read the risky code (security,
+  writes, paths); `openspec validate --all --strict`; then a pull request with
+  the three CI jobs green.
+- The report of the agent is in Spanish and says what it could not verify.
 
 ## Architecture (what is not obvious from the code)
 

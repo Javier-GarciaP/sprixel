@@ -4,11 +4,13 @@
 
 Defines how palettes work: each color has a name, a one-letter key and a hex
 value, and changes to a palette stay consistent in every sprite that uses it.
+Palettes are not required to draw: a palette grows by itself with the colors
+that are used, and the one-letter keys are the language an AI draws with.
 
 ## ADDED Requirements
 
 ### Requirement: Color definition
-A palette SHALL contain between 1 and 93 colors. Each color MUST have a unique name, a unique one-character key that is a printable ASCII character other than a space and the dot (case sensitive), and a hex value.
+A palette SHALL contain up to 93 colors and MAY be empty. Each color MUST have a unique name, a unique one-character key that is a printable ASCII character other than a space and the dot (case sensitive), and a hex value.
 
 #### Scenario: Reserved key
 - **WHEN** the user tries to use "." or a space as a key
@@ -17,6 +19,24 @@ A palette SHALL contain between 1 and 93 colors. Each color MUST have a unique n
 #### Scenario: Duplicate key
 - **WHEN** the user types a key that another color already uses
 - **THEN** the field shows an error and the change is not applied
+
+### Requirement: A sprite always has a palette
+A sprite SHALL always have a palette. When the project has no palette, the core MUST create one called `main` the first time a color is needed.
+
+#### Scenario: First color of a new project
+- **WHEN** a person draws the first pixel with `#1F2A44` in a sprite created with "No palette"
+- **THEN** the project has a palette `main` with one color, key `A`, name `1F2A44`, and the pixel uses `A`
+
+### Requirement: A palette that grows
+When a color that is not in the palette is used, the core MUST add it with the next free key in this order: `A` to `Z`, `a` to `z`, `0` to `9`, then the other printable ASCII characters except the space and the dot, and the name of an added color MUST be its hex value. When the palette has 93 colors, adding a color MUST fail with the error `palette_full` and nothing changes.
+
+#### Scenario: Next free key
+- **WHEN** the palette already uses `A` to `Z` and a new color is added
+- **THEN** the new color gets the key `a`
+
+#### Scenario: Palette is full
+- **WHEN** the palette has 93 colors and another color is added
+- **THEN** the error `palette_full` is returned and the palette and the sprite are unchanged
 
 ### Requirement: Palette panel
 The editor SHALL show the palette colors in the right panel, select the main color on click and the secondary color on right-click, show a transparent entry, and offer a "Show keys" switch that writes each key on its color.
@@ -48,6 +68,10 @@ The user SHALL add colors up to the limit, and remove a color only if no sprite 
 
 ### Requirement: Create and import palettes
 The user SHALL create a palette empty or from a built-in preset, and import colors from `.gpl` (GIMP) and `.hex` (one hex value per line) files, giving every imported color a generated key and name that the user can edit.
+
+#### Scenario: Create from a preset
+- **WHEN** the user creates a palette from the preset "Pocket RPG 16" or "Farm 32"
+- **THEN** a new palette with 16 or 32 colors is created, each with a unique key and a name, and the preset names contain no trademarks
 
 #### Scenario: Import a hex file
 - **WHEN** the user imports a `.hex` file with 16 lines

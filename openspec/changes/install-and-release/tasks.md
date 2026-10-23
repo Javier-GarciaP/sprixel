@@ -7,7 +7,7 @@
 
 ## 2. Installers
 
-- [ ] 2.1 Write `install.sh` with system detection, checksum verification, user-only install, PATH handling and the license notice, and verify it in a clean Linux container and on macOS
+- [ ] 2.1 Write `install.sh` with system detection, checksum verification, user-only install, PATH handling and the MIT license notice, and verify it in a clean Linux container and on macOS
 - [ ] 2.2 Write `install.ps1` with the same behavior and verify it on Windows
 - [ ] 2.3 Add reinstall safety (keep projects, settings and tokens) and verify a reinstall test on each system
 
