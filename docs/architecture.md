@@ -70,48 +70,149 @@ A project is a folder. Example:
 
 ```
 Dungeon Kit/
-├── sprixel.json                  project manifest (name, formatVersion, active palette)
+├── sprixel.json                  project manifest (name, formatVersion)
 ├── palettes/
 │   └── dungeon16.palette.json    colors with name, one-letter key and hex
 ├── sprites/
-│   ├── Personajes/
-│   │   ├── goblin.sprite.json
-│   │   └── heroe.sprite.json
-│   └── Enemigos/
-│       └── slime.sprite.json
+│   └── Personajes/               one folder here for each project folder
+│       └── goblin.sprite.json
 ├── assets/sprites/               default export folder
-└── .sprixel/
-    └── trash/                    deleted items (kept so Undo can bring them back)
+└── .sprixel/                     internal data, not project content
+    ├── trash/                    deleted items (kept so Undo can bring them back)
+    └── backups/                  copies of the files made before a migration
 ```
 
-A sprite file (shortened):
+The name of a sprite or a palette is the name of its file, without
+`.sprite.json` or `.palette.json`. The folders in `sprites/` are the folders
+you see in the app, and they can be empty. Names are unique in their folder
+ignoring case, and they must be valid file names on Linux, Windows and macOS.
+
+### The files
+
+All files are JSON text, written with two spaces of indentation, a final new
+line and always the same field order. Every file has a `formatVersion`.
+
+`sprixel.json` is the manifest. `activePalette` is optional and is written
+only when it is set.
 
 ```json
 {
   "formatVersion": 1,
-  "width": 8,
-  "height": 8,
+  "name": "Dungeon Kit"
+}
+```
+
+A palette file lists the colors. A `key` is one printable ASCII character that
+is not a space and not `.` (case sensitive), `hex` is `#RRGGBB`, and a palette
+has up to 93 colors. `.` is always transparent.
+
+```json
+{
+  "formatVersion": 1,
+  "colors": [
+    {
+      "key": "N",
+      "name": "black",
+      "hex": "#000000"
+    },
+    {
+      "key": "P",
+      "name": "skin",
+      "hex": "#FFCC99"
+    },
+    {
+      "key": "A",
+      "name": "blue",
+      "hex": "#2F6BFF"
+    },
+    {
+      "key": "R",
+      "name": "red",
+      "hex": "#F04545"
+    }
+  ]
+}
+```
+
+A sprite file stores the size, the palette name, one duration (in
+milliseconds) for each frame, the layers and the animation tags. Each frame is
+an array of row strings of palette keys, and each row is written on its own
+line, so changing one pixel changes exactly one line in Git. Frames and tag
+ranges are numbered from 1. Version 1 of the app shows one layer, but the file
+stores layers.
+
+```json
+{
+  "formatVersion": 1,
+  "width": 4,
+  "height": 4,
   "palette": "dungeon16",
-  "frameDurations": [83, 83, 83, 83],
+  "frameDurations": [
+    100,
+    120
+  ],
   "layers": [
     {
       "name": "Layer 1",
       "frames": [
-        ["....RRRR", "...RRRRR", "...NNNN.", "..NPNPPN", "..NPPPPN", "..NNNNNN", ".NAAAAN.", ".NA..AN."]
+        [
+          "..RR",
+          ".RRR",
+          "NPNP",
+          "NPPN"
+        ],
+        [
+          "RR..",
+          "RRR.",
+          "PNPN",
+          "NPPN"
+        ]
       ]
     }
   ],
-  "tags": [{ "name": "walk", "from": 1, "to": 4, "fps": 12, "mode": "loop" }]
+  "tags": [
+    {
+      "name": "walk",
+      "from": 1,
+      "to": 2,
+      "fps": 12,
+      "mode": "loop"
+    }
+  ]
 }
 ```
 
-- Folders in `sprites/` are the folders you see in the app.
-- Files are saved automatically and **atomically** (write a temporary file,
-  then rename it), so a crash never leaves a broken file.
+The examples above are checked by a test: it saves this project with the real
+code and compares the files with these blocks.
+
+### Saving and safety
+
+- Changes are saved automatically about 500 ms after the last change, and once
+  more when the app closes. The interface shows Saved, Saving or Error saving.
+- A file is saved **atomically**: the new content goes to `name.tmp` in the same
+  folder, then the temporary file replaces the old one. A crash leaves the old
+  file or the new file, never half of a file. Temporary files are ignored when a
+  project opens.
+- If a save fails (no space, no permission), the changes stay in memory, the
+  reason is shown, and Retry saves again.
+- Deleted sprites, folders and palettes are moved to `.sprixel/trash/`. Undo
+  moves them back to their place.
 - If a file changes on disk while the app is open (for example after
-  `git pull`), the app reloads it.
-- Each file has a `formatVersion`. Opening an older project runs a migration.
-- Deleted items go to `.sprixel/trash/` first.
+  `git pull`), a sprite or palette with no unsaved changes is reloaded. If the
+  app has unsaved changes for it, the user chooses between reloading and keeping
+  the app version. The app ignores the changes caused by its own writes.
+- If a file cannot be loaded (invalid JSON, a row of the wrong length, a key
+  that is not in the palette), the project still opens. The file is listed as
+  damaged with its path and the reason, and saving other changes does not touch it.
+
+### Format versions
+
+Each file carries a `formatVersion` (now `1`).
+
+- A project with an **older** version is copied to `.sprixel/backups/`, then
+  every file is migrated and the project opens normally.
+- A project with a **newer** version is not touched. The app asks the user to
+  update Sprixel.
 
 The full format is defined in the `project-format-and-storage` spec.
 

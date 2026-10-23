@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "colors": [
+    {
+      "key": "N",
+      "name": "black",
+      "hex": "#000000"
+    },
+    {
+      "key": "P",
+      "name": "skin",
+      "hex": "#FFCC99"
+    },
+    {
+      "key": "A",
+      "name": "blue",
+      "hex": "#2F6BFF"
+    },
+    {
+      "key": "R",
+      "name": "red",
+      "hex": "#F04545"
+    }
+  ]
+}

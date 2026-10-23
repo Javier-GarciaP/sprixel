@@ -1,3 +1,7 @@
+mod document;
+mod history;
+mod storage;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // There is no window menu: every command is in the project menu inside the
