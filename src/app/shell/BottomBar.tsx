@@ -3,13 +3,24 @@ import { useT } from "@/shared/lib/i18n";
 import { LanguageButton } from "./LanguageButton";
 import { ThemeButtons } from "./ThemeButtons";
 
+// A thin vertical line between the groups of the bottom bar.
+function Separator() {
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      className="h-3.5 w-px bg-border"
+    />
+  );
+}
+
 type Props = { settingsOpen: boolean; onSettings: () => void };
 
 export function BottomBar({ settingsOpen, onSettings }: Props) {
   const t = useT();
   return (
     <footer className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-bg px-3">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           aria-pressed={settingsOpen}
@@ -19,7 +30,9 @@ export function BottomBar({ settingsOpen, onSettings }: Props) {
           <Icon name="gear" className="h-3.5 w-3.5" />
           {t("bottom.settings")}
         </button>
+        <Separator />
         <LanguageButton />
+        <Separator />
         <ThemeButtons />
       </div>
       <span className="font-mono text-xs text-text-faint">

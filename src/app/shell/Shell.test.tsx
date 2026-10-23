@@ -102,4 +102,15 @@ describe("Shell layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Project" }));
     expect(props.topBar.onTab).toHaveBeenCalledWith("project");
   });
+
+  // Checks that the bottom bar has two vertical separators: between Settings
+  // and Language, and between Language and Theme.
+  it("separates Settings, Language and Theme in the bottom bar", () => {
+    renderShell();
+    const separators = screen.getAllByRole("separator");
+    expect(separators).toHaveLength(2);
+    for (const separator of separators) {
+      expect(separator.getAttribute("aria-orientation")).toBe("vertical");
+    }
+  });
 });
