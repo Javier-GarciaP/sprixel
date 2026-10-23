@@ -76,5 +76,20 @@
   "key.shift": "Mayús",
   "key.space": "Espacio",
   "key.wheel": "rueda",
-  "key.or": "o"
+  "key.or": "o",
+  "newProject.title": "Nuevo proyecto",
+  "newProject.name": "Nombre",
+  "newProject.location": "Guardar en",
+  "newProject.choose": "Elegir...",
+  "newProject.palette": "Paleta inicial",
+  "newProject.paletteNone": "Sin paleta (vacía)",
+  "newProject.willCreate": "Se creará {path}",
+  "newProject.cancel": "Cancelar",
+  "newProject.create": "Crear proyecto",
+  "newProject.close": "Cerrar",
+  "error.folderExists": "Ya existe una carpeta con este nombre aquí.",
+  "error.invalidName": "Este nombre no se puede usar como nombre de carpeta.",
+  "error.io": "Algo salió mal: {message}",
+  "open.notAProject": "Esta carpeta no es un proyecto de Sprixel",
+  "project.placeholder": "El proyecto {name} está abierto. Sus sprites aparecerán aquí."
 }

@@ -76,5 +76,20 @@
   "key.shift": "Shift",
   "key.space": "Space",
   "key.wheel": "wheel",
-  "key.or": "or"
+  "key.or": "or",
+  "newProject.title": "New project",
+  "newProject.name": "Name",
+  "newProject.location": "Save in",
+  "newProject.choose": "Choose...",
+  "newProject.palette": "Starting palette",
+  "newProject.paletteNone": "No palette (empty)",
+  "newProject.willCreate": "It will be created in {path}",
+  "newProject.cancel": "Cancel",
+  "newProject.create": "Create project",
+  "newProject.close": "Close",
+  "error.folderExists": "A folder with this name already exists here.",
+  "error.invalidName": "This name cannot be used as a folder name.",
+  "error.io": "Something went wrong: {message}",
+  "open.notAProject": "This folder is not a Sprixel project",
+  "project.placeholder": "The project {name} is open. Its sprites will appear here."
 }
