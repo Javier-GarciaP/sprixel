@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const invoke = vi.fn();
-const open = vi.fn();
+const { invoke, open } = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open }));
 
