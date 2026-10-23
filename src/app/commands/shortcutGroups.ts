@@ -1,6 +1,6 @@
 import type { TranslationKey } from "@/shared/lib/i18n";
 import { commands, type Group } from "./registry";
-import { shortcutKeys, type Platform } from "./shortcut";
+import { shortcutKeys, type KeyName, type Platform } from "./shortcut";
 
 export type ShortcutGroup = {
   titleKey: TranslationKey;
@@ -15,7 +15,10 @@ const titles: Record<Group, TranslationKey> = {
 
 // The data of the shortcuts page: every command that has a shortcut, grouped
 // by area, with the key caps for this platform.
-export function shortcutGroups(platform: Platform): ShortcutGroup[] {
+export function shortcutGroups(
+  platform: Platform,
+  translate?: KeyName,
+): ShortcutGroup[] {
   return (Object.keys(titles) as Group[]).map((group) => ({
     titleKey: titles[group],
     rows: commands
@@ -23,7 +26,7 @@ export function shortcutGroups(platform: Platform): ShortcutGroup[] {
       .map((c) => ({
         id: c.id,
         labelKey: c.labelKey,
-        keys: shortcutKeys(c.shortcut as string, platform),
+        keys: shortcutKeys(c.shortcut as string, platform, translate),
       })),
   }));
 }

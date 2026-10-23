@@ -70,5 +70,11 @@
   "settings.canvas": "Lienzo",
   "settings.pixelGrid": "Mostrar rejilla de píxeles al hacer zoom",
   "language.option.en": "English",
-  "language.option.es": "Español"
+  "language.option.es": "Español",
+  "key.enter": "Intro",
+  "key.delete": "Supr",
+  "key.shift": "Mayús",
+  "key.space": "Espacio",
+  "key.wheel": "rueda",
+  "key.or": "o"
 }

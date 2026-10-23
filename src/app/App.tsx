@@ -31,7 +31,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const handlers = useMemo<Record<string, () => void>>(() => ({}), []);
   useShortcuts(handlers, platform);
 
-  const groups = shortcutGroups(platform).map((group) => ({
+  const groups = shortcutGroups(platform, t).map((group) => ({
     title: t(group.titleKey),
     rows: group.rows.map((row) => ({
       id: row.id,

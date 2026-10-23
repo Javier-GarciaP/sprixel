@@ -70,5 +70,11 @@
   "settings.canvas": "Canvas",
   "settings.pixelGrid": "Show a pixel grid when zooming in",
   "language.option.en": "English",
-  "language.option.es": "Español"
+  "language.option.es": "Español",
+  "key.enter": "Enter",
+  "key.delete": "Delete",
+  "key.shift": "Shift",
+  "key.space": "Space",
+  "key.wheel": "wheel",
+  "key.or": "or"
 }

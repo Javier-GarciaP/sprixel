@@ -35,7 +35,7 @@ export function ProjectMenu({ projectName, platform, handlers }: Props) {
             id: command.id,
             label: t(command.labelKey),
             hint:
-              command.shortcut && formatShortcut(command.shortcut, platform),
+              command.shortcut && formatShortcut(command.shortcut, platform, t),
             separator: command.separator,
             disabled: !handlers[command.id],
             onSelect: () => handlers[command.id]?.(),

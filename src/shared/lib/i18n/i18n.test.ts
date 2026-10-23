@@ -65,7 +65,7 @@ describe("translation files", () => {
   it("has every key used in the code in English", () => {
     const used = new Set<string>();
     for (const code of Object.values(sources)) {
-      for (const m of code.matchAll(/\bt\(\s*["']([\w.]+)["']/g))
+      for (const m of code.matchAll(/\bt\(\s*["'](\w+\.[\w.]+)["']/g))
         used.add(m[1]);
       for (const m of code.matchAll(/labelKey:\s*["']([\w.]+)["']/g))
         used.add(m[1]);

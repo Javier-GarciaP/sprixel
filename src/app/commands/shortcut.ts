@@ -1,3 +1,5 @@
+import { t, type TranslationKey } from "@/shared/lib/i18n";
+
 export type Platform = "mac" | "other";
 
 export function detectPlatform(): Platform {
@@ -10,19 +12,42 @@ function parts(shortcut: string): string[] {
   return shortcut === "+" ? ["+"] : shortcut.split("+");
 }
 
-// The key caps to show: ["Ctrl", "Shift", "Z"].
-export function shortcutKeys(shortcut: string, platform: Platform): string[] {
-  const names =
+// Key names that have a translation. Ctrl, the macOS symbols and the letters
+// are the same in every language.
+const translatedKeys: Record<string, TranslationKey> = {
+  Shift: "key.shift",
+  Enter: "key.enter",
+  Delete: "key.delete",
+  Space: "key.space",
+};
+
+export type KeyName = (key: TranslationKey) => string;
+
+// The key caps to show: ["Ctrl", "Shift", "Z"], with the names translated
+// when a `translate` function is given.
+export function shortcutKeys(
+  shortcut: string,
+  platform: Platform,
+  translate: KeyName = (key) => t("en", key),
+): string[] {
+  const symbols: Record<string, string> =
     platform === "mac"
       ? { Mod: "⌘", Shift: "⇧", Alt: "⌥" }
-      : { Mod: "Ctrl", Shift: "Shift", Alt: "Alt" };
-  return parts(shortcut).map(
-    (part) => names[part as keyof typeof names] ?? part,
-  );
+      : { Mod: "Ctrl", Alt: "Alt" };
+  return parts(shortcut).map((part) => {
+    if (part in symbols) return symbols[part];
+    return part in translatedKeys ? translate(translatedKeys[part]) : part;
+  });
 }
 
-export function formatShortcut(shortcut: string, platform: Platform): string {
-  return shortcutKeys(shortcut, platform).join(platform === "mac" ? "" : "+");
+export function formatShortcut(
+  shortcut: string,
+  platform: Platform,
+  translate?: KeyName,
+): string {
+  return shortcutKeys(shortcut, platform, translate).join(
+    platform === "mac" ? "" : "+",
+  );
 }
 
 type KeyEvent = Pick<
