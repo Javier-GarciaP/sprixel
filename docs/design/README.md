@@ -172,7 +172,7 @@ Deleting a group asks for confirmation. Items go to the system trash, so they ca
 | <img src="oscuro/08-borrar-varios-sprites.png" width="430" alt="Delete several sprites, dark"> | <img src="claro/08-borrar-varios-sprites.png" width="430" alt="Delete several sprites, light"> |
 #### 09 · Project menu
 
-Opens from the project name in the top bar. The same commands will exist in the native window menu. The project saves by itself, so there is no Save command.
+Opens from the project name in the top bar. The app has no native window menu: every command is in this menu and has its shortcut. The project saves by itself, so there is no Save command.
 
 | Dark | Light |
 | --- | --- |
@@ -385,7 +385,7 @@ specs win**. The designs will be updated when the matching feature is built.
 | "Connect an AI" shows a long `claude mcp add ... --header` command with a token | The command is `sprixel mcp add claude` (or `opencode`). The `sprixel` command reads the token from a local file, so you never copy it. See [AI and MCP](../ai-and-mcp.md). |
 | The text view shows Spanish words (`paleta:`, `frame 1`) | The keywords in a text grid are always English (`palette`, `frame`). The editor can show translated labels around them. See [Text grid format](../text-grid-format.md). |
 | The Spanish interface only | Every text comes from a translation file in Spanish and English. |
-| The Project menu is a drop-down | The same commands also exist in the native window menu (File, Edit, View) of the desktop app. |
+| The Project menu is a drop-down | There is no native window menu (File, Edit, View); every command lives in this menu and has a shortcut. |
 | "Import PNG" was removed | It is not part of version 1. |
 | Settings has two pages | More pages can be added later. |
 | Sample data (Dungeon Kit, goblin, slime) | Mock data to show the screens. |
