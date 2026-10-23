@@ -241,11 +241,17 @@ describe("shortcuts and closing", () => {
     render(<App />);
     await screen.findByRole("heading", { level: 1 });
 
-    fireEvent.keyDown(window, { key: "n", ctrlKey: true });
-    expect(
-      await screen.findByRole("dialog", { name: "New project" }),
-    ).toBeTruthy();
-    fireEvent.keyDown(window, { key: "Escape" });
+    // The key listeners are attached in effects that run just after the screen
+    // changes. On a slow machine a key can arrive before them, so each key is
+    // sent again until its effect is visible.
+    await vi.waitFor(() => {
+      fireEvent.keyDown(window, { key: "n", ctrlKey: true });
+      expect(screen.getByRole("dialog", { name: "New project" })).toBeTruthy();
+    });
+    await vi.waitFor(() => {
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
 
     fireEvent.keyDown(window, { key: "o", ctrlKey: true });
     await vi.waitFor(() => expect(api.pickFolder).toHaveBeenCalled());
