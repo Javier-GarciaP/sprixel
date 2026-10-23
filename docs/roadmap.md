@@ -90,6 +90,50 @@ Suggested versions: `0.1.0` at the end of M1, `0.2.0` for the demo, and `1.0.0`
 after M3 when everything is tested. The demo lives in `dev`; `main` only
 receives a release pull request.
 
+## How to continue
+
+Where we are: M1 is done and the plan for M2 (the demo) is written. The demo
+has not started: the next step is **phase 1, `project-browser`**.
+
+### Build the demo (M2)
+
+1. Do the phases in the table above, **one at a time and in order**. For each
+   phase: create `feature/<spec-name>` from `dev`, do the tasks under "Demo" in
+   its `tasks.md` (one commit per task, tests first), open a pull request into
+   `dev`, wait for the three CI jobs, audit and merge.
+2. Do not archive a spec that still has tasks under "After the demo". Archive
+   it when version 1 is done.
+3. Who writes what: a Claude agent for interface, design and security; OpenCode
+   for pure code with an exact spec and tests (the Rust operations, the grid
+   parser, the Go command, the renderer). The rules for agents, the checklist to
+   audit them and the dependency rules are in [AGENTS.md](../AGENTS.md).
+4. The tasks that need a decision first: the MCP dependencies are approved in
+   the design of `mcp-server-and-tools` (`tiny_http`, `getrandom`, `png`); the
+   two preset palettes ("Pocket RPG 16" and "Farm 32") are designed in phase 4.
+5. Phase 10 (demo polish): write `docs/demo.md` with five prompts to try, add an
+   example project, run an end to end test with a scripted MCP client and one
+   real run with Claude Code, and update the `CHANGELOG.md`.
+
+### From the demo to the first complete version (M3, `1.0.0`)
+
+1. Finish the tasks under "After the demo" in each spec: search, move, folder
+   delete, multi-select and the context menu (`project-browser`); lost
+   connection (`mcp-server-and-tools`, `agents-ui`); GIF, trim, pivot and
+   progress (`export-spritesheet`); and the tests on Windows and macOS
+   (`cli-sprixel`). Then archive those specs.
+2. Build `install-and-release` (spec 13): the version bump script, `install.sh`
+   and `install.ps1`, `sprixel update` and `uninstall`, and the release pipeline.
+   Release builds must ship `LICENSE` and `docs/third-party.md`.
+3. Check by hand on Windows and macOS (the CI only builds and tests there),
+   including the system menu bar on macOS, and the real window on each system.
+4. Check the licenses again (see `docs/third-party.md`).
+5. Bump the version (`0.2.0` for the demo, `1.0.0` for the first complete
+   version), open the release pull request `dev` to `main`, tag it, and publish.
+
+The **demo can be shown before `1.0.0`**: `main` is the branch GitHub shows, so
+a release pull request from `dev` to `main` is what puts the new README in front
+of people. That is the maintainer's decision.
+
 ## How a spec is built
 
 1. Read the spec (`proposal.md`, `design.md`, `specs/`, `tasks.md`).
