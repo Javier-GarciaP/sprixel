@@ -1,11 +1,11 @@
-# Spec Delta
+# app-shell Specification
 
 ## Purpose
 
 Defines the main window, how people create and open projects, and how the tabs
 and menus behave, so every other feature has a consistent place to live.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Window layout
 The window SHALL have a top bar with the logo, the project menu, the save status, the tabs (Project, Editor, Export, Agents) and the agents indicator; a body area; and a bottom bar with Settings, language, theme and context information.
@@ -51,7 +51,7 @@ Opening a project SHALL let the user pick a folder and MUST check that it is a S
 - **THEN** a message says "This folder is not a Sprixel project" and nothing is opened
 
 ### Requirement: Project menu
-The project menu, opened from the project name, SHALL offer New project, Open, Open recent, Rename project, Save a copy as, Show in folder, Export and Close project, with shortcuts. The app SHALL NOT show a native window menu bar.
+The project menu, opened from the project name, SHALL offer New project, Open, Open recent, Rename project, Save a copy as, Show in folder, Export and Close project, with shortcuts. The app SHALL NOT add its own native window menu bar on Linux and Windows. On macOS the system keeps its default menu bar, which copy, paste and quit need, and it has not been checked on a real Mac.
 
 #### Scenario: Open the menu
 - **WHEN** the user clicks the project name in the top bar

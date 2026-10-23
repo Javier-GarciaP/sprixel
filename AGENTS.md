@@ -15,10 +15,14 @@ The project is proprietary (see `LICENSE`). Everything is written in English
 
 ## Status and commands
 
-The **foundation** spec (`project-foundation`) is built: the app skeleton
-(Tauri 2 with Vite, React, TypeScript and Tailwind), the Go CLI in `cli/`, the
-tooling, CI and the drawing benchmark. The feature folders are still empty
-placeholders. The next specs follow `docs/roadmap.md`.
+Specs 1 to 3 are built and archived: `project-foundation` (the app skeleton,
+the Go CLI in `cli/`, the tooling, CI and the drawing benchmark),
+`project-format-and-storage` (the document model, operations, undo and redo,
+the project files, autosave and trash, in the Rust core) and
+`app-shell-and-settings` (the window layout, themes, languages, shortcuts,
+settings, and creating and opening projects). Only the `settings` feature
+folder has code; the other feature folders are still empty placeholders. The
+next specs follow `docs/roadmap.md`.
 
 Commands run from the repository root. The package manager is **npm**; run
 `npm ci` once first to install the JS dependencies.

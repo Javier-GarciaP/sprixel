@@ -1,11 +1,12 @@
 # Architecture
 
-> **Status: foundation built.** The app skeleton (Tauri 2 + Vite + React +
-> TypeScript + Tailwind), the Go CLI, the tooling, CI and the drawing
-> benchmark exist. The editor features, the Rust core modules and the MCP
-> server are still planned and follow the version 1 specs in
-> [`openspec/`](../openspec/). If a spec and this document disagree, the spec
-> wins.
+> **Status: foundation, storage and app shell built.** The app skeleton (Tauri 2
+> + Vite + React + TypeScript + Tailwind), the Go CLI, the tooling, CI, the
+> drawing benchmark, the document model and project storage in the Rust core,
+> and the app shell with settings (create and open projects) exist. The
+> editor features, rendering, export and the MCP server are still planned and
+> follow the version 1 specs in [`openspec/`](../openspec/). If a spec and
+> this document disagree, the spec wins.
 
 ## Overview
 
@@ -315,27 +316,30 @@ arrives with the specs that build them.
 ```
 sprixel/
 ├── src/                        React UI (exists)
-│   ├── app/                    main.tsx, App.tsx, index.css, benchmark/
-│   ├── features/               8 feature folders (all empty for now)
+│   ├── app/                    main.tsx, App.tsx, index.css, shell/ (layout),
+│   │                           welcome/, commands/ (registry and shortcuts),
+│   │                           api/ (calls to the Rust core), benchmark/
+│   ├── features/               8 feature folders; only settings has code
 │   │   ├── project-browser/    later: components/, hooks/, api/, types.ts,
-│   │   ├── canvas-editor/      index.ts per feature
-│   │   ├── frames-animations/
-│   │   ├── palette-editor/
-│   │   ├── text-view/
-│   │   ├── export/
-│   │   ├── agents/
-│   │   └── settings/
-│   ├── shared/                 components/, hooks/, lib/, types/ (empty)
-│   └── assets/                 (empty)
+│   │   ├── canvas-editor/      index.ts per feature (empty)
+│   │   ├── frames-animations/  (empty)
+│   │   ├── palette-editor/     (empty)
+│   │   ├── text-view/          (empty)
+│   │   ├── export/             (empty)
+│   │   ├── agents/             (empty)
+│   │   └── settings/           Settings screen: appearance, language, shortcuts
+│   ├── shared/                 components/ (base components and icons),
+│   │                           lib/ (i18n and preferences); hooks/ and types/ (empty)
+│   └── assets/                 app icon and ghost image
 ├── src-tauri/                  Rust core (exists)
 │   └── src/                    lib.rs, main.rs, plus the module folders:
-│       ├── document/           model and operations (empty)
-│       ├── history/            undo and redo (empty)
-│       ├── storage/            project files, autosave, trash, file watching (empty)
+│       ├── document/           model, names and operations
+│       ├── history/            undo and redo
+│       ├── storage/            project files, autosave, trash, file watching
 │       ├── render/             PNG and GIF rendering (empty)
 │       ├── export/             sprite sheet and JSON (empty)
 │       ├── mcp/                server, tools, auth, permissions, activity (empty)
-│       └── ipc/                Tauri commands and events (empty)
+│       └── ipc/                preferences, recent projects and the open project
 ├── cli/                        Go module github.com/Javier-GarciaP/sprixel/cli
 │   ├── cmd/sprixel/main.go     sprixel version (more commands come later)
 │   └── internal/               command/, version/ (runtime, bridge, clients,

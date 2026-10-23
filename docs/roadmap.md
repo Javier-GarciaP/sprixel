@@ -4,7 +4,7 @@ This is the plan to reach **version 1.0.0**, the first stable release. Every
 item is a spec in [`openspec/changes/`](../openspec/changes/). The code is
 written spec by spec, in the order below.
 
-> **Status:** spec 1 (`project-foundation`) is built and archived. Specs 2 to 13 are written and not started.
+> **Status:** specs 1 to 3 (the first milestone, M1) are built and archived. Specs 4 to 13 are written and not started.
 
 ## The goal of version 1
 
@@ -22,8 +22,8 @@ You can:
 | # | Spec | What it delivers | Needs |
 | --- | --- | --- | --- |
 | 1 | [`project-foundation`](../openspec/changes/archive/2026-10-22-project-foundation/) | The Tauri + React + Go skeleton, folders, tooling and builds on 3 systems | |
-| 2 | [`project-format-and-storage`](../openspec/changes/project-format-and-storage/) | The document model, the project folder, autosave, trash and migrations | 1 |
-| 3 | [`app-shell-and-settings`](../openspec/changes/app-shell-and-settings/) | Window layout, tabs, light and dark theme, Spanish and English, settings and shortcuts | 1 |
+| 2 | [`project-format-and-storage`](../openspec/changes/archive/2026-10-22-project-format-and-storage/) | The document model, the project folder, autosave, trash and migrations | 1 |
+| 3 | [`app-shell-and-settings`](../openspec/changes/archive/2026-10-22-app-shell-and-settings/) | Window layout, tabs, light and dark theme, Spanish and English, settings and shortcuts | 1 |
 | 4 | [`project-browser`](../openspec/changes/project-browser/) | Folders and sprites: create, rename, duplicate, move, delete, multi-select | 2, 3 |
 | 5 | [`pixel-canvas-editor`](../openspec/changes/pixel-canvas-editor/) | The canvas, tools, zoom, undo and redo, onion skin | 2, 3 |
 | 6 | [`frames-and-animations`](../openspec/changes/frames-and-animations/) | Frames, animation tags and the live preview | 5 |
