@@ -126,10 +126,13 @@ describe("creating a project", () => {
   it("sets the window title to the project name", async () => {
     api.createProject.mockResolvedValue(kit);
     await openNewProjectDialog();
-    expect(document.title).toBe("Sprixel");
+    // The title is set in an effect, which runs just after the screen changes,
+    // so the checks wait for it instead of reading it at once.
+    await vi.waitFor(() => expect(document.title).toBe("Sprixel"));
     create("Dungeon Kit");
-    await screen.findByRole("button", { name: /Dungeon Kit/ });
-    expect(document.title).toBe("Dungeon Kit - Sprixel");
+    await vi.waitFor(() =>
+      expect(document.title).toBe("Dungeon Kit - Sprixel"),
+    );
   });
 });
 
@@ -260,7 +263,7 @@ describe("shortcuts and closing", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
     expect(api.closeProject).toHaveBeenCalledTimes(1);
     expect(tabDisabled("Editor")).toBe(true);
-    expect(document.title).toBe("Sprixel");
+    await vi.waitFor(() => expect(document.title).toBe("Sprixel"));
   });
 });
 
