@@ -10,12 +10,20 @@ pub fn run() {
     // purpose: macOS always shows a menu bar, and its Edit menu is what makes
     // Cmd+C, Cmd+V and Cmd+Q work in text fields.
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(ipc::project::ProjectState::default())
         .invoke_handler(tauri::generate_handler![
             ipc::load_preferences,
             ipc::save_settings,
             ipc::add_recent_project,
             ipc::remove_recent_project,
-            ipc::folder_exists
+            ipc::folder_exists,
+            ipc::default_project_location,
+            ipc::create_project,
+            ipc::open_project,
+            ipc::close_project,
+            ipc::project_status,
+            ipc::retry_save
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

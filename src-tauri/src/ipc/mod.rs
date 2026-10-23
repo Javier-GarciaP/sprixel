@@ -1,8 +1,10 @@
 //! Tauri commands the UI calls.
 
 pub mod preferences;
+pub mod project;
 
 use preferences::{Data, RecentProject, Settings};
+use project::{ProjectError, ProjectInfo, ProjectState, StatusInfo};
 use std::path::PathBuf;
 use tauri::Manager;
 
@@ -54,4 +56,43 @@ pub fn remove_recent_project(
 #[tauri::command]
 pub fn folder_exists(path: String) -> bool {
     std::path::Path::new(&path).is_dir()
+}
+
+/// The folder suggested in the New project dialog: `~/Proyectos`.
+#[tauri::command]
+pub fn default_project_location(app: tauri::AppHandle) -> Result<String, String> {
+    let home = app.path().home_dir().map_err(|e| e.to_string())?;
+    Ok(home.join("Proyectos").to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn create_project(
+    state: tauri::State<ProjectState>,
+    parent: String,
+    name: String,
+) -> Result<ProjectInfo, ProjectError> {
+    project::create_project(&state, std::path::Path::new(&parent), &name)
+}
+
+#[tauri::command]
+pub fn open_project(
+    state: tauri::State<ProjectState>,
+    path: String,
+) -> Result<ProjectInfo, ProjectError> {
+    project::open_project(&state, std::path::Path::new(&path))
+}
+
+#[tauri::command]
+pub fn close_project(state: tauri::State<ProjectState>) {
+    project::close_project(&state);
+}
+
+#[tauri::command]
+pub fn project_status(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
+    project::project_status(&state)
+}
+
+#[tauri::command]
+pub fn retry_save(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
+    project::retry_save(&state)
 }
