@@ -10,7 +10,8 @@ use. It has three parts: the **app** (Tauri 2: Rust core + React, TypeScript,
 Vite and Tailwind UI), the **`sprixel` command** (Go) and **project folders**
 (plain text files).
 
-The project is proprietary (see `LICENSE`). Everything is written in English
+The project is open source under the MIT License (see `LICENSE`) and accepts
+contributions (see `CONTRIBUTING.md`). Everything is written in English
 (code, comments, commits, docs). The product UI is in Spanish and English.
 
 ## Status and commands
