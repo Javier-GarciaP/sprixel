@@ -2,9 +2,11 @@
 
 This is the plan to reach **version 1.0.0**, the first stable release. Every
 item is a spec in [`openspec/changes/`](../openspec/changes/). The code is
-written spec by spec, in the order below.
+written spec by spec.
 
-> **Status:** specs 1 to 3 (the first milestone, M1) are built and archived. Specs 4 to 13 are written and not started.
+> **Status:** specs 1 to 3 (milestone M1) are built and archived. The current
+> goal is **milestone M2, the demo**. Specs 4 to 13 are written; the demo
+> builds most of them (see below) and version 1 finishes the rest.
 
 ## The goal of version 1
 
@@ -16,6 +18,44 @@ You can:
 4. export a sprite sheet with JSON, PNG files or a GIF;
 5. install it with one command on Linux, Windows and macOS;
 6. use it in Spanish or English, in light or dark.
+
+## The demo (milestone M2)
+
+The first public goal is a **demo where an AI draws and animates sprites in the
+real editor while you watch**, and where a person without an AI can draw with
+any color. Sprites for role playing and farming games (16x16 and 32x32, with
+walk animations) are the target.
+
+The demo is built from the specs below, in this order. Each spec has a **demo
+cut** (the tasks done for the demo) and an **after the demo** group (the tasks
+left for version 1, which stay unchecked in the spec). A spec with tasks left
+is archived when version 1 is done.
+
+| Order | Spec | In the demo | After the demo |
+| --- | --- | --- | --- |
+| 1 | `project-browser` | tree, sprite cards, details, New sprite and New folder, rename, duplicate, delete with Undo, open in the editor | search, move, folder delete, multi-select, context menu |
+| 2 | `pixel-canvas-editor` | all: canvas, zoom, tools, onion skin, Select and Move, agent marker | |
+| 3 | `frames-and-animations` | all | |
+| 4 | `palette-editor` | all: palette that grows with the colors you use, presets, import `.hex` and `.gpl` | |
+| 5 | `text-grid-format` | all, including the Text view | |
+| 6 | `mcp-server-and-tools` | the server, security, approval, permissions, every tool except `export`, activity, Stop and AI undo | lost connection detection |
+| 7 | `agents-ui` | all | lost connection state |
+| 8 | `cli-sprixel` | the bridge, `mcp add`, `doctor`, `status`, `tools` and `tool` | tests on Windows and macOS |
+| 9 | `export-spritesheet` | sprite sheet, JSON, PNG files, the Export tab and the `export` tool | GIF, trim and pivot, progress |
+| 10 | demo polish | `docs/demo.md`, an example project, an end to end test | |
+
+`install-and-release` is not part of the demo. The demo runs from the source
+code (see the [README](../README.md#try-it-from-the-source-code)).
+
+### The color model
+
+Palettes are not required to draw. A person can use **any color** and the
+sprite's palette **grows by itself** with each new color. A sprite always has a
+palette: if there is none, the app creates one called `main` the first time.
+For an AI, the palette is its language: every pixel is a one-letter key, so the
+AI can read and edit a sprite that a person drew by hand. In the text format, a
+`legend` line with a `#hex` for a key that does not exist adds that color. See
+the `palette-editor` and `drawing-tools` specs.
 
 ## Specs
 
@@ -35,18 +75,20 @@ You can:
 | 12 | [`cli-sprixel`](../openspec/changes/cli-sprixel/) | The `sprixel` command: bridge, setup, doctor and tools from the terminal | 10 |
 | 13 | [`install-and-release`](../openspec/changes/install-and-release/) | Install scripts, release pipeline, installers, versioning and updates | 1, 12 |
 
+The numbers are the names of the specs. In the demo, `export-spritesheet` (9)
+is built after the AI path (10 to 12); its `export` tool is added then.
+
 ## Milestones
 
 | Milestone | Specs | Result |
 | --- | --- | --- |
-| **M1 · Foundation** | 1, 2, 3 | An empty app that opens and saves a project, with the theme and language working |
-| **M2 · Draw** | 4, 5, 6, 7 | A real pixel art editor: projects, drawing, frames, animations and palettes |
-| **M3 · Text and export** | 8, 9 | The text view and exporting to a game |
-| **M4 · AI** | 10, 11, 12 | An AI can draw in the live app, with permissions and undo |
-| **M5 · Release** | 13 | Install with one command and publish `1.0.0` |
+| **M1 · Foundation** (done) | 1, 2, 3 | An empty app that opens and saves a project, with the theme and language working |
+| **M2 · Demo** | the demo cut of 4 to 12 | A real pixel art editor where an AI draws and animates sprites while you watch, and you can export them |
+| **M3 · Version 1** | the rest of 4 to 12, and 13 | GIF export, search and multi-select, install with one command and publish `1.0.0` |
 
-Suggested versions: `0.1.0` at the end of M1, `0.2.0` at M2, `0.3.0` at M3,
-`0.4.0` at M4, and `1.0.0` after M5 when everything is tested.
+Suggested versions: `0.1.0` at the end of M1, `0.2.0` for the demo, and `1.0.0`
+after M3 when everything is tested. The demo lives in `dev`; `main` only
+receives a release pull request.
 
 ## How a spec is built
 
@@ -54,20 +96,6 @@ Suggested versions: `0.1.0` at the end of M1, `0.2.0` at M2, `0.3.0` at M3,
 2. Create `feature/<spec-name>` from `dev`.
 3. Do the tasks one by one, with tests, one commit per task.
 4. Open a pull request into `dev`.
-5. Archive the spec when it is merged.
+5. Archive the spec when it is merged and all its tasks are done.
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md).
-
-## Not in version 1
-
-These were considered and are left for later:
-
-- Layers in the interface (the file format already supports them).
-- Tilemaps and level or scene editing.
-- Importing PNG images.
-- Export formats made for one engine (for example Godot `.tres`).
-- Codex and other agents with one-command setup (any MCP client can still
-  connect).
-- A headless mode (running without a window).
-- Cloud sync, accounts or collaboration.
-- Languages other than Spanish and English.
