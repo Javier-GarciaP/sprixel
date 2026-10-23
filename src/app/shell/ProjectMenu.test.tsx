@@ -7,16 +7,28 @@ import { ProjectMenu } from "./ProjectMenu";
 
 afterEach(cleanup);
 
-function show(handlers: Record<string, () => void> = {}) {
+const recents = [
+  { path: "/p/forest-run", name: "Forest Run" },
+  { path: "/p/space-jam", name: "Space Jam" },
+];
+
+function show(
+  handlers: Record<string, () => void> = {},
+  list = recents,
+  onOpenRecent = vi.fn(),
+) {
   render(
     <AppProviders initial={defaultPreferences("en")}>
       <ProjectMenu
         projectName="Dungeon Kit"
         platform="other"
         handlers={handlers}
+        recents={list}
+        onOpenRecent={onOpenRecent}
       />
     </AppProviders>,
   );
+  return onOpenRecent;
 }
 
 describe("ProjectMenu", () => {
@@ -64,5 +76,33 @@ describe("ProjectMenu", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Close project" }));
     expect(close).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  // Checks that "Open recent" lists the recent projects in a submenu and that
+  // choosing one opens it by its path and closes the menu.
+  it("opens a recent project from the Open recent submenu", () => {
+    const onOpenRecent = show();
+    fireEvent.click(screen.getByRole("button", { name: /Dungeon Kit/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Open recent/ }));
+
+    const items = screen.getAllByRole("menuitem").map((i) => i.textContent);
+    expect(items).toContain("Forest Run/p/forest-run");
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /Space Jam/ }));
+    expect(onOpenRecent).toHaveBeenCalledWith("/p/space-jam");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  // Checks that "Open recent" is disabled when there are no recent projects.
+  it("disables Open recent when the list is empty", () => {
+    show({}, []);
+    fireEvent.click(screen.getByRole("button", { name: /Dungeon Kit/ }));
+    expect(
+      (
+        screen.getByRole("menuitem", {
+          name: /Open recent/,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 });

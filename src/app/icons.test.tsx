@@ -59,7 +59,13 @@ describe("icons replace the text glyphs", () => {
   // Checks that the project name button uses an SVG chevron, not a glyph.
   it("project menu chevron", () => {
     inApp(
-      <ProjectMenu projectName="Dungeon Kit" platform="other" handlers={{}} />,
+      <ProjectMenu
+        projectName="Dungeon Kit"
+        platform="other"
+        handlers={{}}
+        recents={[]}
+        onOpenRecent={() => {}}
+      />,
     );
     const button = screen.getByRole("button", { name: /Dungeon Kit/ });
     hasSvg(button);

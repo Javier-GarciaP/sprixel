@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon, Menu } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
+import type { RecentProject } from "../api/preferences";
 import { projectMenuCommands } from "../commands/registry";
 import { formatShortcut, type Platform } from "../commands/shortcut";
 
@@ -9,10 +10,19 @@ type Props = {
   platform: Platform;
   // What each command does. A command without a handler is shown disabled.
   handlers: Record<string, () => void>;
+  // The entries of "Open recent".
+  recents: RecentProject[];
+  onOpenRecent: (path: string) => void;
 };
 
 // The project name in the top bar. Clicking it opens the menu right below it.
-export function ProjectMenu({ projectName, platform, handlers }: Props) {
+export function ProjectMenu({
+  projectName,
+  platform,
+  handlers,
+  recents,
+  onOpenRecent,
+}: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
 
@@ -37,7 +47,17 @@ export function ProjectMenu({ projectName, platform, handlers }: Props) {
             hint:
               command.shortcut && formatShortcut(command.shortcut, platform, t),
             separator: command.separator,
-            disabled: !handlers[command.id],
+            ...(command.id === "project.openRecent"
+              ? {
+                  disabled: recents.length === 0,
+                  submenu: recents.map((project) => ({
+                    id: project.path,
+                    label: project.name,
+                    hint: project.path,
+                    onSelect: () => onOpenRecent(project.path),
+                  })),
+                }
+              : { disabled: !handlers[command.id] }),
             onSelect: () => handlers[command.id]?.(),
           }))}
         />
