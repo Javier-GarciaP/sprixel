@@ -103,9 +103,13 @@ export function NewProjectDialog({
           </select>
         </label>
 
-        <p className="font-mono text-xs text-text-faint">
-          {t("newProject.willCreate", { path: projectFolder(location, name) })}
-        </p>
+        {name.trim() !== "" && (
+          <p className="font-mono text-xs text-text-faint">
+            {t("newProject.willCreate", {
+              path: projectFolder(location, name),
+            })}
+          </p>
+        )}
         {failure?.code === "io" && (
           <p role="alert" className="text-xs text-error">
             {t("error.io", { message: failure.message })}

@@ -56,6 +56,17 @@ describe("NewProjectDialog", () => {
     ).toBeTruthy();
   });
 
+  // Checks that no folder is announced while the name is empty or only
+  // spaces, so the line never shows a path like ".../Proyectos//".
+  it("hides the folder line until there is a name", () => {
+    show();
+    expect(screen.queryByText(/It will be created in/)).toBeNull();
+    type("Name", "   ");
+    expect(screen.queryByText(/It will be created in/)).toBeNull();
+    type("Name", "Kit");
+    expect(screen.getByText(/It will be created in/)).toBeTruthy();
+  });
+
   // Checks that the preview uses the separator of the location (Windows
   // paths get backslashes) and does not double a trailing separator.
   it("builds the path with the separator of the location", () => {
