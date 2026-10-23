@@ -11,6 +11,10 @@ export type Command = {
   shortcut?: string;
   // The commands of the project menu.
   inProjectMenu?: boolean;
+  // Also done with Control (Command on macOS) and the mouse wheel. The wheel
+  // is only shown on the shortcuts page; the real zoom belongs to the canvas
+  // spec.
+  withWheel?: boolean;
   // Draws a separator line above this item in the project menu.
   separator?: boolean;
 };
@@ -144,6 +148,7 @@ commands.push(
     labelKey: "command.view.zoomIn",
     group: "editor",
     shortcut: "+",
+    withWheel: true,
   },
   {
     id: "view.zoomOut",

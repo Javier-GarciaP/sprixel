@@ -37,6 +37,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
       id: row.id,
       label: t(row.labelKey),
       keys: row.keys,
+      alternative: row.alternative,
     })),
   }));
 

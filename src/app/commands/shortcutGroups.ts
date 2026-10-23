@@ -1,10 +1,17 @@
 import type { TranslationKey } from "@/shared/lib/i18n";
 import { commands, type Group } from "./registry";
+import { t } from "@/shared/lib/i18n";
 import { shortcutKeys, type KeyName, type Platform } from "./shortcut";
 
 export type ShortcutGroup = {
   titleKey: TranslationKey;
-  rows: { id: string; labelKey: TranslationKey; keys: string[] }[];
+  rows: {
+    id: string;
+    labelKey: TranslationKey;
+    keys: string[];
+    // "+ or Ctrl wheel": the word and the keys after it.
+    alternative?: { word: string; keys: string[] };
+  }[];
 };
 
 const titles: Record<Group, TranslationKey> = {
@@ -17,7 +24,7 @@ const titles: Record<Group, TranslationKey> = {
 // by area, with the key caps for this platform.
 export function shortcutGroups(
   platform: Platform,
-  translate?: KeyName,
+  translate: KeyName = (key) => t("en", key),
 ): ShortcutGroup[] {
   return (Object.keys(titles) as Group[]).map((group) => ({
     titleKey: titles[group],
@@ -27,6 +34,15 @@ export function shortcutGroups(
         id: c.id,
         labelKey: c.labelKey,
         keys: shortcutKeys(c.shortcut as string, platform, translate),
+        alternative: c.withWheel
+          ? {
+              word: translate("key.or"),
+              keys: [
+                ...shortcutKeys("Mod", platform, translate),
+                translate("key.wheel"),
+              ],
+            }
+          : undefined,
       })),
   }));
 }

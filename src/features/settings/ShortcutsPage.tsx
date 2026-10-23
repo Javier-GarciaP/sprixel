@@ -1,7 +1,28 @@
 export type ShortcutsGroup = {
   title: string;
-  rows: { id: string; label: string; keys: string[] }[];
+  rows: {
+    id: string;
+    label: string;
+    keys: string[];
+    // Another way to do it, shown after a word like "or".
+    alternative?: { word: string; keys: string[] };
+  }[];
 };
+
+function KeyCaps({ keys }: { keys: string[] }) {
+  return keys.map((key) => (
+    <kbd
+      key={key}
+      className="rounded border border-border bg-surface-2 px-1.5 font-mono text-xs text-text-muted"
+    >
+      {key}
+    </kbd>
+  ));
+}
+
+// The project menu names end in "..." when they open a dialog. Here they are
+// plain names: "Open", not "Open...".
+const plain = (label: string) => label.replace(/\s*(\.{3}|…)$/, "");
 
 // The "Keyboard shortcuts" page: one card per area, one row per command.
 // The text and the key caps come ready from the caller.
@@ -23,16 +44,17 @@ export function ShortcutsPage({ groups }: { groups: ShortcutsGroup[] }) {
                 key={row.id}
                 className="flex items-center justify-between text-sm"
               >
-                <span>{row.label}</span>
-                <span className="flex gap-1">
-                  {row.keys.map((key) => (
-                    <kbd
-                      key={key}
-                      className="rounded border border-border bg-surface-2 px-1.5 font-mono text-xs text-text-muted"
-                    >
-                      {key}
-                    </kbd>
-                  ))}
+                <span>{plain(row.label)}</span>
+                <span className="flex items-center gap-1">
+                  <KeyCaps keys={row.keys} />
+                  {row.alternative && (
+                    <>
+                      <span className="px-0.5 text-xs text-text-faint">
+                        {row.alternative.word}
+                      </span>
+                      <KeyCaps keys={row.alternative.keys} />
+                    </>
+                  )}
                 </span>
               </li>
             ))}
