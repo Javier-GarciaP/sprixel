@@ -14,6 +14,10 @@ const recents = [
 ];
 
 function show(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
+  return render_(overrides).props;
+}
+
+function render_(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
   const props = {
     recents,
     onNew: vi.fn(),
@@ -23,12 +27,12 @@ function show(overrides: Partial<Parameters<typeof WelcomeScreen>[0]> = {}) {
     folderExists: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
-  render(
+  const { container } = render(
     <AppProviders initial={defaultPreferences("en")}>
       <WelcomeScreen {...props} />
     </AppProviders>,
   );
-  return props;
+  return { props, container };
 }
 
 describe("WelcomeScreen", () => {
@@ -79,5 +83,21 @@ describe("WelcomeScreen", () => {
     );
     expect(props.onRemoveRecent).toHaveBeenCalledWith("/p/space-jam");
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // Checks that the empty state shows only the faded pixel ghost (the ghost
+  // alone, not the amber app icon tile), straight in the message line with no
+  // box around it.
+  it("shows the ghost without a box in the empty state", () => {
+    const { container } = render_({ recents: [] });
+    const image = container.querySelector("img") as HTMLImageElement;
+
+    expect(image.getAttribute("src")).toContain("sprixel-ghost");
+    expect(image.className).toContain("[image-rendering:pixelated]");
+    expect(image.className).toContain("opacity-");
+    const line = image.parentElement as HTMLElement;
+    expect(line.tagName).toBe("P");
+    expect(line.className).not.toMatch(/\b(bg-|border|rounded)/);
+    expect(image.className).not.toMatch(/\b(bg-|border)/);
   });
 });

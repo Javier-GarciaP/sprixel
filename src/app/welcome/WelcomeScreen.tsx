@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logo from "@/assets/sprixel-icon.png";
+import ghost from "@/assets/sprixel-ghost.png";
 import { Button, Icon } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import type { RecentProject } from "../api/preferences";
@@ -56,9 +56,9 @@ export function WelcomeScreen({
         {recents.length === 0 ? (
           <p className="flex items-center gap-3 text-sm text-text-muted">
             <img
-              src={logo}
+              src={ghost}
               alt=""
-              className="h-8 w-8 opacity-30 grayscale [image-rendering:pixelated]"
+              className="h-8 w-8 opacity-40 grayscale [image-rendering:pixelated]"
             />
             {t("welcome.recentEmpty")}
           </p>
