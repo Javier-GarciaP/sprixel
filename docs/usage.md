@@ -36,16 +36,29 @@ Start the app from your applications menu, or with `sprixel start`.
 
 A project is a folder on your computer. It holds all your sprites.
 
-1. On the Welcome screen, press **New project**.
-2. Type a name, choose where to save it and pick a starting palette.
-3. Press **Create project**.
+1. On the Welcome screen, press **New project** (or `Ctrl+N`).
+2. Type a name. **Save in** starts at `~/Proyectos`; press **Choose...** to
+   pick another folder. A line under the fields shows the folder that will be
+   created, for example `~/Proyectos/Dungeon Kit/`.
+3. Press **Create project**. The folder is created only now.
 
-Open a project you already have with **Open project**. Recent projects appear
-on the Welcome screen.
+The project opens in the **Project** tab. The project name (with a menu arrow),
+the save status and the tabs appear in the top bar, and the window title reads
+`Dungeon Kit - Sprixel`.
 
-> **Built so far:** the Welcome screen lists your recent projects. **New
-> project** and **Open project** arrive with the storage layer (task 5.2 of the
-> `app-shell-and-settings` spec), so those two buttons do not work yet.
+If a folder with that name already exists, the dialog says so and creates
+nothing. A name that cannot be a folder name (for example with `/`) is refused
+too.
+
+**Starting palette:** the list only offers **No palette (empty)** for now. The
+project is created with no palette. Ready-made palettes arrive with the palette
+editor spec.
+
+Open a project you already have with **Open project** (or `Ctrl+O`) and pick
+its folder. If the folder has no `sprixel.json`, a message says "This folder is
+not a Sprixel project" and nothing is opened. Recent projects appear on the
+Welcome screen and in **Open recent** in the project menu; click one to open it.
+**Close project** in the project menu returns to the Welcome screen.
 
 If the folder of a recent project was moved or deleted, a message says the
 folder was not found and you can remove it from the list.
