@@ -8,7 +8,7 @@ is made safe without making everyday work slow.
 ## ADDED Requirements
 
 ### Requirement: New sprite
-The New sprite dialog SHALL ask for a name, a folder, a size and a palette. The size MUST be chosen from the presets 8x8, 16x16, 32x32 and 64x64 or typed as any width and height from 1 to 512, and typing a size MUST clear the selected preset.
+The New sprite dialog SHALL ask for a name, a folder, a size and, optionally, a palette. When no palette is chosen, the sprite MUST use the palette `main` of the project, which the app creates when it does not exist and which grows with the colors that are used. The size MUST be chosen from the presets 8x8, 16x16, 32x32 and 64x64 or typed as any width and height from 1 to 512, and typing a size MUST clear the selected preset.
 
 #### Scenario: Custom size
 - **WHEN** the user types 120 and 30 as width and height and presses "Create sprite"
@@ -17,6 +17,10 @@ The New sprite dialog SHALL ask for a name, a folder, a size and a palette. The 
 #### Scenario: Preset fills the fields
 - **WHEN** the user selects the preset 16x16
 - **THEN** the width and height fields show 16 and 16
+
+#### Scenario: No palette chosen
+- **WHEN** the user creates a sprite with "No palette" in a project that has no palettes
+- **THEN** the project gets a palette `main` and the sprite uses it
 
 ### Requirement: Large size warning
 When the width or height is 128 or more, the New sprite dialog SHALL show a warning that drawing with an AI is less accurate and the editor can be slower, and MUST still allow the sprite to be created.

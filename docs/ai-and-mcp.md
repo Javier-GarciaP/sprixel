@@ -70,7 +70,7 @@ The AI sees these tools. Names are proposed and may change in the spec.
 | --- | --- |
 | `create_folder` | Creates a folder |
 | `create_sprite` | Creates a sprite with a size, a folder and a palette |
-| `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position) |
+| `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet |
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`) |
 | `draw_shape` | Draws a line, rectangle, ellipse or fill |
 | `add_frame` / `delete_frame` | Adds (or copies) and removes frames |

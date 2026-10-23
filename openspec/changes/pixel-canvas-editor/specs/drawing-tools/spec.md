@@ -15,11 +15,22 @@ The editor SHALL provide these tools with these keys: Pencil (B), Eraser (E), Bu
 - **THEN** the Eraser becomes the active tool
 
 ### Requirement: Colors
-The editor SHALL keep a main and a secondary color taken only from the palette, draw with the main color on the left button and the secondary on the right, and offer a button and a key to swap them.
+The editor SHALL let the user choose any color as the main and the secondary color, from the palette or with a color picker or a hex value, draw with the main color on the left button and the secondary on the right, and offer a button and a key to swap them.
 
 #### Scenario: Right click
 - **WHEN** the user draws with the right button using the Pencil
 - **THEN** the pixels use the secondary color
+
+### Requirement: New colors join the palette
+A color that is not in the palette of the sprite MUST be added to that palette, with the next free key, in the same undoable action as the stroke that uses it. When the palette already has 93 colors, the editor MUST show "The palette is full" and MUST NOT draw with the new color.
+
+#### Scenario: A color that is not in the palette
+- **WHEN** the user picks a new color with the color picker and draws one stroke
+- **THEN** the stroke uses that color, the palette gets the new color with the next free key, and one Undo removes both the stroke and the new color
+
+#### Scenario: The palette is full
+- **WHEN** the palette has 93 colors and the user picks a color that is not in it
+- **THEN** the editor shows "The palette is full" and the pixels are not drawn with that color
 
 ### Requirement: Pencil and eraser
 The Pencil SHALL set the touched pixels to the active color and the Eraser to transparent, with no gaps when the pointer moves fast.

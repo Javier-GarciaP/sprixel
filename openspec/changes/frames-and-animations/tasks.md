@@ -1,5 +1,7 @@
 # Tasks
 
+> **Demo cut.** Every task is in the demo. See `docs/roadmap.md`.
+
 ## 1. Frame operations
 
 - [ ] 1.1 Implement add, duplicate, delete and move frame operations with tag range updates and verify tests including overlapping tags
