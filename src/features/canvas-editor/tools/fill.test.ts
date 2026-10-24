@@ -23,6 +23,12 @@ function fill(lines: string[], x: number, y: number, code: string) {
   return { out, changes: draft.changes() };
 }
 
+// A fill of a whole 512x512 frame takes some tens of milliseconds. The limit
+// is loose on purpose, because the test files run at the same time: it only
+// catches a fill that has become slow in a bad way (for example one that
+// scans the frame again for each pixel).
+const FILL_LIMIT_MS = 5000;
+
 describe("floodFill", () => {
   // Checks the "Fill an outline" scenario: filling inside a closed outline
   // changes only the connected pixels inside; the outside stays.
@@ -92,7 +98,7 @@ describe("floodFill", () => {
     let draft = new Draft(empty, size, size);
     let start = performance.now();
     floodFill(draft, empty, 0, 0, 82);
-    expect(performance.now() - start).toBeLessThan(500);
+    expect(performance.now() - start).toBeLessThan(FILL_LIMIT_MS);
     expect(draft.changes()).toHaveLength(size * size);
 
     const checker = new Uint8Array(size * size);
@@ -102,7 +108,7 @@ describe("floodFill", () => {
     draft = new Draft(checker, size, size);
     start = performance.now();
     floodFill(draft, checker, 0, 0, 82);
-    expect(performance.now() - start).toBeLessThan(500);
+    expect(performance.now() - start).toBeLessThan(FILL_LIMIT_MS);
     expect(draft.changes()).toHaveLength(1);
   });
 });

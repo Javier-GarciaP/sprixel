@@ -30,6 +30,12 @@ export function setup(width = 8, height = 8) {
 
 const plain = { shift: false };
 
+// A fill of a whole 512x512 frame takes some tens of milliseconds. The limit
+// is loose on purpose, because the test files run at the same time: it only
+// catches a fill that has become slow in a bad way (for example one that
+// scans the frame again for each pixel).
+const FILL_LIMIT_MS = 5000;
+
 describe("Pencil", () => {
   // Checks that a click paints one pixel with the main color and ends with
   // one commit that holds only that pixel.
@@ -291,7 +297,7 @@ describe("Bucket", () => {
     const start = performance.now();
     controller.pointerDown(100, 100, 0, plain);
     controller.pointerUp();
-    expect(performance.now() - start).toBeLessThan(500);
+    expect(performance.now() - start).toBeLessThan(FILL_LIMIT_MS);
     expect(commits[0]).toHaveLength(512 * 512);
   });
 });
