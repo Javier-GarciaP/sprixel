@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
 import { mockLayout, pictureAt, renderEditor } from "../testing/renderEditor";
@@ -85,5 +91,77 @@ describe("editor layout", () => {
     expect(
       screen.getByRole("heading", { name: "Piel de cebolla" }),
     ).toBeTruthy();
+  });
+});
+
+describe("canvas bar", () => {
+  // Checks the bar contents: the name, the size next to it as plain text (not
+  // a menu), the active tool and the undo and redo buttons (off at the start).
+  it("shows the name, the size, the active tool and undo and redo", async () => {
+    renderEditor(new FakeEditorApi(16, 12, 1, palette));
+    expect(await screen.findByText("16 × 12 px")).toBeTruthy();
+    expect(screen.getByText("goblin")).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByTestId("active-tool").textContent).toBe("Pencil · 1 px");
+    expect(
+      (screen.getByRole("button", { name: "Undo" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Redo" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  // Checks that choosing a tool in the column updates the name in the bar and
+  // highlights the tool.
+  it("shows the tool that is chosen", async () => {
+    renderEditor(new FakeEditorApi(8, 8));
+    const eraser = await screen.findByRole("button", { name: "Eraser" });
+    fireEvent.click(eraser);
+    await waitFor(() =>
+      expect(screen.getByTestId("active-tool").textContent).toBe(
+        "Eraser · 1 px",
+      ),
+    );
+    expect(eraser.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "Pencil" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  // Checks the "name and key shown when the pointer rests on it": every tool
+  // has a title with its name and its key.
+  it("gives every tool a title with its name and key", async () => {
+    renderEditor(new FakeEditorApi(8, 8));
+    await screen.findByRole("complementary", { name: "Tools" });
+    const expected: Record<string, string> = {
+      Pencil: "B",
+      Eraser: "E",
+      Bucket: "G",
+      Eyedropper: "I",
+      Line: "L",
+      Rectangle: "R",
+      Ellipse: "C",
+      Select: "M",
+      Move: "V",
+    };
+    for (const [name, key] of Object.entries(expected)) {
+      expect(screen.getByRole("button", { name }).getAttribute("title")).toBe(
+        `${name} (${key})`,
+      );
+    }
+  });
+
+  // Checks that the Text switch is there but disabled until its spec exists.
+  it("has the Canvas and Text switch", async () => {
+    renderEditor(new FakeEditorApi(8, 8));
+    await screen.findByRole("button", { name: "Canvas" });
+    expect(
+      (screen.getByRole("button", { name: "Text" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 });
