@@ -60,6 +60,11 @@ impl Autosave {
         result
     }
 
+    /// Reads the session without starting the save timer.
+    pub fn read<R>(&self, look: impl FnOnce(&Session) -> R) -> R {
+        look(&self.shared.session.lock().unwrap())
+    }
+
     /// The "Retry" action after a save error: saves now, without waiting.
     pub fn retry(&self) -> SaveStatus {
         self.shared.session.lock().unwrap().retry()

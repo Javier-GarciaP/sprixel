@@ -3,7 +3,8 @@
 // Nothing outside the tests uses this module yet (IPC and MCP come later).
 #![allow(dead_code, unused_imports)]
 
-use crate::document::{DocError, Operation, Project, Target};
+use crate::document::{DocError, Operation, Project, SpriteRef, Target};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(test)]
 mod history_tests;
@@ -18,6 +19,17 @@ pub struct Entry {
     pub author: String,
     pub forward: Vec<Operation>,
     pub inverse: Vec<Operation>,
+    /// The parts of the project the entry changed.
+    pub touched: Vec<Target>,
+    /// When the entry was made, in milliseconds since 1970.
+    pub at_ms: u64,
+}
+
+/// Who changed a sprite last, and when.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Editor {
+    pub author: String,
+    pub at_ms: u64,
 }
 
 #[derive(Debug, Default)]
@@ -26,6 +38,8 @@ pub struct History {
     entries: Vec<Entry>,
     /// Undone entries. Redo takes from the end.
     undone: Vec<Entry>,
+    /// What changed place or name in the last apply, undo or redo.
+    moved: Vec<(Target, Target)>,
 }
 
 impl History {
@@ -51,13 +65,36 @@ impl History {
             return Ok(Vec::new());
         }
         let applied = project.apply_group(&ops)?;
+        self.moved = applied.moved;
         self.entries.push(Entry {
             author: author.to_string(),
             forward: ops,
             inverse: applied.inverses,
+            touched: applied.touched.clone(),
+            at_ms: now_ms(),
         });
         self.undone.clear();
         Ok(applied.touched)
+    }
+
+    /// Who changed the sprite last: the latest done entry that touched it.
+    pub fn last_editor(&self, sprite: &SpriteRef) -> Option<Editor> {
+        let target = Target::Sprite(sprite.clone());
+        self.entries
+            .iter()
+            .rev()
+            .find(|entry| entry.touched.contains(&target))
+            .map(|entry| Editor {
+                author: entry.author.clone(),
+                at_ms: entry.at_ms,
+            })
+    }
+
+    /// The sprites and folders that changed place or name in the last apply,
+    /// undo or redo, from the old place to the new one. Storage uses it to
+    /// move their files.
+    pub fn last_moves(&self) -> &[(Target, Target)] {
+        &self.moved
     }
 
     pub fn can_redo(&self) -> bool {
@@ -73,6 +110,7 @@ impl History {
             .ok_or_else(|| DocError::new("nothing_to_undo", "there is nothing to undo"))?;
         match project.apply_group(&entry.inverse) {
             Ok(applied) => {
+                self.moved = applied.moved;
                 self.undone.push(entry);
                 Ok(applied.touched)
             }
@@ -90,6 +128,7 @@ impl History {
             .ok_or_else(|| DocError::new("nothing_to_redo", "there is nothing to redo"))?;
         match project.apply_group(&entry.forward) {
             Ok(applied) => {
+                self.moved = applied.moved;
                 self.entries.push(entry);
                 Ok(applied.touched)
             }
@@ -119,4 +158,11 @@ impl History {
         self.entries.clear();
         self.undone.clear();
     }
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }

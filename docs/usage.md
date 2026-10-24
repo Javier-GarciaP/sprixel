@@ -9,6 +9,7 @@
 
 - [Install](#install)
 - [Create a project](#create-a-project)
+- [The Project tab](#the-project-tab)
 - [Create a sprite](#create-a-sprite)
 - [Draw](#draw)
 - [Frames and animations](#frames-and-animations)
@@ -67,20 +68,105 @@ The project saves by itself. The top bar shows **Saved** or **Saving...**. If
 saving fails it shows **Error saving** and a message with the reason and
 **Retry**.
 
+## The Project tab
+
+The **Project** tab is where you see and organize everything in the project.
+It has three parts:
+
+- **Left:** a search field, the **folders** tree and the **palettes** of the
+  project. Each folder shows how many items it holds, and each sprite shows its
+  number of frames. Press the arrow of a folder to open or close it.
+- **Middle:** the sprites of the selected folder as cards, with a thumbnail of
+  the first frame, the name, the size and the frames (for example
+  `8x8 - 4 frames`), and a **New sprite** card at the end. The buttons **New
+  folder** and **New sprite** are above the cards.
+- **Right:** the details of the selected sprite: a large preview, its size,
+  frames and palette, its animations (name, frames, speed and how it repeats)
+  and who edited it last, for example "Edited by claude-code". The buttons are
+  **Open in editor**, **Duplicate**, **Delete**, **Rename** and **Move to
+  folder**.
+
+A new project has no sprites yet. The middle area says so and offers **New
+sprite**, and the tree says "No folders yet".
+
+**Open a sprite** with a double-click on its card, with **Open in editor**, or
+with `Enter`. The **Editor** tab shows it.
+
+**Search:** type in the search field to find sprites and folders of the whole
+project by name, ignoring upper and lower case and accents ("arbol" finds
+"Árbol"). The cards show what matches. Press `Esc` or the **x** button to clear
+the search.
+
+### Folders
+
+Press **New folder** and choose where to put it: the project root or another
+folder. If a sprite or folder with that name already exists there, the field
+turns red, says so and **Create folder** stays disabled. Each folder is a real
+folder inside `sprites/` in your project.
+
+### Rename and duplicate
+
+- **Rename** a sprite or folder with the menu, with `F2`, or by double-clicking
+  its name (in the details panel, in the tree or above the cards). The same name
+  rules as when creating apply. Renaming keeps the content of the sprite.
+- **Duplicate** (`Ctrl+D`) makes a copy in the same folder with all its frames
+  and animations, called `goblin copy`, then `goblin copy 2` and so on.
+
+### Move
+
+Use **Move to folder** in a sprite menu, or the **Move** button when several
+sprites are selected. The list offers the project root and every folder, and
+**New folder...** to make one on the way. You can also drag a card onto a folder
+of the tree. If the destination already has something with the same name, a
+message says so and nothing moves.
+
+### Delete and undo
+
+- Deleting **one sprite** does not ask. It goes to the trash (the folder
+  `.sprixel/trash/` of the project) and a message says "goblin moved to the
+  trash" with **Undo** for 8 seconds. `Ctrl+Z` also brings it back, and
+  `Ctrl+Shift+Z` does it again.
+- Deleting a **folder** or **several sprites** asks first. The dialog lists what
+  will go to the trash and the focus starts on **Cancel**. Undo works for them
+  too.
+
+Undo and redo work on the last change of the project, whoever made it.
+
+### Select several sprites
+
+Check the box of a card, or hold `Ctrl` (`Cmd` on macOS) and click to add or
+remove cards, or hold `Shift` and click to select a range. A bar shows how many
+are selected with **Move**, **Delete** and **Cancel selection**, and the details
+panel lists their names and their total frames.
+
+### Menus and keys
+
+Every action can be started from the **...** button of a card, with a right
+click on a card or a folder, from the buttons of the details panel and with the
+keyboard. They all do the same thing: Open in editor (`Enter`), Rename (`F2`),
+Duplicate (`Ctrl+D`), Move to folder and Delete (`Delete`). With a folder
+selected and no sprite, `F2` renames the folder and `Delete` asks to delete it.
+
 ## Create a sprite
 
 1. In the **Project** tab, press **New sprite**.
-2. Type a name and choose a folder.
-3. Choose the canvas size: a preset (8x8, 16x16, 32x32, 64x64) or any width and
-   height up to 512x512, for example 120x30.
-4. Press **Create sprite**. The editor opens.
+2. Type a name and choose a folder. The dialog starts on the folder you have
+   open.
+3. Choose the canvas size once: a preset (8x8, 16x16, 32x32, 64x64) or any width
+   and height from 1 to 512, for example 120x30. Typing a size clears the
+   preset. From 128 pixels on, a warning says that drawing with an AI is less
+   accurate and the editor can be slower, but you can still create it.
+4. Choose a palette, or keep **No palette**. Without a palette the sprite uses
+   the palette `main` of the project, which Sprixel creates empty the first
+   time. It grows with the colors you use.
+5. Press **Create sprite**. The editor opens with the new sprite.
 
-Use folders to keep things in order (characters, enemies, items). Create them
-with **New folder**. Right-click a sprite or folder for more actions: open,
-rename, duplicate, move and delete. Deleted items go to the trash and a message
-lets you **Undo**.
+The name must not be empty, must be valid as a file name and must not be used
+by another sprite or folder in that folder (ignoring case). If it is not, the
+field turns red with the reason and **Create sprite** stays disabled.
 
-You can select several sprites with the checkboxes to move or delete them.
+Use folders to keep things in order (characters, enemies, items). See [The
+Project tab](#the-project-tab) to rename, duplicate, move and delete.
 
 ## Draw
 

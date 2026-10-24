@@ -56,3 +56,5 @@ mod open_tests;
 mod listing_tests;
 #[cfg(test)]
 mod docs_tests;
+#[cfg(test)]
+mod move_tests;

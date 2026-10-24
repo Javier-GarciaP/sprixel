@@ -1,8 +1,10 @@
 //! Tauri commands the UI calls.
 
+pub mod browser;
 pub mod preferences;
 pub mod project;
 
+use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};
 use preferences::{Data, RecentProject, Settings};
 use project::{ProjectError, ProjectInfo, ProjectState, StatusInfo};
 use std::path::PathBuf;
@@ -95,4 +97,141 @@ pub fn project_status(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
 #[tauri::command]
 pub fn retry_save(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
     project::retry_save(&state)
+}
+
+/// Sends `project://changed` after a change, then gives the value to the UI.
+/// A failed change sends nothing.
+fn finish<T>(
+    app: &tauri::AppHandle,
+    result: Result<(T, browser::ChangedEvent), CoreError>,
+) -> Result<T, CoreError> {
+    let (value, event) = result?;
+    let _ = tauri::Emitter::emit(app, CHANGED_EVENT, event);
+    Ok(value)
+}
+
+#[tauri::command]
+pub fn project_tree(state: tauri::State<ProjectState>) -> Result<TreeInfo, CoreError> {
+    browser::project_tree(&state)
+}
+
+#[tauri::command]
+pub fn sprite_frame(
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    frame: u32,
+) -> Result<FrameInfo, CoreError> {
+    browser::sprite_frame(&state, &folder, &name, frame)
+}
+
+#[tauri::command]
+pub fn check_name(
+    state: tauri::State<ProjectState>,
+    parent: Vec<String>,
+    name: String,
+    current: Option<String>,
+) -> Result<Option<&'static str>, CoreError> {
+    browser::check_name(&state, &parent, &name, current.as_deref())
+}
+
+#[tauri::command]
+pub fn create_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    width: u32,
+    height: u32,
+    palette: Option<String>,
+) -> Result<SpriteTarget, CoreError> {
+    finish(
+        &app,
+        browser::create_sprite(&state, &folder, &name, width, height, palette.as_deref()),
+    )
+}
+
+#[tauri::command]
+pub fn create_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    parent: Vec<String>,
+    name: String,
+) -> Result<Vec<String>, CoreError> {
+    finish(&app, browser::create_folder(&state, &parent, &name))
+}
+
+#[tauri::command]
+pub fn rename_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    new_name: String,
+) -> Result<SpriteTarget, CoreError> {
+    finish(&app, browser::rename_sprite(&state, &folder, &name, &new_name))
+}
+
+#[tauri::command]
+pub fn rename_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    path: Vec<String>,
+    new_name: String,
+) -> Result<Vec<String>, CoreError> {
+    finish(&app, browser::rename_folder(&state, &path, &new_name))
+}
+
+#[tauri::command]
+pub fn duplicate_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+) -> Result<SpriteTarget, CoreError> {
+    finish(&app, browser::duplicate_sprite(&state, &folder, &name))
+}
+
+#[tauri::command]
+pub fn delete_sprites(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprites: Vec<SpriteTarget>,
+) -> Result<u64, CoreError> {
+    finish(&app, browser::delete_sprites(&state, &sprites))
+}
+
+#[tauri::command]
+pub fn project_undo(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::undo(&state))
+}
+
+#[tauri::command]
+pub fn project_redo(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::redo(&state))
+}
+
+#[tauri::command]
+pub fn move_sprites(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprites: Vec<SpriteTarget>,
+    to: Vec<String>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::move_sprites(&state, &sprites, &to))
+}
+
+#[tauri::command]
+pub fn delete_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    path: Vec<String>,
+) -> Result<u64, CoreError> {
+    finish(&app, browser::delete_folder(&state, &path))
 }
