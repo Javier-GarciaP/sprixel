@@ -6,12 +6,18 @@ import { ItemMenu } from "./ItemMenu";
 import { DRAG_TYPE } from "./paths";
 import { SpriteThumb } from "./SpriteThumb";
 
-type Props = {
+export type Props = {
   sprite: SpriteSummary;
   cache: FrameCache;
   revision: number;
   selected: boolean;
-  onSelect: (sprite: SpriteSummary) => void;
+  // `extend` is true with Ctrl (or Command) held, `range` with Shift held.
+  onSelect: (
+    sprite: SpriteSummary,
+    modifiers: { extend: boolean; range: boolean },
+  ) => void;
+  // The checkbox of the card adds or removes it from the selection.
+  onToggle: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
   // The actions of the "..." button.
   menuItems: MenuItem[];
@@ -28,6 +34,7 @@ export function SpriteCard({
   revision,
   selected,
   onSelect,
+  onToggle,
   onOpen,
   menuItems,
   dragSprites,
@@ -52,7 +59,12 @@ export function SpriteCard({
       <button
         type="button"
         aria-pressed={selected}
-        onClick={() => onSelect(sprite)}
+        onClick={(event) =>
+          onSelect(sprite, {
+            extend: event.ctrlKey || event.metaKey,
+            range: event.shiftKey,
+          })
+        }
         onDoubleClick={() => onOpen(sprite)}
         className="block w-full text-left"
       >
@@ -69,6 +81,17 @@ export function SpriteCard({
           {sprite.width}x{sprite.height} - {frames}
         </span>
       </button>
+      <label
+        className={`absolute left-3 top-3 flex h-5 w-5 items-center justify-center rounded border border-border-strong bg-surface focus-within:opacity-100 hover:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
+      >
+        <input
+          type="checkbox"
+          aria-label={t("browse.select", { name: sprite.name })}
+          checked={selected}
+          onChange={() => onToggle(sprite)}
+          className="h-3.5 w-3.5 accent-[var(--color-amber)]"
+        />
+      </label>
       <ItemMenu
         label={t("browse.moreActions", { name: sprite.name })}
         items={menuItems}

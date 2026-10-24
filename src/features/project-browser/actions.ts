@@ -32,15 +32,12 @@ type Context = {
   folders: FolderOption[];
 };
 
-// The menu of a sprite. `targets` are the sprites the actions apply to (more
-// than one when several are selected); `sprite` is the one the menu opened on.
-export function spriteMenuItems(
-  sprite: SpriteSummary,
+// The places the sprites can move to: every folder where they are not all
+// already, and "New folder...".
+export function moveMenuItems(
   targets: SpriteSummary[],
-  { actions, t, hint, folders }: Context,
+  { actions, t, folders }: Pick<Context, "actions" | "t" | "folders">,
 ): MenuItem[] {
-  const many = targets.length > 1;
-  // Folders where every target is not already.
   const here = (path: string[]) =>
     targets.every((s) => pathKey(s.folder) === pathKey(path));
   const destinations: MenuItem[] = folders
@@ -50,6 +47,26 @@ export function spriteMenuItems(
       label: folder.label,
       onSelect: () => actions.move(targets, folder.path),
     }));
+  return [
+    ...destinations,
+    {
+      id: "move:new",
+      label: t("move.newFolder"),
+      separator: destinations.length > 0,
+      onSelect: () => actions.moveToNewFolder(targets),
+    },
+  ];
+}
+
+// The menu of a sprite. `targets` are the sprites the actions apply to (more
+// than one when several are selected); `sprite` is the one the menu opened on.
+export function spriteMenuItems(
+  sprite: SpriteSummary,
+  targets: SpriteSummary[],
+  context: Context,
+): MenuItem[] {
+  const { actions, t, hint } = context;
+  const many = targets.length > 1;
   return [
     // Open, rename and duplicate work on one sprite.
     ...(many
@@ -78,15 +95,7 @@ export function spriteMenuItems(
       id: "move",
       label: t("command.sprite.move"),
       onSelect: () => {},
-      submenu: [
-        ...destinations,
-        {
-          id: "move:new",
-          label: t("move.newFolder"),
-          separator: destinations.length > 0,
-          onSelect: () => actions.moveToNewFolder(targets),
-        },
-      ],
+      submenu: moveMenuItems(targets, context),
     },
     {
       id: "delete",

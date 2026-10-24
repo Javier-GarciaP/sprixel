@@ -3,7 +3,7 @@ import type { SpriteSummary } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import type { FrameCache } from "@/shared/lib/render";
 import { BrowserIcon } from "./icons";
-import { SpriteCard } from "./SpriteCard";
+import { SpriteCard, type Props as SpriteCardProps } from "./SpriteCard";
 import { spriteKey } from "./paths";
 
 type Props = {
@@ -11,7 +11,8 @@ type Props = {
   cache: FrameCache;
   revision: number;
   selected: Set<string>;
-  onSelect: (sprite: SpriteSummary) => void;
+  onSelect: SpriteCardProps["onSelect"];
+  onToggle: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
   onNewSprite: () => void;
   // The "New sprite" card is not shown among search results.
@@ -27,6 +28,7 @@ export function SpriteGrid({
   revision,
   selected,
   onSelect,
+  onToggle,
   onOpen,
   onNewSprite,
   showNew,
@@ -44,6 +46,7 @@ export function SpriteGrid({
             revision={revision}
             selected={selected.has(spriteKey(sprite))}
             onSelect={onSelect}
+            onToggle={onToggle}
             onOpen={onOpen}
             menuItems={menuFor(sprite)}
             dragSprites={dragSpritesFor(sprite)}

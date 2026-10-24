@@ -20,7 +20,12 @@ import {
 } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { FrameCache } from "@/shared/lib/render";
-import { folderMenuItems, spriteMenuItems, type HintFor } from "./actions";
+import {
+  folderMenuItems,
+  moveMenuItems,
+  spriteMenuItems,
+  type HintFor,
+} from "./actions";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { DetailsPanel } from "./DetailsPanel";
 import { FolderTree } from "./FolderTree";
@@ -29,6 +34,8 @@ import { NewSpriteDialog } from "./NewSpriteDialog";
 import { PaletteList } from "./PaletteList";
 import { BrowserIcon } from "./icons";
 import { RenameDialog } from "./RenameDialog";
+import { SelectionBar } from "./SelectionBar";
+import { SelectionDetails } from "./SelectionDetails";
 import { SearchResultsList } from "./SearchResultsList";
 import { search } from "./search";
 import { SpriteGrid } from "./SpriteGrid";
@@ -96,6 +103,8 @@ function Browser({
   // The selection is kept as keys and looked up in the tree each time, so the
   // details always show what the core has now.
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // The card a Shift click counts from.
+  const [anchor, setAnchor] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -161,6 +170,33 @@ function Browser({
   const selectSprite = (sprite: Pick<SpriteSummary, "folder" | "name">) => {
     setFolderPath(sprite.folder);
     setSelectedKeys([spriteKey(sprite)]);
+  };
+
+  // A click on a card. With Ctrl (Command) it adds or removes the card, with
+  // Shift it selects the cards between the last one clicked and this one.
+  const clickSprite = (
+    sprite: SpriteSummary,
+    { extend, range }: { extend: boolean; range: boolean },
+  ) => {
+    const key = spriteKey(sprite);
+    const shown = sprites.map(spriteKey);
+    if (range && anchor && shown.includes(anchor)) {
+      const [from, to] = [shown.indexOf(anchor), shown.indexOf(key)].sort(
+        (a, b) => a - b,
+      );
+      setSelectedKeys(shown.slice(from, to + 1));
+      return;
+    }
+    setAnchor(key);
+    if (extend) toggleSprite(sprite);
+    else setSelectedKeys([key]);
+  };
+  const toggleSprite = (sprite: SpriteSummary) => {
+    const key = spriteKey(sprite);
+    setAnchor(key);
+    setSelectedKeys((keys) =>
+      keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key],
+    );
   };
 
   // The actions on sprites and folders. Each menu, button and key calls these.
@@ -326,13 +362,15 @@ function Browser({
                 "sprite.duplicate": () => duplicate(only),
                 "sprite.delete": () => trash([only]),
               }
-            : currentPath.length > 0
-              ? {
-                  "sprite.rename": () => askRenameFolder(currentPath),
-                  "sprite.delete": () =>
-                    setDialog({ kind: "delete-folder", path: currentPath }),
-                }
-              : {}),
+            : selected.length > 1
+              ? { "sprite.delete": () => trash(selected) }
+              : currentPath.length > 0
+                ? {
+                    "sprite.rename": () => askRenameFolder(currentPath),
+                    "sprite.delete": () =>
+                      setDialog({ kind: "delete-folder", path: currentPath }),
+                  }
+                : {}),
         },
   );
 
@@ -428,14 +466,27 @@ function Browser({
                     </>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={() => setDialog({ kind: "folder" })}>
-                    {t("browse.newFolder")}
-                  </Button>
-                  <Button variant="primary" onClick={newSprite}>
-                    {t("browse.newSprite")}
-                  </Button>
-                </div>
+                {selected.length > 1 ? (
+                  <SelectionBar
+                    count={selected.length}
+                    moveItems={moveMenuItems(selected, {
+                      actions: spriteActions,
+                      t,
+                      folders,
+                    })}
+                    onDelete={() => trash(selected)}
+                    onCancel={() => setSelectedKeys([])}
+                  />
+                ) : (
+                  <div className="flex gap-2">
+                    <Button onClick={() => setDialog({ kind: "folder" })}>
+                      {t("browse.newFolder")}
+                    </Button>
+                    <Button variant="primary" onClick={newSprite}>
+                      {t("browse.newSprite")}
+                    </Button>
+                  </div>
+                )}
               </div>
               <p className="mt-3 text-xs font-semibold text-text-muted">
                 {t("browse.spritesCount", { count: sprites.length })}
@@ -446,7 +497,8 @@ function Browser({
               cache={cache}
               revision={tree.revision}
               selected={new Set(selectedKeys)}
-              onSelect={selectSprite}
+              onSelect={clickSprite}
+              onToggle={toggleSprite}
               onOpen={open}
               onNewSprite={newSprite}
               showNew={!searching}
@@ -486,15 +538,27 @@ function Browser({
           aria-label={t("browse.details")}
           className="w-72 shrink-0 overflow-auto border-l border-border p-4"
         >
-          <DetailsPanel
-            sprite={selected[0] ?? null}
-            cache={cache}
-            revision={tree.revision}
-            onOpen={open}
-            onRename={askRename}
-            onDuplicate={duplicate}
-            onDelete={(sprite) => trash([sprite])}
-          />
+          {selected.length > 1 ? (
+            <SelectionDetails
+              sprites={selected}
+              moveItems={moveMenuItems(selected, {
+                actions: spriteActions,
+                t,
+                folders,
+              })}
+              onDelete={() => trash(selected)}
+            />
+          ) : (
+            <DetailsPanel
+              sprite={selected[0] ?? null}
+              cache={cache}
+              revision={tree.revision}
+              onOpen={open}
+              onRename={askRename}
+              onDuplicate={duplicate}
+              onDelete={(sprite) => trash([sprite])}
+            />
+          )}
         </aside>
       )}
       {dialog?.kind === "sprite" && (
