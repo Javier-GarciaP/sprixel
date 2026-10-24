@@ -187,3 +187,106 @@ describe("Bucket in the editor", () => {
     expect(colorOfPixel(8, 8, 0, 0)[0]).not.toBe(255);
   });
 });
+
+describe("Shapes in the editor", () => {
+  const shapeCall = async (
+    tool: string,
+    path: [number, number][],
+    extra: Record<string, unknown> = {},
+    beforeDrag?: () => void,
+  ) => {
+    const api = new FakeEditorApi(16, 16);
+    renderEditor(api);
+    await screen.findByText("1800%");
+    fireEvent.click(screen.getByRole("button", { name: tool }));
+    beforeDrag?.();
+    drag([16, 16], path, 0, extra);
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    return api.calls[0].changes;
+  };
+  const extent = (changes: { x: number; y: number }[]) => [
+    Math.max(...changes.map((c) => c.x)) - Math.min(...changes.map((c) => c.x)),
+    Math.max(...changes.map((c) => c.y)) - Math.min(...changes.map((c) => c.y)),
+  ];
+
+  // Checks that a Line, a Rectangle and an Ellipse each send one operation
+  // with the shape when the pointer is released.
+  it("draws a line, a rectangle and an ellipse", async () => {
+    expect(
+      extent(
+        await shapeCall("Line", [
+          [1, 1],
+          [8, 1],
+        ]),
+      ),
+    ).toEqual([7, 0]);
+    cleanup();
+    expect(
+      extent(
+        await shapeCall("Rectangle", [
+          [1, 1],
+          [6, 4],
+        ]),
+      ),
+    ).toEqual([5, 3]);
+    cleanup();
+    expect(
+      extent(
+        await shapeCall("Ellipse", [
+          [1, 1],
+          [6, 4],
+        ]),
+      ),
+    ).toEqual([5, 3]);
+  });
+
+  // Checks the "Square with Shift" scenario through the real events: the
+  // pointer carries the Shift key and the result is a square.
+  it("makes a square when Shift is held", async () => {
+    const changes = await shapeCall(
+      "Rectangle",
+      [
+        [2, 2],
+        [9, 5],
+      ],
+      {
+        shiftKey: true,
+      },
+    );
+    expect(extent(changes)).toEqual([7, 7]);
+  });
+
+  // Checks the fill option: the Filled switch appears for the Rectangle and
+  // not for the Pencil, and a filled 4x3 rectangle sends 12 pixels (an outline
+  // would send 10).
+  it("fills the shape when Filled is on", async () => {
+    const changes = await shapeCall(
+      "Rectangle",
+      [
+        [1, 1],
+        [4, 3],
+      ],
+      {},
+      () => {
+        fireEvent.click(screen.getByRole("button", { name: "Filled" }));
+      },
+    );
+    expect(changes).toHaveLength(12);
+    cleanup();
+    const outline = await shapeCall("Rectangle", [
+      [1, 1],
+      [4, 3],
+    ]);
+    expect(outline).toHaveLength(10);
+  });
+
+  it("shows the shape style only for Rectangle and Ellipse", async () => {
+    renderEditor(new FakeEditorApi(16, 16));
+    await screen.findByText("1800%");
+    expect(screen.queryByRole("group", { name: "Shape style" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ellipse" }));
+    expect(
+      await screen.findByRole("group", { name: "Shape style" }),
+    ).toBeTruthy();
+  });
+});

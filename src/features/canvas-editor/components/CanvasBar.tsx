@@ -12,6 +12,9 @@ type Props = {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  // Rectangle and Ellipse can be outlined or filled.
+  filled: boolean;
+  onFilled: (filled: boolean) => void;
 };
 
 const iconButton =
@@ -29,6 +32,8 @@ export function CanvasBar({
   canRedo,
   onUndo,
   onRedo,
+  filled,
+  onFilled,
 }: Props) {
   const t = useT();
   const active = tools.find((entry) => entry.id === tool)!;
@@ -61,6 +66,25 @@ export function CanvasBar({
       <span className="text-xs text-text-muted" data-testid="active-tool">
         {t("editor.activeTool", { name: t(active.labelKey) })}
       </span>
+      {(tool === "rectangle" || tool === "ellipse") && (
+        <div
+          role="group"
+          aria-label={t("editor.shapeStyle")}
+          className="flex rounded-md border border-border bg-surface p-0.5 text-xs"
+        >
+          {[false, true].map((value) => (
+            <button
+              key={String(value)}
+              type="button"
+              aria-pressed={filled === value}
+              onClick={() => onFilled(value)}
+              className={`rounded px-2 py-1 ${filled === value ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
+            >
+              {t(value ? "editor.filled" : "editor.outline")}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="ml-auto flex rounded-md border border-border bg-surface p-0.5 text-xs">
         <button
           type="button"

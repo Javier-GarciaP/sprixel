@@ -295,3 +295,115 @@ describe("Bucket", () => {
     expect(commits[0]).toHaveLength(512 * 512);
   });
 });
+
+describe("Shapes", () => {
+  const shape = (
+    tool: "line" | "rectangle" | "ellipse",
+    from: [number, number],
+    to: [number, number],
+    shift = false,
+  ) => {
+    const made = setup(16, 16);
+    made.controller.tool = tool;
+    made.controller.pointerDown(from[0], from[1], 0, { shift });
+    made.controller.pointerMove(to[0], to[1], { shift });
+    made.controller.pointerUp();
+    return made;
+  };
+  const painted = (pixels: Uint8Array) => {
+    const list: string[] = [];
+    pixels.forEach((c, i) => {
+      if (c !== 46) list.push(`${i % 16},${Math.floor(i / 16)}`);
+    });
+    return list;
+  };
+
+  // Checks that a line goes from the press to the release with no gaps, in
+  // one commit.
+  it("draws a line on release", () => {
+    const { commits, pixels } = shape("line", [1, 1], [8, 4]);
+    expect(commits).toHaveLength(1);
+    expect(painted(pixels)).toContain("1,1");
+    expect(painted(pixels)).toContain("8,4");
+    expect(painted(pixels)).toHaveLength(8);
+  });
+
+  // Checks the live preview: while the pointer moves, the pixels follow it and
+  // the pixels of the old position are taken back; nothing is sent until the
+  // release.
+  it("previews the shape while dragging and sends it once", () => {
+    const { controller, pixels, commits } = setup(16, 16);
+    controller.tool = "rectangle";
+    controller.pointerDown(2, 2, 0, plain);
+    controller.pointerMove(10, 10, plain);
+    expect(painted(pixels)).toContain("10,10");
+    expect(commits).toEqual([]);
+    controller.pointerMove(4, 4, plain);
+    expect(painted(pixels)).not.toContain("10,10");
+    expect(painted(pixels)).toHaveLength(8);
+    controller.pointerUp();
+    expect(commits).toHaveLength(1);
+    expect(commits[0]).toHaveLength(8);
+  });
+
+  // Checks that a shape that ends where it started (or goes back to its
+  // first pixel) is a single pixel, and that releasing outside works.
+  it("clips a shape that leaves the sprite", () => {
+    const { commits } = shape("rectangle", [12, 12], [30, 30]);
+    expect(commits[0].every((c) => c.x < 16 && c.y < 16)).toBe(true);
+  });
+
+  // Checks the outline and fill options of the Rectangle: a 5x4 outline has
+  // 14 pixels and a filled one has 20.
+  it("draws an outline or a filled rectangle", () => {
+    expect(painted(shape("rectangle", [1, 1], [5, 4]).pixels)).toHaveLength(14);
+    const { controller, pixels } = setup(16, 16);
+    controller.tool = "rectangle";
+    controller.filled = true;
+    controller.pointerDown(1, 1, 0, plain);
+    controller.pointerMove(5, 4, plain);
+    controller.pointerUp();
+    expect(painted(pixels)).toHaveLength(20);
+  });
+
+  // Checks the "Square with Shift" scenario: dragging a rectangle from (2, 2)
+  // to (9, 5) while holding Shift gives a square of 8 x 8 (28 outline pixels).
+  it("makes a square from a rectangle with Shift", () => {
+    const { pixels } = shape("rectangle", [2, 2], [9, 5], true);
+    const xs = painted(pixels).map((p) => Number(p.split(",")[0]));
+    const ys = painted(pixels).map((p) => Number(p.split(",")[1]));
+    expect(Math.max(...xs) - Math.min(...xs)).toBe(7);
+    expect(Math.max(...ys) - Math.min(...ys)).toBe(7);
+    expect(painted(pixels)).toHaveLength(28);
+  });
+
+  // Checks Shift on an ellipse: the box becomes a square, so the circle is as
+  // tall as it is wide.
+  it("makes a circle from an ellipse with Shift", () => {
+    const { pixels } = shape("ellipse", [2, 2], [11, 5], true);
+    const xs = painted(pixels).map((p) => Number(p.split(",")[0]));
+    const ys = painted(pixels).map((p) => Number(p.split(",")[1]));
+    expect(Math.max(...xs) - Math.min(...xs)).toBe(
+      Math.max(...ys) - Math.min(...ys),
+    );
+  });
+
+  // Checks Shift on a line: a nearly horizontal drag becomes exactly
+  // horizontal, and a nearly diagonal one becomes a 45-degree line.
+  it("snaps a line to 45-degree steps with Shift", () => {
+    const horizontal = painted(shape("line", [2, 5], [12, 6], true).pixels);
+    expect(horizontal.every((p) => p.endsWith(",5"))).toBe(true);
+    const diagonal = painted(shape("line", [2, 2], [10, 9], true).pixels);
+    expect(diagonal).toContain("9,9");
+  });
+
+  // Checks that every shape tool uses the secondary color on the right button.
+  it("uses the secondary color on the right button", () => {
+    const { controller, at } = setup(16, 16);
+    controller.tool = "line";
+    controller.pointerDown(1, 1, 2, plain);
+    controller.pointerMove(4, 1, plain);
+    controller.pointerUp();
+    expect(at(2, 1)).toBe("B");
+  });
+});

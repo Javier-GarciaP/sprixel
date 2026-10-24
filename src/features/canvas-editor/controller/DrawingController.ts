@@ -1,7 +1,13 @@
 import type { PixelChange } from "../api/types";
 import { Draft } from "../tools/draft";
 import { floodFill } from "../tools/fill";
-import { linePoints } from "../tools/shapes";
+import {
+  ellipsePoints,
+  linePoints,
+  rectanglePoints,
+  snapLine,
+  squareCorner,
+} from "../tools/shapes";
 import type { ToolId } from "../tools/tools";
 import { TRANSPARENT_CODE, type Rect } from "../types";
 import type { Point } from "../view/viewMath";
@@ -32,7 +38,11 @@ export class DrawingController {
   main = "#000000";
   secondary = "#FFFFFF";
   private draft: Draft;
+  // Rectangle and Ellipse can be outlined or filled.
+  filled = false;
   private stroke: { code: number; last: Point } | null = null;
+  // A shape being dragged: where it started and the color it is drawn with.
+  private shape: { from: Point; code: number } | null = null;
 
   constructor(
     readonly width: number,
@@ -45,11 +55,10 @@ export class DrawingController {
   }
 
   get drawing() {
-    return this.stroke !== null;
+    return this.stroke !== null || this.shape !== null;
   }
 
   pointerDown(x: number, y: number, button: Button, modifiers: Modifiers) {
-    void modifiers;
     const color = button === 2 ? this.secondary : this.main;
     if (this.tool === "eyedropper") {
       if (this.draft.inside(x, y)) {
@@ -66,6 +75,15 @@ export class DrawingController {
       this.finish();
       return;
     }
+    if (
+      this.tool === "line" ||
+      this.tool === "rectangle" ||
+      this.tool === "ellipse"
+    ) {
+      this.shape = { from: { x, y }, code: this.colors.codeFor(color) };
+      this.drawShape({ x, y }, modifiers.shift);
+      return;
+    }
     if (this.tool === "pencil" || this.tool === "eraser") {
       const code =
         this.tool === "eraser" ? TRANSPARENT_CODE : this.colors.codeFor(color);
@@ -76,7 +94,10 @@ export class DrawingController {
   }
 
   pointerMove(x: number, y: number, modifiers: Modifiers) {
-    void modifiers;
+    if (this.shape) {
+      this.drawShape({ x, y }, modifiers.shift);
+      return;
+    }
     const stroke = this.stroke;
     if (!stroke) return;
     // Join the last position and this one, so a fast move leaves no gaps.
@@ -88,9 +109,31 @@ export class DrawingController {
   }
 
   pointerUp() {
-    if (!this.stroke) return;
+    if (!this.stroke && !this.shape) return;
     this.stroke = null;
+    this.shape = null;
     this.finish();
+  }
+
+  // The live preview of a shape: the pixels of the last position are taken
+  // back and the shape is drawn again up to the pointer. Nothing is sent
+  // until the pointer is released.
+  private drawShape(to: Point, shift: boolean) {
+    const shape = this.shape!;
+    this.draft.revert();
+    const from = shape.from;
+    let points;
+    if (this.tool === "line") {
+      points = linePoints(from, shift ? snapLine(from, to) : to);
+    } else {
+      const corner = shift ? squareCorner(from, to) : to;
+      points =
+        this.tool === "rectangle"
+          ? rectanglePoints(from, corner, this.filled)
+          : ellipsePoints(from, corner, this.filled);
+    }
+    for (const point of points) this.draft.set(point.x, point.y, shape.code);
+    this.flush();
   }
 
   private flush() {

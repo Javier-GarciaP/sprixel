@@ -66,6 +66,7 @@ function OpenSprite({
   const [tool, setTool] = useState<ToolId>("pencil");
   const [main, setMain] = useState("#000000");
   const [secondary, setSecondary] = useState("#FFFFFF");
+  const [filled, setFilled] = useState(false);
   const [onion, setOnion] = useState({ on: false, opacity: DEFAULT_OPACITY });
   const { data, reload } = useSpriteData(api, sprite, frame, onion.on);
 
@@ -98,6 +99,8 @@ function OpenSprite({
         setMain(secondary);
         setSecondary(main);
       }}
+      filled={filled}
+      onFilled={setFilled}
       onion={onion}
       onOnion={setOnion}
       pixelGrid={preferences.pixelGrid}
@@ -123,6 +126,8 @@ type ReadyProps = {
   onMain: (hex: string) => void;
   onSecondary: (hex: string) => void;
   onSwap: () => void;
+  filled: boolean;
+  onFilled: (filled: boolean) => void;
   onion: { on: boolean; opacity: number };
   onOnion: (onion: { on: boolean; opacity: number }) => void;
   pixelGrid: boolean;
@@ -166,7 +171,8 @@ function Ready(props: ReadyProps) {
     controller.tool = props.tool;
     controller.main = props.main;
     controller.secondary = props.secondary;
-  }, [controller, props.tool, props.main, props.secondary]);
+    controller.filled = props.filled;
+  }, [controller, props.tool, props.main, props.secondary, props.filled]);
 
   useEditorCommands(props.onCommands, {
     ...Object.fromEntries(
@@ -217,6 +223,8 @@ function Ready(props: ReadyProps) {
           canRedo={info.canRedo}
           onUndo={() => {}}
           onRedo={() => {}}
+          filled={props.filled}
+          onFilled={props.onFilled}
         />
         <CanvasArea
           scene={scene}
