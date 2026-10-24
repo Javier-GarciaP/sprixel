@@ -78,7 +78,7 @@ export function renderEditor(
   } = {},
 ) {
   const language = options.language ?? "en";
-  return render(
+  const tree = (current: EditorApi, sprite: SpriteRef | null) => (
     <PreferencesProvider
       initial={{
         ...defaultPreferences(language),
@@ -86,13 +86,19 @@ export function renderEditor(
       }}
     >
       <I18nProvider language={language}>
-        <Host
-          sprite={options.sprite === undefined ? goblin : options.sprite}
-          api={api}
-        />
+        <Host sprite={sprite} api={current} />
       </I18nProvider>
-    </PreferencesProvider>,
+    </PreferencesProvider>
   );
+  const result = render(
+    tree(api, options.sprite === undefined ? goblin : options.sprite),
+  );
+  return {
+    ...result,
+    // Shows another sprite (and its api) in the same editor.
+    show: (next: EditorApi, sprite: SpriteRef | null) =>
+      result.rerender(tree(next, sprite)),
+  };
 }
 
 // Where the center of a sprite pixel is on the screen when the sprite is

@@ -50,7 +50,15 @@ export function EditorScreen({
       </div>
     );
   }
-  return <OpenSprite sprite={sprite} api={api} onCommands={onCommands} />;
+  // Another sprite starts from the first frame, with nothing left over.
+  return (
+    <OpenSprite
+      key={JSON.stringify(sprite)}
+      sprite={sprite}
+      api={api}
+      onCommands={onCommands}
+    />
+  );
 }
 
 function OpenSprite({
@@ -76,6 +84,13 @@ function OpenSprite({
     frame,
     onion.on,
   );
+
+  // A frame that no longer exists (after an undo, for example) goes to the
+  // last one.
+  const frameCount = data.status === "ready" ? data.info.frameCount : null;
+  useEffect(() => {
+    if (frameCount !== null && frame > frameCount) setFrame(frameCount);
+  }, [frameCount, frame]);
 
   if (data.status === "loading") return null;
   if (data.status === "error") {
