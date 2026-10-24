@@ -29,6 +29,7 @@
   "command.project.export": "Export...",
   "command.project.close": "Close project",
   "menu.autosave": "The project saves by itself.",
+  "editor.opened": "Editing {name}",
   "browse.spritesCount": "Sprites · {count}",
   "browse.frameOne": "1 frame",
   "browse.frames": "{count} frames",

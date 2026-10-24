@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ProjectBrowser } from "@/features/project-browser";
+import { ProjectBrowser, type SpriteTarget } from "@/features/project-browser";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
@@ -47,6 +47,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   // The core owns the project; this is only what the UI shows about it.
   const [project, setProject] = useState<OpenedProject | null>(null);
   const [newProjectFrom, setNewProjectFrom] = useState<string | null>(null);
+  // The sprite open in the Editor tab.
+  const [activeSprite, setActiveSprite] = useState<SpriteTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const save = useSaveStatus(project !== null);
   useWindowTitle(project?.name ?? null);
@@ -60,6 +62,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
 
   const afterOpen = (info: ProjectInfo) => {
     setProject({ name: info.name, path: info.path });
+    setActiveSprite(null);
     setTab("project");
     setSettingsOpen(false);
     addRecentProject(info.path, info.name).then(setRecents);
@@ -98,6 +101,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const close = async () => {
     await closeProject();
     setProject(null);
+    setActiveSprite(null);
     setTab("project");
   };
 
@@ -126,7 +130,10 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   } else if (tab === "project" && project) {
     body = (
       <ProjectBrowser
-        onOpenSprite={() => {}}
+        onOpenSprite={(sprite) => {
+          setActiveSprite(sprite);
+          setTab("editor");
+        }}
         // The palette editor belongs to another spec.
         onOpenPalette={() => setNotice(t("body.soon"))}
         onNewPalette={() => setNotice(t("body.soon"))}
@@ -142,6 +149,14 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         onRemoveRecent={(path) => removeRecentProject(path).then(setRecents)}
         folderExists={folderExists}
       />
+    );
+  } else if (tab === "editor" && activeSprite) {
+    // The canvas editor belongs to another spec; for now the tab only says
+    // which sprite was opened.
+    body = (
+      <p className="p-6 text-text-muted">
+        {t("editor.opened", { name: activeSprite.name })}
+      </p>
     );
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;

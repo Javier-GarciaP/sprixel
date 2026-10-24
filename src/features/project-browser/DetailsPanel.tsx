@@ -1,3 +1,4 @@
+import { Button } from "@/shared/components";
 import type { SpriteSummary, Tag } from "@/shared/lib/core";
 import { useLanguage, useT } from "@/shared/lib/i18n";
 import type { FrameCache } from "@/shared/lib/render";
@@ -7,6 +8,7 @@ type Props = {
   sprite: SpriteSummary | null;
   cache: FrameCache;
   revision: number;
+  onOpen: (sprite: SpriteSummary) => void;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -19,7 +21,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 // The right side of the Project tab: everything about the selected sprite.
-export function DetailsPanel({ sprite, cache, revision }: Props) {
+export function DetailsPanel({ sprite, cache, revision, onOpen }: Props) {
   const t = useT();
   const language = useLanguage();
 
@@ -99,6 +101,14 @@ export function DetailsPanel({ sprite, cache, revision }: Props) {
       </section>
 
       {editedBy && <p className="text-xs text-text-muted">{editedBy}</p>}
+
+      <Button
+        variant="primary"
+        className="justify-center"
+        onClick={() => onOpen(sprite)}
+      >
+        {t("command.sprite.open")}
+      </Button>
     </div>
   );
 }

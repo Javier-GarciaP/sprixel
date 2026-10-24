@@ -379,3 +379,33 @@ describe("empty states", () => {
     expect(screen.queryByRole("complementary", { name: "Details" })).toBeNull();
   });
 });
+
+describe("opening a sprite", () => {
+  // Checks the spec scenario "Double-click": double-clicking a card asks the
+  // app to open that sprite in the editor.
+  it("opens the sprite when its card is double-clicked", async () => {
+    const handlers = renderBrowser();
+    await openFolder(/^Personajes/);
+
+    fireEvent.doubleClick(await card(/goblin/));
+
+    expect(handlers.onOpenSprite).toHaveBeenCalledWith(
+      expect.objectContaining({ folder: ["Personajes"], name: "goblin" }),
+    );
+  });
+
+  // Checks that the "Open in editor" button of the details does the same.
+  it("opens the selected sprite with the Open in editor button", async () => {
+    const handlers = renderBrowser();
+    await openFolder(/^Personajes/);
+    fireEvent.click(await card(/hero/));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open in editor" }),
+    );
+
+    expect(handlers.onOpenSprite).toHaveBeenCalledWith(
+      expect.objectContaining({ folder: ["Personajes"], name: "hero" }),
+    );
+  });
+});

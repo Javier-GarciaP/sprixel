@@ -127,6 +127,7 @@ export function ProjectBrowser({
             sprite={selected[0] ?? null}
             cache={cache}
             revision={tree.revision}
+            onOpen={onOpenSprite}
           />
         </aside>
       )}
