@@ -563,3 +563,26 @@ describe("Select and Move", () => {
     expect(commits).toEqual([]);
   });
 });
+
+describe("Large sprites", () => {
+  // Checks the "Large sprite" scenario: a long stroke on a 512x512 sprite (300
+  // pointer moves along a wave) repaints only a small area for each move,
+  // never the whole frame, and sends the pixels as one commit.
+  it("repaints only a small area for each move of a long stroke", () => {
+    const { controller, dirty, commits } = setup(512, 512);
+    const points = Array.from({ length: 300 }, (_, i) => ({
+      x: 8 + Math.round((i / 299) * 495),
+      y: Math.round(256 + 240 * Math.sin((i / 299) * Math.PI * 6)),
+    }));
+    controller.pointerDown(points[0].x, points[0].y, 0, plain);
+    for (const point of points.slice(1))
+      controller.pointerMove(point.x, point.y, plain);
+    controller.pointerUp();
+    const largest = Math.max(...dirty.map((a) => a.width * a.height));
+    // Each move joins two points that are about 2 pixels apart across and at
+    // most 40 pixels up or down.
+    expect(largest).toBeLessThan(100 * 100);
+    expect(commits).toHaveLength(1);
+    expect(commits[0].length).toBeGreaterThan(300);
+  });
+});
