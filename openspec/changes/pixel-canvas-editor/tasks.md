@@ -10,7 +10,7 @@
 
 ## 2. Editor layout
 
-- [ ] 2.1 Build the editor layout (tools, frames column placeholder, canvas bar, right panel) and verify against screens 18 and 19
+- [x] 2.1 Build the editor layout (tools, frames column placeholder, canvas bar, right panel) and verify against screens 18 and 19
 - [ ] 2.2 Show the size next to the name, the active tool and the undo and redo buttons, and verify the bar contents
 
 ## 3. Tools

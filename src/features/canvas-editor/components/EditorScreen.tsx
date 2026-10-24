@@ -1,0 +1,181 @@
+import { useMemo, useState } from "react";
+import { useT } from "@/shared/lib/i18n";
+import { usePreferences } from "@/shared/lib/preferences";
+import { coreEditorApi } from "../api/editor";
+import type { EditorApi, SpriteRef } from "../api/types";
+import { useSpriteData, isBlank } from "../hooks/useSpriteData";
+import { buildColorTable } from "../render/colors";
+import type { Scene } from "../render/renderer";
+import type { ToolId } from "../tools/tools";
+import { useCanvasView } from "../view/useCanvasView";
+import { CanvasArea } from "./CanvasArea";
+import { CanvasBar } from "./CanvasBar";
+import { CanvasStatusBar } from "./CanvasStatusBar";
+import { FramesColumn } from "./FramesColumn";
+import { DEFAULT_OPACITY, OnionPanel } from "./OnionPanel";
+import { PalettePanel } from "./PalettePanel";
+import { RightPanel } from "./RightPanel";
+import { ToolsColumn } from "./ToolsColumn";
+import type { SpriteInfo } from "../api/types";
+
+type Props = {
+  // The sprite to edit, or null when none is open.
+  sprite: SpriteRef | null;
+  // The calls to the core. The tests give a fake one.
+  api?: EditorApi;
+};
+
+export function EditorScreen({ sprite, api = coreEditorApi }: Props) {
+  const t = useT();
+  if (!sprite) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+        <p className="font-title text-lg font-bold">{t("editor.noSprite")}</p>
+        <p className="text-sm text-text-muted">{t("editor.noSpriteHint")}</p>
+      </div>
+    );
+  }
+  return <OpenSprite sprite={sprite} api={api} />;
+}
+
+function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
+  const t = useT();
+  const { preferences } = usePreferences();
+  const [frame, setFrame] = useState(1);
+  const [tool, setTool] = useState<ToolId>("pencil");
+  const [main, setMain] = useState("#000000");
+  const [secondary, setSecondary] = useState("#FFFFFF");
+  const [onion, setOnion] = useState({ on: false, opacity: DEFAULT_OPACITY });
+  const { data } = useSpriteData(api, sprite, frame, onion.on);
+
+  if (data.status === "loading") return null;
+  if (data.status === "error") {
+    return (
+      <p role="alert" className="p-6 text-sm text-error">
+        {t("editor.loadError", { message: data.message })}
+      </p>
+    );
+  }
+  return (
+    <Ready
+      sprite={sprite}
+      info={data.info}
+      pixels={data.pixels}
+      previous={data.previous}
+      frame={frame}
+      onFrame={setFrame}
+      tool={tool}
+      onTool={setTool}
+      main={main}
+      secondary={secondary}
+      onSwap={() => {
+        setMain(secondary);
+        setSecondary(main);
+      }}
+      onion={onion}
+      onOnion={setOnion}
+      pixelGrid={preferences.pixelGrid}
+    />
+  );
+}
+
+type ReadyProps = {
+  sprite: SpriteRef;
+  info: SpriteInfo;
+  pixels: Uint8Array;
+  previous: Uint8Array | null;
+  frame: number;
+  onFrame: (frame: number) => void;
+  tool: ToolId;
+  onTool: (tool: ToolId) => void;
+  main: string;
+  secondary: string;
+  onSwap: () => void;
+  onion: { on: boolean; opacity: number };
+  onOnion: (onion: { on: boolean; opacity: number }) => void;
+  pixelGrid: boolean;
+};
+
+function Ready(props: ReadyProps) {
+  const t = useT();
+  const { info, pixels, sprite } = props;
+  const canvas = useCanvasView(info.width, info.height);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+
+  const scene = useMemo<Scene>(
+    () => ({
+      width: info.width,
+      height: info.height,
+      pixels,
+      colors: buildColorTable(info.palette),
+      onion: null,
+      grid: props.pixelGrid,
+      selection: null,
+    }),
+    [info.width, info.height, info.palette, pixels, props.pixelGrid],
+  );
+
+  return (
+    <div className="flex h-full min-h-0">
+      <ToolsColumn
+        tool={props.tool}
+        onTool={props.onTool}
+        main={props.main}
+        secondary={props.secondary}
+        onSwap={props.onSwap}
+      />
+      <FramesColumn
+        frameCount={info.frameCount}
+        frame={props.frame}
+        onFrame={props.onFrame}
+      />
+      <section className="flex min-w-0 flex-1 flex-col">
+        <CanvasBar
+          name={sprite.name}
+          width={info.width}
+          height={info.height}
+          tool={props.tool}
+          canUndo={info.canUndo}
+          canRedo={info.canRedo}
+          onUndo={() => {}}
+          onRedo={() => {}}
+        />
+        <CanvasArea
+          scene={scene}
+          view={canvas.view}
+          onSize={(width, height) => canvas.setArea({ width, height })}
+          onZoom={(direction, at) =>
+            direction === 1 ? canvas.zoomIn(at) : canvas.zoomOut(at)
+          }
+          onMove={canvas.moveTo}
+          onHover={setPosition}
+        />
+        {isBlank(pixels) && (
+          <p className="mx-auto mb-3 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
+            {t("editor.hint")}
+          </p>
+        )}
+        <CanvasStatusBar
+          position={position}
+          zoom={canvas.view.zoom}
+          onZoomIn={() => canvas.zoomIn()}
+          onZoomOut={() => canvas.zoomOut()}
+          onFit={canvas.fit}
+        />
+      </section>
+      <RightPanel
+        palette={<PalettePanel colors={info.palette} />}
+        onion={
+          <OnionPanel
+            on={props.onion.on}
+            onToggle={(on) => props.onOnion({ ...props.onion, on })}
+            opacity={props.onion.opacity}
+            onOpacity={(opacity) => props.onOnion({ ...props.onion, opacity })}
+          />
+        }
+      />
+    </div>
+  );
+}

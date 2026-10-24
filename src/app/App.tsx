@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { EditorScreen, type SpriteRef } from "@/features/canvas-editor";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
@@ -47,6 +48,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const [project, setProject] = useState<OpenedProject | null>(null);
   const [newProjectFrom, setNewProjectFrom] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The sprite shown in the Editor tab. The core owns its data.
+  const [editorSprite, setEditorSprite] = useState<SpriteRef | null>(null);
   const save = useSaveStatus(project !== null);
   useWindowTitle(project?.name ?? null);
 
@@ -97,6 +100,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const close = async () => {
     await closeProject();
     setProject(null);
+    setEditorSprite(null);
     setTab("project");
   };
 
@@ -139,6 +143,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         folderExists={folderExists}
       />
     );
+  } else if (tab === "editor") {
+    body = <EditorScreen sprite={editorSprite} />;
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;
   }
