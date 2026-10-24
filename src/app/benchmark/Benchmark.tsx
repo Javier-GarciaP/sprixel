@@ -29,7 +29,7 @@ export function Benchmark() {
       />
       <p className="font-mono text-sm">
         {result
-          ? `median ${result.medianMs.toFixed(1)} ms (budget ${BUDGET_MS} ms)`
+          ? `median ${result.medianMs.toFixed(1)} ms (budget ${BUDGET_MS} ms), fill ${result.fillMs.toFixed(0)} ms, full repaint ${result.fullRepaintMs.toFixed(0)} ms`
           : "Running benchmark..."}
       </p>
     </main>
