@@ -165,8 +165,15 @@ function Ready(props: ReadyProps) {
   );
   // The palette of the sprite as the core has it. A stroke can add colors.
   const [palette, setPalette] = useState(info.palette);
+  const [history, setHistory] = useState({
+    canUndo: info.canUndo,
+    canRedo: info.canRedo,
+  });
   const [notice, setNotice] = useState<string | null>(null);
-  useEffect(() => setPalette(info.palette), [info]);
+  useEffect(() => {
+    setPalette(info.palette);
+    setHistory({ canUndo: info.canUndo, canRedo: info.canRedo });
+  }, [info]);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 5000);
@@ -178,6 +185,7 @@ function Ready(props: ReadyProps) {
       .then((result) => {
         controller.settle(result.palette);
         setPalette(result.palette);
+        setHistory(result);
       })
       .catch((error: { code?: string; message?: string }) => {
         // The core is the truth: read the frame again so the screen shows
@@ -195,7 +203,23 @@ function Ready(props: ReadyProps) {
     controller.filled = props.filled;
   }, [controller, props.tool, props.main, props.secondary, props.filled]);
 
+  // Undo and redo are done by the core. The screen then reads the sprite
+  // again, because the change can be anywhere (pixels and palette).
+  const step = (call: () => Promise<{ canUndo: boolean; canRedo: boolean }>) =>
+    call()
+      .then((state) => {
+        setHistory(state);
+        props.reload();
+      })
+      .catch(() => {
+        // Nothing to undo or redo.
+      });
+  const undo = () => step(() => props.api.undo());
+  const redo = () => step(() => props.api.redo());
+
   useEditorCommands(props.onCommands, {
+    "edit.undo": undo,
+    "edit.redo": redo,
     ...Object.fromEntries(
       tools.map((tool) => [`tool.${tool.id}`, () => props.onTool(tool.id)]),
     ),
@@ -243,10 +267,10 @@ function Ready(props: ReadyProps) {
           width={info.width}
           height={info.height}
           tool={props.tool}
-          canUndo={info.canUndo}
-          canRedo={info.canRedo}
-          onUndo={() => {}}
-          onRedo={() => {}}
+          canUndo={history.canUndo}
+          canRedo={history.canRedo}
+          onUndo={undo}
+          onRedo={redo}
           filled={props.filled}
           onFilled={props.onFilled}
         />

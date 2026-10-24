@@ -2,6 +2,7 @@
 
 pub mod preferences;
 pub mod project;
+pub mod editor;
 
 use preferences::{Data, RecentProject, Settings};
 use project::{ProjectError, ProjectInfo, ProjectState, StatusInfo};

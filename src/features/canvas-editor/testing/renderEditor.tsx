@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { configure, render } from "@testing-library/react";
+import { configure, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { useShortcuts } from "@/app/commands/useShortcuts";
 import { I18nProvider } from "@/shared/lib/i18n";
@@ -127,4 +127,22 @@ export function colorOfPixel(
 ): number[] {
   const point = pixelPoint(spriteWidth, spriteHeight, x, y);
   return pictureAt(point.clientX, point.clientY);
+}
+
+// Presses with a mouse button on the first pixel of `path`, moves over the
+// rest and releases on the last one.
+export function drag(
+  size: [number, number],
+  path: [number, number][],
+  button = 0,
+  extra: Record<string, unknown> = {},
+) {
+  const area = screen.getByTestId("canvas-area");
+  const at = ([x, y]: [number, number]) => ({
+    ...pixelPoint(size[0], size[1], x, y),
+    ...extra,
+  });
+  fireEvent.pointerDown(area, { ...at(path[0]), button });
+  for (const step of path.slice(1)) fireEvent.pointerMove(area, at(step));
+  fireEvent.pointerUp(area, at(path[path.length - 1]));
 }

@@ -115,6 +115,18 @@ pub fn open_project(state: &ProjectState, path: &Path) -> Result<ProjectInfo, Pr
     Ok(result)
 }
 
+/// Looks at the open project without changing it. `None` when none is open.
+pub fn read<R>(state: &ProjectState, look: impl FnOnce(&Session) -> R) -> Option<R> {
+    let open = state.0.lock().unwrap();
+    open.as_ref().map(|p| p.autosave.read(look))
+}
+
+/// Changes the open project and restarts the save timer. `None` when none is open.
+pub fn edit<R>(state: &ProjectState, change: impl FnOnce(&mut Session) -> R) -> Option<R> {
+    let open = state.0.lock().unwrap();
+    open.as_ref().map(|p| p.autosave.edit(change))
+}
+
 pub fn close_project(state: &ProjectState) {
     state.0.lock().unwrap().take();
 }

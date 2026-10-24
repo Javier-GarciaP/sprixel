@@ -12,7 +12,16 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(ipc::project::ProjectState::default())
+        .manage(ipc::editor::EditorState::default())
         .invoke_handler(tauri::generate_handler![
+            ipc::editor::editor_sprite,
+            ipc::editor::editor_frame,
+            ipc::editor::editor_apply,
+            ipc::editor::editor_undo,
+            ipc::editor::editor_redo,
+            ipc::editor::agent_activity,
+            ipc::editor::agent_stop,
+            ipc::editor::debug_agent_write,
             ipc::load_preferences,
             ipc::save_settings,
             ipc::add_recent_project,
