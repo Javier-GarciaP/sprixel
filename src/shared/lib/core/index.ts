@@ -6,7 +6,9 @@ import type {
   ChangedEvent,
   CoreFailure,
   FrameData,
+  NameProblem,
   ProjectTree,
+  SpriteTarget,
 } from "./types";
 
 export type * from "./types";
@@ -44,6 +46,25 @@ export const projectTree = () => call<ProjectTree>("project_tree");
 // Frames are numbered from 1.
 export const spriteFrame = (folder: string[], name: string, frame: number) =>
   call<FrameData>("sprite_frame", { folder, name, frame });
+
+// Asks if a name can be used inside the folder `parent`. `current` is the
+// name of the item that is being renamed.
+export const checkName = (parent: string[], name: string, current?: string) =>
+  call<NameProblem | null>("check_name", {
+    parent,
+    name,
+    current: current ?? null,
+  });
+
+// With no palette the core uses `main` (and creates it when it is missing).
+export const createSprite = (
+  folder: string[],
+  name: string,
+  width: number,
+  height: number,
+  palette: string | null,
+) =>
+  call<SpriteTarget>("create_sprite", { folder, name, width, height, palette });
 
 // Runs `listener` after every change to the open project. Returns a function
 // that stops listening. Outside the app nothing is ever emitted.

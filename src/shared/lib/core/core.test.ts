@@ -8,7 +8,14 @@ const { invoke, listen } = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen }));
 
-import { asCoreFailure, onProjectChanged, projectTree, spriteFrame } from ".";
+import {
+  asCoreFailure,
+  checkName,
+  createSprite,
+  onProjectChanged,
+  projectTree,
+  spriteFrame,
+} from ".";
 
 afterEach(() => {
   delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
@@ -34,6 +41,29 @@ describe("core api", () => {
       folder: ["Personajes"],
       name: "goblin",
       frame: 1,
+    });
+  });
+
+  // Checks that the calls that create things use the argument names of the
+  // Rust commands, and that "no palette" is sent as null.
+  it("calls the commands that create sprites and folders", async () => {
+    insideApp();
+    invoke.mockResolvedValue(null);
+
+    await checkName(["A"], "x");
+    await createSprite(["A"], "goblin", 16, 8, null);
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "check_name", {
+      parent: ["A"],
+      name: "x",
+      current: null,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, "create_sprite", {
+      folder: ["A"],
+      name: "goblin",
+      width: 16,
+      height: 8,
+      palette: null,
     });
   });
 

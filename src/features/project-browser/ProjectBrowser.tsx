@@ -1,16 +1,28 @@
 import { useState } from "react";
 import { Button } from "@/shared/components";
-import { spriteFrame, type SpriteSummary } from "@/shared/lib/core";
+import {
+  createSprite,
+  spriteFrame,
+  type SpriteSummary,
+  type SpriteTarget,
+} from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { FrameCache } from "@/shared/lib/render";
 import { FolderTree } from "./FolderTree";
+import { NewSpriteDialog } from "./NewSpriteDialog";
 import { PaletteList } from "./PaletteList";
 import { DetailsPanel } from "./DetailsPanel";
 import { SpriteGrid } from "./SpriteGrid";
-import { allSprites, findFolder, pathKey, spriteKey } from "./paths";
+import {
+  allSprites,
+  findFolder,
+  folderOptions,
+  pathKey,
+  spriteKey,
+} from "./paths";
 import { useProjectTree } from "./useProjectTree";
 
-export type SpriteTarget = { folder: string[]; name: string };
+export type { SpriteTarget };
 
 type Props = {
   onOpenSprite: (sprite: SpriteTarget) => void;
@@ -31,6 +43,7 @@ export function ProjectBrowser({
   const [folderPath, setFolderPath] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<SpriteSummary[]>([]);
+  const [dialog, setDialog] = useState<"sprite" | null>(null);
 
   if (!tree) return null;
 
@@ -59,7 +72,7 @@ export function ProjectBrowser({
   const sprites = folder ? folder.sprites : tree.root.sprites;
   const hasSprites = allSprites(tree.root).length > 0;
   const crumb = currentPath[currentPath.length - 1] ?? tree.name;
-  const newSprite = () => {};
+  const newSprite = () => setDialog("sprite");
 
   return (
     <div className="flex h-full">
@@ -86,11 +99,20 @@ export function ProjectBrowser({
         {hasSprites ? (
           <>
             <header className="mb-4">
-              <div className="flex items-baseline gap-2">
-                {currentPath.length > 0 && (
-                  <span className="text-sm text-text-muted">{tree.name} /</span>
-                )}
-                <h2 className="font-title text-xl font-bold">{crumb}</h2>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-baseline gap-2">
+                  {currentPath.length > 0 && (
+                    <span className="text-sm text-text-muted">
+                      {tree.name} /
+                    </span>
+                  )}
+                  <h2 className="font-title text-xl font-bold">{crumb}</h2>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="primary" onClick={newSprite}>
+                    {t("browse.newSprite")}
+                  </Button>
+                </div>
               </div>
               <p className="mt-3 text-xs font-semibold text-text-muted">
                 {t("browse.spritesCount", { count: sprites.length })}
@@ -112,9 +134,11 @@ export function ProjectBrowser({
               {t("browse.empty.title")}
             </h2>
             <p className="text-sm text-text-muted">{t("browse.empty.hint")}</p>
-            <Button variant="primary" onClick={newSprite}>
-              {t("browse.newSprite")}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="primary" onClick={newSprite}>
+                {t("browse.newSprite")}
+              </Button>
+            </div>
           </div>
         )}
       </section>
@@ -130,6 +154,16 @@ export function ProjectBrowser({
             onOpen={onOpenSprite}
           />
         </aside>
+      )}
+      {dialog === "sprite" && (
+        <NewSpriteDialog
+          folders={folderOptions(tree)}
+          palettes={tree.palettes}
+          defaultFolder={currentPath}
+          create={createSprite}
+          onCreated={onOpenSprite}
+          onClose={() => setDialog(null)}
+        />
       )}
     </div>
   );

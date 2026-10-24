@@ -25,7 +25,9 @@ pub fn run() {
             ipc::project_status,
             ipc::retry_save,
             ipc::project_tree,
-            ipc::sprite_frame
+            ipc::sprite_frame,
+            ipc::check_name,
+            ipc::create_sprite
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -17,7 +17,7 @@
 
 ### 3. Creating
 
-- [ ] 3.1 Build the New sprite dialog with presets, custom size, the 128 warning and name validation, and verify the three size scenarios
+- [x] 3.1 Build the New sprite dialog with presets, custom size, the 128 warning and name validation, and verify the three size scenarios
 - [ ] 3.2 Build the New folder dialog with the duplicate name error and verify the red field and disabled button
 
 ### 4. Organizing

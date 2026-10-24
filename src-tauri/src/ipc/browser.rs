@@ -3,10 +3,15 @@
 //! deleting). The functions here do not need a window, so the tests call them
 //! directly; the commands in `ipc/mod.rs` add the `project://changed` event.
 
-use crate::document::{DocError, Folder, Sprite, SpriteRef, Target};
+use crate::document::{
+    DocError, Folder, Operation, Palette, Sprite, SpriteRef, Target, same_name, validate_name,
+};
 use crate::ipc::project::{self, ProjectState};
 use crate::storage::Session;
 use serde::Serialize;
+
+/// The event the core emits after every change to the open project.
+pub const CHANGED_EVENT: &str = "project://changed";
 
 /// An error with a stable `code` (`no_project`, `name_exists`, ...) for the UI.
 #[derive(Debug, Serialize, PartialEq)]
@@ -135,6 +140,16 @@ pub struct FrameInfo {
     pub rows: Vec<String>,
     pub colors: Vec<ColorInfo>,
 }
+
+/// Where a sprite is, as the UI names it.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SpriteTarget {
+    pub folder: Vec<String>,
+    pub name: String,
+}
+
+/// The palette a sprite gets when the person chooses none.
+const DEFAULT_PALETTE: &str = "main";
 
 fn read<R>(state: &ProjectState, look: impl FnOnce(&Session) -> R) -> Result<R, CoreError> {
     project::read(state, look).ok_or_else(CoreError::no_project)
@@ -282,6 +297,92 @@ pub fn sprite_frame(
         })
     })?
     .map_err(CoreError::from)
+}
+
+/// Checks a name for a new or renamed sprite or folder inside `parent`. The
+/// answer is `None` when the name is fine, or a stable code: `empty`,
+/// `invalid_name`, `folder_exists` or `sprite_exists`. `current` is the name
+/// of the item being renamed, which does not clash with itself.
+pub fn check_name(
+    state: &ProjectState,
+    parent: &[String],
+    name: &str,
+    current: Option<&str>,
+) -> Result<Option<&'static str>, CoreError> {
+    read(state, |session| {
+        if name.trim().is_empty() {
+            return Some("empty");
+        }
+        if validate_name(name).is_err() {
+            return Some("invalid_name");
+        }
+        let folder = session.project.find_folder(parent)?;
+        let is_other = |item: &str| !current.is_some_and(|c| same_name(c, item));
+        if folder
+            .folders
+            .iter()
+            .any(|f| same_name(&f.name, name) && is_other(&f.name))
+        {
+            return Some("folder_exists");
+        }
+        if folder
+            .sprites
+            .iter()
+            .any(|s| same_name(&s.name, name) && is_other(&s.name))
+        {
+            return Some("sprite_exists");
+        }
+        None
+    })
+}
+
+/// Creates a sprite. With no palette the sprite uses `main`, which is created
+/// empty first when the project has none. Everything is one history entry.
+pub fn create_sprite(
+    state: &ProjectState,
+    folder: &[String],
+    name: &str,
+    width: u32,
+    height: u32,
+    palette: Option<&str>,
+) -> Result<(SpriteTarget, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let mut ops = Vec::new();
+        let palette = match palette {
+            Some(chosen) => chosen.to_string(),
+            None => {
+                if session.project.palette(DEFAULT_PALETTE).is_none() {
+                    ops.push(Operation::CreatePalette {
+                        palette: Palette {
+                            name: DEFAULT_PALETTE.to_string(),
+                            colors: Vec::new(),
+                        },
+                        index: None,
+                    });
+                }
+                DEFAULT_PALETTE.to_string()
+            }
+        };
+        ops.push(Operation::CreateSprite {
+            folder: folder.to_vec(),
+            name: name.to_string(),
+            width,
+            height,
+            palette,
+        });
+        let touched = session.apply("user", ops)?;
+        let target = touched
+            .iter()
+            .find_map(|t| match t {
+                Target::Sprite(sprite) => Some(SpriteTarget {
+                    folder: sprite.folder.clone(),
+                    name: sprite.name.clone(),
+                }),
+                _ => None,
+            })
+            .expect("a created sprite is touched");
+        Ok((target, touched))
+    })
 }
 
 #[cfg(test)]

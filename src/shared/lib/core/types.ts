@@ -57,3 +57,11 @@ export type ChangedEvent = {
 
 // An error of the core, with a stable code the UI can translate.
 export type CoreFailure = { code: string; message: string };
+
+// Where a sprite is: the folders from the root and its name.
+export type SpriteTarget = { folder: string[]; name: string };
+
+// Why a name cannot be used (see `check_name` in the core). `null` means the
+// name is fine.
+export type NameProblem =
+  "empty" | "invalid_name" | "folder_exists" | "sprite_exists";

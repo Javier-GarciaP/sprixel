@@ -30,3 +30,19 @@ export const itemCount = (folder: FolderNode) =>
 export function allSprites(folder: FolderNode): SpriteSummary[] {
   return [...folder.sprites, ...folder.folders.flatMap(allSprites)];
 }
+
+export type FolderOption = { path: string[]; label: string };
+
+// Every folder as a choice for a "Save in" list: the root first (with the
+// name of the project), then the folders from top to bottom.
+export function folderOptions(tree: ProjectTree): FolderOption[] {
+  const out: FolderOption[] = [{ path: [], label: tree.name }];
+  const walk = (folder: FolderNode) => {
+    for (const child of folder.folders) {
+      out.push({ path: child.path, label: child.path.join(" / ") });
+      walk(child);
+    }
+  };
+  walk(tree.root);
+  return out;
+}

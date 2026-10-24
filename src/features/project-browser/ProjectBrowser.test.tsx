@@ -229,7 +229,9 @@ describe("sprite cards", () => {
 
     expect(within(goblin).getByText("goblin")).toBeTruthy();
     expect(within(goblin).getByText("8x8 - 4 frames")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "New sprite" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "New sprite" })).toHaveLength(
+      2,
+    );
   });
 
   // Checks that a sprite with one frame says "1 frame", not "1 frames".

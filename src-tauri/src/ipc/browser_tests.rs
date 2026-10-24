@@ -212,3 +212,130 @@ fn the_event_and_the_errors_serialize_with_stable_names() {
         r#"{"code":"no_project","message":"no project is open"}"#
     );
 }
+
+fn session_sprite(state: &ProjectState, folder: &[&str], name: &str) -> Option<crate::document::Sprite> {
+    let at = SpriteRef::new(folder, name);
+    crate::ipc::project::read(state, |s| s.project.find_sprite(&at).cloned()).unwrap()
+}
+
+// Checks the spec scenario "Custom size": 120x30 makes a sprite of that size
+// in the chosen folder, and the answer says where it is so the UI can open it.
+#[test]
+fn a_sprite_can_have_any_size_up_to_512() {
+    let (_parent, state) = sample();
+
+    let (target, event) = create_sprite(
+        &state,
+        &["Enemigos".to_string()],
+        "slime",
+        120,
+        30,
+        Some("dungeon16"),
+    )
+    .unwrap();
+
+    assert_eq!((target.folder, target.name.as_str()), (vec!["Enemigos".to_string()], "slime"));
+    let sprite = session_sprite(&state, &["Enemigos"], "slime").unwrap();
+    assert_eq!((sprite.width, sprite.height, sprite.frame_count()), (120, 30, 1));
+    assert_eq!(sprite.palette, "dungeon16");
+    assert_eq!(event.touched[0].kind, "sprite");
+}
+
+// Checks the spec scenario "No palette chosen": a project without palettes
+// gets an empty palette `main` and the sprite uses it.
+#[test]
+fn without_a_palette_the_sprite_uses_a_new_main() {
+    let parent = tempfile::tempdir().unwrap();
+    let state = ProjectState::default();
+    create_project(&state, parent.path(), "Kit").unwrap();
+
+    create_sprite(&state, &[], "goblin", 16, 16, None).unwrap();
+
+    let tree = project_tree(&state).unwrap();
+    assert_eq!(tree.palettes.len(), 1);
+    assert_eq!(tree.palettes[0].name, "main");
+    assert_eq!(tree.root.sprites[0].palette, "main");
+}
+
+// Checks that creating the sprite and its `main` palette is one history entry:
+// one undo removes both, and the palette is not left behind.
+#[test]
+fn creating_a_sprite_with_main_is_one_undo() {
+    let parent = tempfile::tempdir().unwrap();
+    let state = ProjectState::default();
+    create_project(&state, parent.path(), "Kit").unwrap();
+    create_sprite(&state, &[], "goblin", 16, 16, None).unwrap();
+
+    crate::ipc::project::edit(&state, |s| s.undo()).unwrap().unwrap();
+
+    let tree = project_tree(&state).unwrap();
+    assert!(tree.root.sprites.is_empty());
+    assert!(tree.palettes.is_empty());
+}
+
+// Checks that an existing `main` is reused, not created twice.
+#[test]
+fn an_existing_main_is_reused() {
+    let parent = tempfile::tempdir().unwrap();
+    let state = ProjectState::default();
+    create_project(&state, parent.path(), "Kit").unwrap();
+    create_sprite(&state, &[], "a", 8, 8, None).unwrap();
+
+    create_sprite(&state, &[], "b", 8, 8, None).unwrap();
+
+    assert_eq!(project_tree(&state).unwrap().palettes.len(), 1);
+}
+
+// Checks the errors of creating a sprite: a size above 512, a name already
+// used in the folder and a palette that does not exist. A refused creation
+// leaves nothing behind (not even the `main` palette).
+#[test]
+fn a_refused_sprite_changes_nothing() {
+    let parent = tempfile::tempdir().unwrap();
+    let state = ProjectState::default();
+    create_project(&state, parent.path(), "Kit").unwrap();
+
+    let too_big = create_sprite(&state, &[], "big", 513, 8, None).unwrap_err();
+    assert_eq!(too_big.code, "too_big");
+    assert!(project_tree(&state).unwrap().palettes.is_empty());
+
+    create_sprite(&state, &[], "goblin", 8, 8, None).unwrap();
+    let again = create_sprite(&state, &[], "GOBLIN", 8, 8, None).unwrap_err();
+    assert_eq!(again.code, "name_exists");
+
+    let missing = create_sprite(&state, &[], "x", 8, 8, Some("nope")).unwrap_err();
+    assert_eq!(missing.code, "palette_not_found");
+    assert_eq!(project_tree(&state).unwrap().root.sprites.len(), 1);
+}
+
+// Checks the name check the dialogs use: empty, a character that is not
+// allowed, and a name that a folder or a sprite already uses (ignoring case).
+#[test]
+fn check_name_gives_a_stable_code() {
+    let (_parent, state) = sample();
+    let check = |parent: &[&str], name: &str| {
+        let parent: Vec<String> = parent.iter().map(|p| p.to_string()).collect();
+        check_name(&state, &parent, name, None).unwrap()
+    };
+
+    assert_eq!(check(&[], ""), Some("empty"));
+    assert_eq!(check(&[], "  "), Some("empty"));
+    assert_eq!(check(&[], "a/b"), Some("invalid_name"));
+    assert_eq!(check(&[], "enemigos"), Some("folder_exists"));
+    assert_eq!(check(&[], "ORC"), Some("sprite_exists"));
+    assert_eq!(check(&["Personajes"], "orc"), None);
+    assert_eq!(check(&[], "Items"), None);
+}
+
+// Checks that the item being renamed does not clash with itself (so a
+// rename that only changes the case is allowed), but other names still do.
+#[test]
+fn check_name_ignores_the_item_being_renamed() {
+    let (_parent, state) = sample();
+    let check = |name: &str, current: &str| {
+        check_name(&state, &[], name, Some(current)).unwrap()
+    };
+
+    assert_eq!(check("Orc", "orc"), None);
+    assert_eq!(check("enemigos", "orc"), Some("folder_exists"));
+}
