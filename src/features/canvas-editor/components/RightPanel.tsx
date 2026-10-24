@@ -14,10 +14,12 @@ type Props = {
   // The palette and the onion skin controls are made by the editor.
   palette: ReactNode;
   onion: ReactNode;
+  // What the agent that is drawing now is doing, if there is one.
+  agent?: string | null;
 };
 
 // The right panel: preview, palette, onion skin and agent activity.
-export function RightPanel({ palette, onion }: Props) {
+export function RightPanel({ palette, onion, agent }: Props) {
   const t = useT();
   return (
     <aside
@@ -33,7 +35,7 @@ export function RightPanel({ palette, onion }: Props) {
       <Section title={t("editor.onionSkin")}>{onion}</Section>
       <Section title={t("editor.agentActivity")}>
         <p className="text-xs text-text-muted">
-          {t("editor.agentActivityEmpty")}
+          {agent ?? t("editor.agentActivityEmpty")}
         </p>
       </Section>
     </aside>

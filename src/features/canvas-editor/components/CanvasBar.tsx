@@ -15,6 +15,8 @@ type Props = {
   // Rectangle and Ellipse can be outlined or filled.
   filled: boolean;
   onFilled: (filled: boolean) => void;
+  // An AI agent is drawing: what to say and what Stop does.
+  agent?: { text: string; onStop: () => void } | null;
 };
 
 const iconButton =
@@ -34,6 +36,7 @@ export function CanvasBar({
   onRedo,
   filled,
   onFilled,
+  agent,
 }: Props) {
   const t = useT();
   const active = tools.find((entry) => entry.id === tool)!;
@@ -83,6 +86,22 @@ export function CanvasBar({
               {t(value ? "editor.filled" : "editor.outline")}
             </button>
           ))}
+        </div>
+      )}
+      {agent && (
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-full border border-amber bg-surface px-3 py-1 text-xs"
+        >
+          <span className="h-2 w-2 rounded-full bg-amber" aria-hidden />
+          <span className="text-amber">{agent.text}</span>
+          <button
+            type="button"
+            onClick={agent.onStop}
+            className="border-l border-amber pl-2 font-semibold text-text"
+          >
+            {t("marker.stop")}
+          </button>
         </div>
       )}
       <div className="ml-auto flex rounded-md border border-border bg-surface p-0.5 text-xs">

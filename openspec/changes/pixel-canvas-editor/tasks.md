@@ -29,7 +29,7 @@
 
 ## 5. Agents and speed
 
-- [ ] 5.1 Show the agent marker, the busy frame and the Stop button from core events, and verify with a simulated agent
+- [x] 5.1 Show the agent marker, the busy frame and the Stop button from core events, and verify with a simulated agent
 - [ ] 5.2 Run the 512x512 speed benchmark with the real editor and verify the 16 ms budget on each system
 
 ## 6. Documentation

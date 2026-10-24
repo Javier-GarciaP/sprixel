@@ -4,12 +4,14 @@ type Props = {
   frameCount: number;
   frame: number;
   onFrame: (frame: number) => void;
+  // The frame an AI agent is writing to, if any.
+  busyFrame?: number | null;
 };
 
 // The frames column. Adding and deleting frames and the animations belong to
 // the frames and animations spec; for now it lists the frame numbers so the
 // current frame can be changed.
-export function FramesColumn({ frameCount, frame, onFrame }: Props) {
+export function FramesColumn({ frameCount, frame, onFrame, busyFrame }: Props) {
   const t = useT();
   return (
     <aside
@@ -25,10 +27,18 @@ export function FramesColumn({ frameCount, frame, onFrame }: Props) {
           type="button"
           aria-label={t("editor.frame", { n })}
           aria-current={n === frame ? "true" : undefined}
+          aria-busy={n === busyFrame ? true : undefined}
+          title={n === busyFrame ? t("marker.frameBusy") : undefined}
           onClick={() => onFrame(n)}
           className={`h-16 w-20 rounded-md border font-mono text-xs ${n === frame ? "border-amber bg-surface-2 text-text" : "border-border bg-surface text-text-muted"}`}
         >
           {n}
+          {n === busyFrame && (
+            <span
+              aria-hidden
+              className="ml-1.5 inline-block h-2 w-2 rounded-full bg-amber"
+            />
+          )}
         </button>
       ))}
     </aside>

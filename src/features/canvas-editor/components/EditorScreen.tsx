@@ -8,6 +8,7 @@ import {
   useEditorCommands,
   type CommandHandlers,
 } from "../hooks/useEditorCommands";
+import { sameSprite, useAgentActivity } from "../hooks/useAgentActivity";
 import { useSpriteData, isBlank } from "../hooks/useSpriteData";
 import { tools } from "../tools/tools";
 import { ColorBook } from "../controller/colorBook";
@@ -184,7 +185,27 @@ function Ready(props: ReadyProps) {
     const timer = setTimeout(() => setNotice(null), 5000);
     return () => clearTimeout(timer);
   }, [notice]);
+  // The agent that is writing, and the strokes held while it works on the
+  // frame the user is drawing on. They are sent when the agent ends.
+  const { activity, endCount } = useAgentActivity(props.api);
+  const writing =
+    activity && sameSprite(activity.sprite, sprite) ? activity : null;
+  const busy = writing !== null && writing.frame === props.frame;
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+  const held = useRef<{ frame: number; changes: PixelChange[] }[]>([]);
+  const failed = (error: { code?: string; message?: string }) => {
+    // The core is the truth: read the frame again so the screen shows what
+    // the core has, without the stroke it refused.
+    if (error?.code === "palette_full") setNotice(t("colors.paletteFull"));
+    else setNotice(t("editor.strokeError", { message: error?.message ?? "" }));
+    props.reload();
+  };
   send.current = (changes) => {
+    if (busyRef.current) {
+      held.current.push({ frame: props.frame, changes });
+      return;
+    }
     props.api
       .applyChanges(sprite, props.frame, changes)
       .then((result) => {
@@ -193,14 +214,34 @@ function Ready(props: ReadyProps) {
         setHistory(result);
       })
       .catch((error: { code?: string; message?: string }) => {
-        // The core is the truth: read the frame again so the screen shows
-        // what the core has, without the stroke it refused.
-        if (error?.code === "palette_full") setNotice(t("colors.paletteFull"));
-        else
-          setNotice(t("editor.strokeError", { message: error?.message ?? "" }));
-        props.reload();
+        // The core knows the frame is busy before the screen does: keep the
+        // stroke like the others.
+        if (error?.code === "frame_busy") {
+          held.current.push({ frame: props.frame, changes });
+        } else failed(error);
       });
   };
+  // When an agent ends: send the held strokes in order, then read the sprite
+  // again to show what the agent drew.
+  useEffect(() => {
+    if (endCount === 0) return;
+    const items = held.current.splice(0);
+    (async () => {
+      for (const item of items) {
+        try {
+          await props.api.applyChanges(sprite, item.frame, item.changes);
+        } catch (error) {
+          setNotice(
+            t("editor.strokeError", {
+              message: (error as { message?: string })?.message ?? "",
+            }),
+          );
+        }
+      }
+      props.reload();
+    })();
+    // Only a new end of work runs this.
+  }, [endCount]);
   useEffect(() => {
     controller.tool = props.tool;
     controller.main = props.main;
@@ -235,6 +276,10 @@ function Ready(props: ReadyProps) {
     "view.zoomOut": () => canvas.zoomOut(),
     "view.fit": canvas.fit,
   });
+
+  const agentText = writing
+    ? t("marker.drawing", { agent: writing.agent, frame: writing.frame })
+    : "";
 
   const scene = useMemo<Scene>(
     () => ({
@@ -279,6 +324,7 @@ function Ready(props: ReadyProps) {
         frameCount={info.frameCount}
         frame={props.frame}
         onFrame={props.onFrame}
+        busyFrame={writing?.frame}
       />
       <section className="flex min-w-0 flex-1 flex-col">
         <CanvasBar
@@ -292,25 +338,36 @@ function Ready(props: ReadyProps) {
           onRedo={redo}
           filled={props.filled}
           onFilled={props.onFilled}
+          agent={
+            writing && {
+              text: agentText,
+              onStop: () => void props.api.stopAgent(),
+            }
+          }
         />
-        <CanvasArea
-          scene={scene}
-          view={canvas.view}
-          onSize={(width, height) => canvas.setArea({ width, height })}
-          onZoom={(direction, at) =>
-            direction === 1 ? canvas.zoomIn(at) : canvas.zoomOut(at)
-          }
-          onMove={canvas.moveTo}
-          onHover={setPosition}
-          canvasRef={canvasRef}
-          onStrokeStart={(pixel, button, shift) =>
-            controller.pointerDown(pixel.x, pixel.y, button, { shift })
-          }
-          onStrokeMove={(pixel, shift) =>
-            controller.pointerMove(pixel.x, pixel.y, { shift })
-          }
-          onStrokeEnd={() => controller.pointerUp()}
-        />
+        <div
+          data-testid={writing ? "agent-border" : undefined}
+          className={`flex min-h-0 flex-1 ${writing ? "outline-2 -outline-offset-2 outline-amber" : ""}`}
+        >
+          <CanvasArea
+            scene={scene}
+            view={canvas.view}
+            onSize={(width, height) => canvas.setArea({ width, height })}
+            onZoom={(direction, at) =>
+              direction === 1 ? canvas.zoomIn(at) : canvas.zoomOut(at)
+            }
+            onMove={canvas.moveTo}
+            onHover={setPosition}
+            canvasRef={canvasRef}
+            onStrokeStart={(pixel, button, shift) =>
+              controller.pointerDown(pixel.x, pixel.y, button, { shift })
+            }
+            onStrokeMove={(pixel, shift) =>
+              controller.pointerMove(pixel.x, pixel.y, { shift })
+            }
+            onStrokeEnd={() => controller.pointerUp()}
+          />
+        </div>
         {isBlank(pixels) && (
           <p className="mx-auto mb-3 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
             {t("editor.hint")}
@@ -325,6 +382,7 @@ function Ready(props: ReadyProps) {
         />
       </section>
       <RightPanel
+        agent={writing ? agentText : null}
         palette={
           <PalettePanel
             colors={palette}
