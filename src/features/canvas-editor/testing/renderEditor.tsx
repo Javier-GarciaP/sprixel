@@ -1,11 +1,14 @@
-import { render } from "@testing-library/react";
+import { useCallback, useState } from "react";
+import { configure, render } from "@testing-library/react";
 import { vi } from "vitest";
+import { useShortcuts } from "@/app/commands/useShortcuts";
 import { I18nProvider } from "@/shared/lib/i18n";
 import {
   PreferencesProvider,
   defaultPreferences,
 } from "@/shared/lib/preferences";
 import { EditorScreen } from "../components/EditorScreen";
+import type { CommandHandlers } from "../hooks/useEditorCommands";
 import type { EditorApi, SpriteRef } from "../api/types";
 import { centeredView, fitZoom } from "../view/viewMath";
 
@@ -16,6 +19,8 @@ export const goblin: SpriteRef = { folder: ["Characters"], name: "goblin" };
 export const putImageData = vi.fn();
 
 export function mockLayout(width = 500, height = 300) {
+  // Many test files run at once, so a slow machine needs more than 1 second.
+  configure({ asyncUtilTimeout: 5000 });
   putImageData.mockClear();
   vi.stubGlobal(
     "ImageData",
@@ -52,6 +57,18 @@ export function pictureAt(x: number, y: number): number[] {
   return [data[o], data[o + 1], data[o + 2], data[o + 3]];
 }
 
+// What the app does with the editor: it owns the shortcut keys and runs the
+// handlers the editor gives.
+function Host({ sprite, api }: { sprite: SpriteRef | null; api: EditorApi }) {
+  const [handlers, setHandlers] = useState<CommandHandlers>({});
+  useShortcuts(handlers, "other");
+  const register = useCallback(
+    (next: CommandHandlers | null) => setHandlers(next ?? {}),
+    [],
+  );
+  return <EditorScreen sprite={sprite} api={api} onCommands={register} />;
+}
+
 export function renderEditor(
   api: EditorApi,
   options: {
@@ -69,7 +86,7 @@ export function renderEditor(
       }}
     >
       <I18nProvider language={language}>
-        <EditorScreen
+        <Host
           sprite={options.sprite === undefined ? goblin : options.sprite}
           api={api}
         />

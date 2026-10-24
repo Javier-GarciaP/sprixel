@@ -12,6 +12,9 @@ export type Events = {
   // A stroke, fill, shape or move ended: its changed pixels, to send to the
   // core as one operation.
   onCommit: (changes: PixelChange[]) => void;
+  // The Eyedropper picked a color: the main one (left button) or the
+  // secondary one (right button).
+  onPick: (hex: string, button: Button) => void;
 };
 
 export type Modifiers = { shift: boolean };
@@ -47,6 +50,14 @@ export class DrawingController {
   pointerDown(x: number, y: number, button: Button, modifiers: Modifiers) {
     void modifiers;
     const color = button === 2 ? this.secondary : this.main;
+    if (this.tool === "eyedropper") {
+      if (this.draft.inside(x, y)) {
+        // A transparent pixel has no color: the colors stay as they are.
+        const hex = this.colors.hexOf(this.pixels[y * this.width + x]);
+        if (hex) this.events.onPick(hex, button);
+      }
+      return;
+    }
     if (this.tool === "pencil" || this.tool === "eraser") {
       const code =
         this.tool === "eraser" ? TRANSPARENT_CODE : this.colors.codeFor(color);

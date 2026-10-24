@@ -3,7 +3,12 @@ import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
 import type { EditorApi, SpriteRef } from "../api/types";
+import {
+  useEditorCommands,
+  type CommandHandlers,
+} from "../hooks/useEditorCommands";
 import { useSpriteData, isBlank } from "../hooks/useSpriteData";
+import { tools } from "../tools/tools";
 import { ColorBook } from "../controller/colorBook";
 import { DrawingController } from "../controller/DrawingController";
 import type { Scene } from "../render/renderer";
@@ -25,9 +30,15 @@ type Props = {
   sprite: SpriteRef | null;
   // The calls to the core. The tests give a fake one.
   api?: EditorApi;
+  // Gives the app what the editor commands do (the app owns the keys).
+  onCommands?: (handlers: CommandHandlers | null) => void;
 };
 
-export function EditorScreen({ sprite, api = coreEditorApi }: Props) {
+export function EditorScreen({
+  sprite,
+  api = coreEditorApi,
+  onCommands,
+}: Props) {
   const t = useT();
   if (!sprite) {
     return (
@@ -37,10 +48,18 @@ export function EditorScreen({ sprite, api = coreEditorApi }: Props) {
       </div>
     );
   }
-  return <OpenSprite sprite={sprite} api={api} />;
+  return <OpenSprite sprite={sprite} api={api} onCommands={onCommands} />;
 }
 
-function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
+function OpenSprite({
+  sprite,
+  api,
+  onCommands,
+}: {
+  sprite: SpriteRef;
+  api: EditorApi;
+  onCommands?: (handlers: CommandHandlers | null) => void;
+}) {
   const t = useT();
   const { preferences } = usePreferences();
   const [frame, setFrame] = useState(1);
@@ -61,6 +80,7 @@ function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
   return (
     <Ready
       api={api}
+      onCommands={onCommands}
       reload={reload}
       sprite={sprite}
       info={data.info}
@@ -72,6 +92,8 @@ function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
       onTool={setTool}
       main={main}
       secondary={secondary}
+      onMain={setMain}
+      onSecondary={setSecondary}
       onSwap={() => {
         setMain(secondary);
         setSecondary(main);
@@ -85,6 +107,7 @@ function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
 
 type ReadyProps = {
   api: EditorApi;
+  onCommands?: (handlers: CommandHandlers | null) => void;
   // Reads the sprite from the core again.
   reload: () => void;
   sprite: SpriteRef;
@@ -97,6 +120,8 @@ type ReadyProps = {
   onTool: (tool: ToolId) => void;
   main: string;
   secondary: string;
+  onMain: (hex: string) => void;
+  onSecondary: (hex: string) => void;
   onSwap: () => void;
   onion: { on: boolean; opacity: number };
   onOnion: (onion: { on: boolean; opacity: number }) => void;
@@ -130,6 +155,8 @@ function Ready(props: ReadyProps) {
         {
           onDirty: (area) => canvasRef.current?.invalidate(area),
           onCommit: (changes) => send.current(changes),
+          onPick: (hex, button) =>
+            button === 2 ? props.onSecondary(hex) : props.onMain(hex),
         },
       ),
     // A new copy of the pixels is a new controller.
@@ -140,6 +167,16 @@ function Ready(props: ReadyProps) {
     controller.main = props.main;
     controller.secondary = props.secondary;
   }, [controller, props.tool, props.main, props.secondary]);
+
+  useEditorCommands(props.onCommands, {
+    ...Object.fromEntries(
+      tools.map((tool) => [`tool.${tool.id}`, () => props.onTool(tool.id)]),
+    ),
+    "colors.swap": props.onSwap,
+    "view.zoomIn": () => canvas.zoomIn(),
+    "view.zoomOut": () => canvas.zoomOut(),
+    "view.fit": canvas.fit,
+  });
 
   const scene = useMemo<Scene>(
     () => ({
@@ -161,6 +198,8 @@ function Ready(props: ReadyProps) {
         onTool={props.onTool}
         main={props.main}
         secondary={props.secondary}
+        onMain={props.onMain}
+        onSecondary={props.onSecondary}
         onSwap={props.onSwap}
       />
       <FramesColumn
@@ -211,7 +250,15 @@ function Ready(props: ReadyProps) {
         />
       </section>
       <RightPanel
-        palette={<PalettePanel colors={info.palette} />}
+        palette={
+          <PalettePanel
+            colors={info.palette}
+            main={props.main}
+            secondary={props.secondary}
+            onMain={props.onMain}
+            onSecondary={props.onSecondary}
+          />
+        }
         onion={
           <OnionPanel
             on={props.onion.on}

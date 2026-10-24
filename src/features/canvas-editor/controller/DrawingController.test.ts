@@ -11,6 +11,7 @@ export function setup(width = 8, height = 8) {
   const pixels = new Uint8Array(width * height).fill(46);
   const commits: PixelChange[][] = [];
   const dirty: Rect[] = [];
+  const picks: [string, number][] = [];
   const colors = new ColorBook([
     { key: "R", hex: "#FF0000" },
     { key: "B", hex: "#0000FF" },
@@ -18,12 +19,13 @@ export function setup(width = 8, height = 8) {
   const controller = new DrawingController(width, height, pixels, colors, {
     onDirty: (area) => dirty.push(area),
     onCommit: (changes) => commits.push(changes),
+    onPick: (hex, button) => picks.push([hex, button]),
   });
   controller.main = "#FF0000";
   controller.secondary = "#0000FF";
   const at = (x: number, y: number) =>
     String.fromCharCode(pixels[y * width + x]);
-  return { controller, pixels, commits, dirty, colors, at };
+  return { controller, pixels, commits, dirty, picks, colors, at };
 }
 
 const plain = { shift: false };
@@ -139,5 +141,77 @@ describe("Eraser", () => {
     controller.pointerDown(4, 4, 0, plain);
     controller.pointerUp();
     expect(commits).toEqual([]);
+  });
+});
+
+describe("Colors", () => {
+  // Checks the "Right click" scenario: drawing with the right button uses the
+  // secondary color, the left button the main color.
+  it("draws with the secondary color on the right button", () => {
+    const { controller, commits, at } = setup();
+    controller.pointerDown(1, 1, 2, plain);
+    controller.pointerUp();
+    controller.pointerDown(2, 1, 0, plain);
+    controller.pointerUp();
+    expect(at(1, 1)).toBe("B");
+    expect(at(2, 1)).toBe("R");
+    expect(commits[0]).toEqual([{ x: 1, y: 1, color: "#0000FF" }]);
+  });
+
+  // Checks that a color is found by value whatever the letter case, so
+  // "#ff0000" draws with the key R of the palette.
+  it("matches colors ignoring the letter case", () => {
+    const { controller, at } = setup();
+    controller.main = "#ff0000";
+    controller.pointerDown(0, 0, 0, plain);
+    controller.pointerUp();
+    expect(at(0, 0)).toBe("R");
+  });
+
+  // Checks that the Eraser ignores the colors, also with the right button.
+  it("erases with the right button too", () => {
+    const { controller, at } = setup();
+    controller.pointerDown(0, 0, 0, plain);
+    controller.pointerUp();
+    controller.tool = "eraser";
+    controller.pointerDown(0, 0, 2, plain);
+    controller.pointerUp();
+    expect(at(0, 0)).toBe(".");
+  });
+});
+
+describe("Eyedropper", () => {
+  // Checks the "Pick a color" scenario: clicking a red pixel reports that red,
+  // and nothing is drawn.
+  it("picks the color under the pointer", () => {
+    const { controller, picks, commits } = setup();
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerUp();
+    controller.tool = "eyedropper";
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerUp();
+    expect(picks).toEqual([["#FF0000", 0]]);
+    expect(commits).toHaveLength(1);
+  });
+
+  // Checks that the right button picks the secondary color.
+  it("reports the right button", () => {
+    const { controller, picks } = setup();
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerUp();
+    controller.tool = "eyedropper";
+    controller.pointerDown(3, 3, 2, plain);
+    expect(picks).toEqual([["#FF0000", 2]]);
+  });
+
+  // Checks that a transparent pixel, or a click outside the sprite, leaves
+  // the colors unchanged.
+  it("does nothing on a transparent pixel or outside the sprite", () => {
+    const { controller, picks } = setup();
+    controller.tool = "eyedropper";
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerDown(-1, 3, 0, plain);
+    controller.pointerDown(3, 99, 0, plain);
+    expect(picks).toEqual([]);
   });
 });

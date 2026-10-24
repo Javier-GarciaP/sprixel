@@ -62,8 +62,8 @@ describe("editor layout", () => {
   it("lists the frames and the palette colors", async () => {
     renderEditor(new FakeEditorApi(8, 8, 3, palette));
     await screen.findByRole("button", { name: "Frame 3" });
-    expect(screen.getByRole("img", { name: "#F04545" })).toBeTruthy();
-    expect(screen.getByRole("img", { name: "#2F6BFF" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "#F04545" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "#2F6BFF" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "Transparent" })).toBeTruthy();
   });
 

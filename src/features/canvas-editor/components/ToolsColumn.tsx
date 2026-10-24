@@ -7,12 +7,22 @@ type Props = {
   onTool: (tool: ToolId) => void;
   main: string;
   secondary: string;
+  onMain: (hex: string) => void;
+  onSecondary: (hex: string) => void;
   onSwap: () => void;
 };
 
 // The tools on the left, then the main and the secondary color and a button
 // to swap them. A tool shows its name and key when the pointer rests on it.
-export function ToolsColumn({ tool, onTool, main, secondary, onSwap }: Props) {
+export function ToolsColumn({
+  tool,
+  onTool,
+  main,
+  secondary,
+  onMain,
+  onSecondary,
+  onSwap,
+}: Props) {
   const t = useT();
   return (
     <aside
@@ -37,18 +47,34 @@ export function ToolsColumn({ tool, onTool, main, secondary, onSwap }: Props) {
       })}
       <span className="my-1 h-px w-8 bg-border" aria-hidden />
       <div className="relative h-11 w-11">
-        <span
+        <label
           data-testid="secondary-color"
-          aria-label={t("colors.secondary")}
-          className="absolute right-0 bottom-0 h-7 w-7 rounded border-2 border-border-strong"
+          title={t("colors.secondary")}
+          className="absolute right-0 bottom-0 h-7 w-7 cursor-pointer rounded border-2 border-border-strong"
           style={{ background: secondary }}
-        />
-        <span
+        >
+          <input
+            type="color"
+            aria-label={t("colors.secondary")}
+            value={secondary.toLowerCase()}
+            onChange={(event) => onSecondary(event.target.value.toUpperCase())}
+            className="sr-only"
+          />
+        </label>
+        <label
           data-testid="main-color"
-          aria-label={t("colors.main")}
-          className="absolute top-0 left-0 h-7 w-7 rounded border-2 border-text"
+          title={t("colors.main")}
+          className="absolute top-0 left-0 h-7 w-7 cursor-pointer rounded border-2 border-text"
           style={{ background: main }}
-        />
+        >
+          <input
+            type="color"
+            aria-label={t("colors.main")}
+            value={main.toLowerCase()}
+            onChange={(event) => onMain(event.target.value.toUpperCase())}
+            className="sr-only"
+          />
+        </label>
       </div>
       <button
         type="button"

@@ -82,6 +82,8 @@
   "colors.main": "Color principal",
   "colors.secondary": "Color secundario",
   "colors.swap": "Intercambiar colores",
+  "command.colors.swap": "Intercambiar colores",
+  "colors.hex": "Color en hexadecimal",
   "shortcuts.group.project": "Proyecto",
   "shortcuts.group.tools": "Herramientas",
   "shortcuts.group.editor": "Editor y vista",
