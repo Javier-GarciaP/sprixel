@@ -1,0 +1,145 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { FakeEditorApi } from "../testing/fakeApi";
+import {
+  colorOfPixel,
+  mockLayout,
+  pixelPoint,
+  renderEditor,
+} from "../testing/renderEditor";
+
+beforeEach(() => mockLayout(500, 300));
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+// Draws with the left (0) or right (2) button from one pixel to others.
+function drag(
+  size: [number, number],
+  path: [number, number][],
+  button = 0,
+  extra: Record<string, unknown> = {},
+) {
+  const area = screen.getByTestId("canvas-area");
+  const at = ([x, y]: [number, number]) => ({
+    ...pixelPoint(size[0], size[1], x, y),
+    ...extra,
+  });
+  fireEvent.pointerDown(area, { ...at(path[0]), button });
+  for (const step of path.slice(1)) fireEvent.pointerMove(area, at(step));
+  fireEvent.pointerUp(area, at(path[path.length - 1]));
+}
+
+describe("Pencil and Eraser in the editor", () => {
+  // Checks the whole path of a stroke: the pixels show on the canvas while
+  // drawing, and one call with only the changed pixels goes to the core.
+  it("draws a stroke and sends one operation", async () => {
+    const api = new FakeEditorApi(16, 16);
+    renderEditor(api);
+    await screen.findByText("1800%");
+    drag(
+      [16, 16],
+      [
+        [2, 3],
+        [6, 3],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    expect(api.calls[0].changes.map((c) => [c.x, c.y])).toEqual([
+      [2, 3],
+      [3, 3],
+      [4, 3],
+      [5, 3],
+      [6, 3],
+    ]);
+    expect(api.calls[0].changes.every((c) => c.color === "#000000")).toBe(true);
+    expect(colorOfPixel(16, 16, 4, 3)).toEqual([0, 0, 0, 255]);
+    expect(colorOfPixel(16, 16, 7, 3)).not.toEqual([0, 0, 0, 255]);
+  });
+
+  // Checks the "Fast stroke" scenario through the real events: one pointer
+  // move across 100 pixels paints all of them.
+  it("paints every pixel of a 100 pixel move", async () => {
+    const api = new FakeEditorApi(128, 4);
+    renderEditor(api);
+    await screen.findByText("300%");
+    drag(
+      [128, 4],
+      [
+        [0, 1],
+        [99, 1],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    expect(api.calls[0].changes).toHaveLength(100);
+    expect(api.rows(1)[1].slice(0, 100)).toMatch(/^[^.]{100}$/);
+  });
+
+  // Checks the "Pointer leaves the canvas" scenario: the stroke goes outside
+  // the sprite and only the pixels inside are sent.
+  it("sends only the pixels inside the sprite", async () => {
+    const api = new FakeEditorApi(16, 16);
+    renderEditor(api);
+    await screen.findByText("1800%");
+    drag(
+      [16, 16],
+      [
+        [14, 5],
+        [40, 5],
+        [-20, 5],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    const xs = api.calls[0].changes.map((c) => c.x).sort((a, b) => a - b);
+    expect(xs).toEqual(Array.from({ length: 16 }, (_, i) => i));
+  });
+
+  // Checks the Eraser: after choosing it, a stroke over drawn pixels sends
+  // transparent pixels (color null) and the canvas shows them cleared.
+  it("erases with the Eraser tool", async () => {
+    const api = new FakeEditorApi(16, 16);
+    renderEditor(api);
+    await screen.findByText("1800%");
+    drag(
+      [16, 16],
+      [
+        [1, 1],
+        [4, 1],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "Eraser" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("active-tool").textContent).toContain("Eraser"),
+    );
+    drag(
+      [16, 16],
+      [
+        [2, 1],
+        [3, 1],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(2));
+    expect(api.calls[1].changes).toEqual([
+      { x: 2, y: 1, color: null },
+      { x: 3, y: 1, color: null },
+    ]);
+    expect(api.rows(1)[1].slice(0, 5)).toBe(".A..A");
+  });
+
+  // Checks that a click without moving still draws one pixel, and that the
+  // context menu does not open on a right click (the right button draws).
+  it("draws one pixel with a click", async () => {
+    const api = new FakeEditorApi(16, 16);
+    renderEditor(api);
+    await screen.findByText("1800%");
+    drag([16, 16], [[5, 5]]);
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    expect(api.calls[0].changes).toHaveLength(1);
+    const menu = fireEvent.contextMenu(screen.getByTestId("canvas-area"));
+    expect(menu).toBe(false);
+  });
+});

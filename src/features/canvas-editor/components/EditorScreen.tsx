@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
 import type { EditorApi, SpriteRef } from "../api/types";
 import { useSpriteData, isBlank } from "../hooks/useSpriteData";
-import { buildColorTable } from "../render/colors";
+import { ColorBook } from "../controller/colorBook";
+import { DrawingController } from "../controller/DrawingController";
 import type { Scene } from "../render/renderer";
 import type { ToolId } from "../tools/tools";
 import { useCanvasView } from "../view/useCanvasView";
 import { CanvasArea } from "./CanvasArea";
+import type { PixelCanvasHandle } from "./PixelCanvas";
 import { CanvasBar } from "./CanvasBar";
 import { CanvasStatusBar } from "./CanvasStatusBar";
 import { FramesColumn } from "./FramesColumn";
@@ -16,7 +18,7 @@ import { DEFAULT_OPACITY, OnionPanel } from "./OnionPanel";
 import { PalettePanel } from "./PalettePanel";
 import { RightPanel } from "./RightPanel";
 import { ToolsColumn } from "./ToolsColumn";
-import type { SpriteInfo } from "../api/types";
+import type { PixelChange, SpriteInfo } from "../api/types";
 
 type Props = {
   // The sprite to edit, or null when none is open.
@@ -46,7 +48,7 @@ function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
   const [main, setMain] = useState("#000000");
   const [secondary, setSecondary] = useState("#FFFFFF");
   const [onion, setOnion] = useState({ on: false, opacity: DEFAULT_OPACITY });
-  const { data } = useSpriteData(api, sprite, frame, onion.on);
+  const { data, reload } = useSpriteData(api, sprite, frame, onion.on);
 
   if (data.status === "loading") return null;
   if (data.status === "error") {
@@ -58,6 +60,8 @@ function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
   }
   return (
     <Ready
+      api={api}
+      reload={reload}
       sprite={sprite}
       info={data.info}
       pixels={data.pixels}
@@ -80,6 +84,9 @@ function OpenSprite({ sprite, api }: { sprite: SpriteRef; api: EditorApi }) {
 }
 
 type ReadyProps = {
+  api: EditorApi;
+  // Reads the sprite from the core again.
+  reload: () => void;
   sprite: SpriteRef;
   info: SpriteInfo;
   pixels: Uint8Array;
@@ -104,17 +111,47 @@ function Ready(props: ReadyProps) {
     null,
   );
 
+  // The drawing controller works on `pixels` for as long as this copy of the
+  // frame lasts. A new copy from the core makes a new controller.
+  const canvasRef = useRef<PixelCanvasHandle>(null);
+  const send = useRef<(changes: PixelChange[]) => void>(() => {});
+  send.current = (changes) => {
+    props.api
+      .applyChanges(sprite, props.frame, changes)
+      .catch(() => props.reload());
+  };
+  const controller = useMemo(
+    () =>
+      new DrawingController(
+        info.width,
+        info.height,
+        pixels,
+        new ColorBook(info.palette),
+        {
+          onDirty: (area) => canvasRef.current?.invalidate(area),
+          onCommit: (changes) => send.current(changes),
+        },
+      ),
+    // A new copy of the pixels is a new controller.
+    [pixels],
+  );
+  useEffect(() => {
+    controller.tool = props.tool;
+    controller.main = props.main;
+    controller.secondary = props.secondary;
+  }, [controller, props.tool, props.main, props.secondary]);
+
   const scene = useMemo<Scene>(
     () => ({
       width: info.width,
       height: info.height,
       pixels,
-      colors: buildColorTable(info.palette),
+      colors: controller.colors.table,
       onion: null,
       grid: props.pixelGrid,
       selection: null,
     }),
-    [info.width, info.height, info.palette, pixels, props.pixelGrid],
+    [info.width, info.height, pixels, controller, props.pixelGrid],
   );
 
   return (
@@ -151,6 +188,14 @@ function Ready(props: ReadyProps) {
           }
           onMove={canvas.moveTo}
           onHover={setPosition}
+          canvasRef={canvasRef}
+          onStrokeStart={(pixel, button, shift) =>
+            controller.pointerDown(pixel.x, pixel.y, button, { shift })
+          }
+          onStrokeMove={(pixel, shift) =>
+            controller.pointerMove(pixel.x, pixel.y, { shift })
+          }
+          onStrokeEnd={() => controller.pointerUp()}
         />
         {isBlank(pixels) && (
           <p className="mx-auto mb-3 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">

@@ -3,11 +3,13 @@ import {
   useRef,
   useState,
   type PointerEvent,
+  type Ref,
   type WheelEvent,
 } from "react";
 import type { Scene, View } from "../render/renderer";
 import { pixelAt, type Point } from "../view/viewMath";
-import { PixelCanvas } from "./PixelCanvas";
+import type { Button } from "../controller/DrawingController";
+import { PixelCanvas, type PixelCanvasHandle } from "./PixelCanvas";
 
 type Props = {
   scene: Scene;
@@ -19,6 +21,13 @@ type Props = {
   onMove: (x: number, y: number) => void;
   // The sprite pixel under the pointer, or null when it is outside the sprite.
   onHover?: (pixel: Point | null) => void;
+  // The pointer drew: the pixel can be outside the sprite (a stroke may leave
+  // it and come back). The tool decides what to do.
+  onStrokeStart?: (pixel: Point, button: Button, shift: boolean) => void;
+  onStrokeMove?: (pixel: Point, shift: boolean) => void;
+  onStrokeEnd?: () => void;
+  // Lets the drawing controller repaint small areas.
+  canvasRef?: Ref<PixelCanvasHandle>;
 };
 
 const typingInField = (target: EventTarget | null) =>
@@ -36,11 +45,16 @@ export function CanvasArea({
   onZoom,
   onMove,
   onHover,
+  onStrokeStart,
+  onStrokeMove,
+  onStrokeEnd,
+  canvasRef,
 }: Props) {
   const holder = useRef<HTMLDivElement>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [panning, setPanning] = useState(false);
   const drag = useRef<{ from: Point; start: View } | null>(null);
+  const stroking = useRef(false);
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -76,11 +90,21 @@ export function CanvasArea({
 
   const onPointerDown = (event: PointerEvent) => {
     const pan = event.button === 1 || (event.button === 0 && spaceHeld);
-    if (!pan) return;
+    const draw = event.button === 0 || event.button === 2;
+    if (!pan && !draw) return;
     event.preventDefault();
-    drag.current = { from: local(event), start: view };
-    setPanning(true);
     holder.current?.setPointerCapture?.(event.pointerId);
+    if (pan) {
+      drag.current = { from: local(event), start: view };
+      setPanning(true);
+      return;
+    }
+    stroking.current = true;
+    onStrokeStart?.(
+      pixelAt(view, local(event)),
+      event.button as Button,
+      event.shiftKey,
+    );
   };
 
   // Tells the parent which pixel is under the pointer, only when it changes.
@@ -100,6 +124,7 @@ export function CanvasArea({
       pixel.x < scene.width &&
       pixel.y < scene.height;
     hover(inside ? pixel : null);
+    if (stroking.current) onStrokeMove?.(pixel, event.shiftKey);
     if (!drag.current) return;
     const now = local(event);
     onMove(
@@ -108,9 +133,13 @@ export function CanvasArea({
     );
   };
 
-  const stopPan = () => {
+  const release = () => {
     drag.current = null;
     setPanning(false);
+    if (stroking.current) {
+      stroking.current = false;
+      onStrokeEnd?.();
+    }
   };
 
   const cursor = panning ? "grabbing" : spaceHeld ? "grab" : "crosshair";
@@ -123,12 +152,13 @@ export function CanvasArea({
       onWheel={onWheel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={stopPan}
-      onPointerCancel={stopPan}
+      onPointerUp={release}
+      onPointerCancel={release}
       onPointerLeave={() => hover(null)}
       onAuxClick={(event) => event.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
     >
-      <PixelCanvas scene={scene} view={view} onSize={onSize} />
+      <PixelCanvas ref={canvasRef} scene={scene} view={view} onSize={onSize} />
     </div>
   );
 }

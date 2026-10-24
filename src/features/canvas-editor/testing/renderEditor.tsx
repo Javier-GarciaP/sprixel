@@ -7,6 +7,7 @@ import {
 } from "@/shared/lib/preferences";
 import { EditorScreen } from "../components/EditorScreen";
 import type { EditorApi, SpriteRef } from "../api/types";
+import { centeredView, fitZoom } from "../view/viewMath";
 
 export const goblin: SpriteRef = { folder: ["Characters"], name: "goblin" };
 
@@ -75,4 +76,38 @@ export function renderEditor(
       </I18nProvider>
     </PreferencesProvider>,
   );
+}
+
+// Where the center of a sprite pixel is on the screen when the sprite is
+// fitted and centered in a 500x300 area (what `mockLayout` sets).
+export function pixelPoint(
+  spriteWidth: number,
+  spriteHeight: number,
+  x: number,
+  y: number,
+  area = { width: 500, height: 300 },
+) {
+  const view = centeredView(
+    spriteWidth,
+    spriteHeight,
+    fitZoom(spriteWidth, spriteHeight, area.width, area.height),
+    area.width,
+    area.height,
+  );
+  return {
+    clientX: view.x + x * view.zoom + Math.floor(view.zoom / 2),
+    clientY: view.y + y * view.zoom + Math.floor(view.zoom / 2),
+    pointerId: 1,
+  };
+}
+
+// The color of the screen pixel at the center of a sprite pixel.
+export function colorOfPixel(
+  spriteWidth: number,
+  spriteHeight: number,
+  x: number,
+  y: number,
+): number[] {
+  const point = pixelPoint(spriteWidth, spriteHeight, x, y);
+  return pictureAt(point.clientX, point.clientY);
 }

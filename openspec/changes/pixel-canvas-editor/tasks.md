@@ -15,7 +15,7 @@
 
 ## 3. Tools
 
-- [ ] 3.1 Build the drawing controller, the Pencil and the Eraser with gap-free strokes and verify the fast stroke test
+- [x] 3.1 Build the drawing controller, the Pencil and the Eraser with gap-free strokes and verify the fast stroke test
 - [ ] 3.2 Build the colors (main, secondary, swap, right button) and the Eyedropper and verify the scenarios
 - [ ] 3.3 Build the Bucket and verify the closed outline test and the 512x512 timing
 - [ ] 3.4 Build Line, Rectangle and Ellipse with preview, Shift and fill options, and verify the Shift scenarios
