@@ -6,7 +6,7 @@
 
 ### 1. Reading the project
 
-- [ ] 1.1 Add the project tree and sprite list queries and events and verify a test that opens a sample project and lists it
+- [x] 1.1 Add the project tree and sprite list queries and events and verify a test that opens a sample project and lists it
 - [ ] 1.2 Add the thumbnail renderer with caching and verify the thumbnail updates when a sprite changes
 
 ### 2. Project tab

@@ -1,8 +1,10 @@
 //! Tauri commands the UI calls.
 
+pub mod browser;
 pub mod preferences;
 pub mod project;
 
+use browser::{CoreError, FrameInfo, TreeInfo};
 use preferences::{Data, RecentProject, Settings};
 use project::{ProjectError, ProjectInfo, ProjectState, StatusInfo};
 use std::path::PathBuf;
@@ -95,4 +97,19 @@ pub fn project_status(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
 #[tauri::command]
 pub fn retry_save(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
     project::retry_save(&state)
+}
+
+#[tauri::command]
+pub fn project_tree(state: tauri::State<ProjectState>) -> Result<TreeInfo, CoreError> {
+    browser::project_tree(&state)
+}
+
+#[tauri::command]
+pub fn sprite_frame(
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    frame: u32,
+) -> Result<FrameInfo, CoreError> {
+    browser::sprite_frame(&state, &folder, &name, frame)
 }

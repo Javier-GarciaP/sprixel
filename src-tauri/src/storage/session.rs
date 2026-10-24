@@ -159,22 +159,23 @@ impl Session {
     }
 
     /// Applies the operations of one action as one history entry.
-    pub fn apply(&mut self, author: &str, ops: Vec<Operation>) -> Result<(), DocError> {
+    /// Returns the parts of the project that changed.
+    pub fn apply(&mut self, author: &str, ops: Vec<Operation>) -> Result<Vec<Target>, DocError> {
         let touched = self.history.apply(&mut self.project, author, ops)?;
-        self.changed(touched);
-        Ok(())
+        self.changed(touched.clone());
+        Ok(touched)
     }
 
-    pub fn undo(&mut self) -> Result<(), DocError> {
+    pub fn undo(&mut self) -> Result<Vec<Target>, DocError> {
         let touched = self.history.undo(&mut self.project)?;
-        self.changed(touched);
-        Ok(())
+        self.changed(touched.clone());
+        Ok(touched)
     }
 
-    pub fn redo(&mut self) -> Result<(), DocError> {
+    pub fn redo(&mut self) -> Result<Vec<Target>, DocError> {
         let touched = self.history.redo(&mut self.project)?;
-        self.changed(touched);
-        Ok(())
+        self.changed(touched.clone());
+        Ok(touched)
     }
 
     pub fn undo_last_ai_action(&mut self) -> Result<(), DocError> {

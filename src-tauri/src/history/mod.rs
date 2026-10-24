@@ -3,7 +3,8 @@
 // Nothing outside the tests uses this module yet (IPC and MCP come later).
 #![allow(dead_code, unused_imports)]
 
-use crate::document::{DocError, Operation, Project, Target};
+use crate::document::{DocError, Operation, Project, SpriteRef, Target};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(test)]
 mod history_tests;
@@ -18,6 +19,17 @@ pub struct Entry {
     pub author: String,
     pub forward: Vec<Operation>,
     pub inverse: Vec<Operation>,
+    /// The parts of the project the entry changed.
+    pub touched: Vec<Target>,
+    /// When the entry was made, in milliseconds since 1970.
+    pub at_ms: u64,
+}
+
+/// Who changed a sprite last, and when.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Editor {
+    pub author: String,
+    pub at_ms: u64,
 }
 
 #[derive(Debug, Default)]
@@ -55,9 +67,24 @@ impl History {
             author: author.to_string(),
             forward: ops,
             inverse: applied.inverses,
+            touched: applied.touched.clone(),
+            at_ms: now_ms(),
         });
         self.undone.clear();
         Ok(applied.touched)
+    }
+
+    /// Who changed the sprite last: the latest done entry that touched it.
+    pub fn last_editor(&self, sprite: &SpriteRef) -> Option<Editor> {
+        let target = Target::Sprite(sprite.clone());
+        self.entries
+            .iter()
+            .rev()
+            .find(|entry| entry.touched.contains(&target))
+            .map(|entry| Editor {
+                author: entry.author.clone(),
+                at_ms: entry.at_ms,
+            })
     }
 
     pub fn can_redo(&self) -> bool {
@@ -119,4 +146,11 @@ impl History {
         self.entries.clear();
         self.undone.clear();
     }
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
