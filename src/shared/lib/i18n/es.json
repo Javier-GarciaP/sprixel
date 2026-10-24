@@ -29,6 +29,13 @@
   "command.project.export": "Exportar...",
   "command.project.close": "Cerrar proyecto",
   "menu.autosave": "El proyecto se guarda solo.",
+  "browse.folders": "Carpetas",
+  "browse.noFolders": "Aún no hay carpetas",
+  "browse.expand": "Abrir {name}",
+  "browse.collapse": "Cerrar {name}",
+  "browse.palettes": "Paletas",
+  "browse.newPalette": "Nueva paleta",
+  "browse.sprites": "Sprites",
   "command.sprite.open": "Abrir en el editor",
   "command.sprite.rename": "Renombrar",
   "command.sprite.duplicate": "Duplicar",
@@ -90,6 +97,5 @@
   "error.folderExists": "Ya existe una carpeta con este nombre aquí.",
   "error.invalidName": "Este nombre no se puede usar como nombre de carpeta.",
   "error.io": "Algo salió mal: {message}",
-  "open.notAProject": "Esta carpeta no es un proyecto de Sprixel",
-  "project.placeholder": "El proyecto {name} está abierto. Sus sprites aparecerán aquí."
+  "open.notAProject": "Esta carpeta no es un proyecto de Sprixel"
 }

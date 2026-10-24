@@ -42,6 +42,17 @@ vi.mock("./api/preferences", async (original) => ({
   saveSettings: api.saveSettings,
 }));
 
+vi.mock("@/shared/lib/core", async (original) => ({
+  ...(await original<typeof import("@/shared/lib/core")>()),
+  projectTree: vi.fn().mockResolvedValue({
+    name: "Dungeon Kit",
+    revision: 0,
+    root: { name: "", path: [], folders: [], sprites: [] },
+    palettes: [],
+  }),
+  onProjectChanged: vi.fn().mockResolvedValue(() => {}),
+}));
+
 import App from "./App";
 
 const kit = {
@@ -101,7 +112,8 @@ describe("creating a project", () => {
     );
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText("Saved")).toBeTruthy();
-    expect(screen.getByText(/The project Dungeon Kit is open/)).toBeTruthy();
+    // The Project tab shows the project from the core (here an empty one).
+    expect(await screen.findByText("No folders yet")).toBeTruthy();
     for (const tab of ["Editor", "Export", "Agents"])
       expect(tabDisabled(tab)).toBe(false);
     expect(api.addRecentProject).toHaveBeenCalledWith(kit.path, kit.name);

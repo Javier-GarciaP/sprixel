@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ProjectBrowser } from "@/features/project-browser";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
@@ -124,9 +125,12 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     body = <SettingsScreen shortcutGroups={groups} />;
   } else if (tab === "project" && project) {
     body = (
-      <p className="p-6 text-text-muted">
-        {t("project.placeholder", { name: project.name })}
-      </p>
+      <ProjectBrowser
+        onOpenSprite={() => {}}
+        // The palette editor belongs to another spec.
+        onOpenPalette={() => setNotice(t("body.soon"))}
+        onNewPalette={() => setNotice(t("body.soon"))}
+      />
     );
   } else if (tab === "project") {
     body = (

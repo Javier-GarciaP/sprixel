@@ -29,6 +29,13 @@
   "command.project.export": "Export...",
   "command.project.close": "Close project",
   "menu.autosave": "The project saves by itself.",
+  "browse.folders": "Folders",
+  "browse.noFolders": "No folders yet",
+  "browse.expand": "Expand {name}",
+  "browse.collapse": "Collapse {name}",
+  "browse.palettes": "Palettes",
+  "browse.newPalette": "New palette",
+  "browse.sprites": "Sprites",
   "command.sprite.open": "Open in editor",
   "command.sprite.rename": "Rename",
   "command.sprite.duplicate": "Duplicate",
@@ -90,6 +97,5 @@
   "error.folderExists": "A folder with this name already exists here.",
   "error.invalidName": "This name cannot be used as a folder name.",
   "error.io": "Something went wrong: {message}",
-  "open.notAProject": "This folder is not a Sprixel project",
-  "project.placeholder": "The project {name} is open. Its sprites will appear here."
+  "open.notAProject": "This folder is not a Sprixel project"
 }
