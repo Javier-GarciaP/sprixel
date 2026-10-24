@@ -27,7 +27,7 @@
 
 ### 6. Documentation
 
-- [ ] 6.1 Update `docs/usage.md` for the Project tab and verify it matches the app
+- [x] 6.1 Update `docs/usage.md` for the Project tab and verify it matches the app
 
 ## After the demo
 
