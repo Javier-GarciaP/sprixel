@@ -9,7 +9,7 @@ import {
   squareCorner,
 } from "../tools/shapes";
 import type { ToolId } from "../tools/tools";
-import { TRANSPARENT_CODE, type Rect } from "../types";
+import { TRANSPARENT_CODE, type PaletteColor, type Rect } from "../types";
 import type { Point } from "../view/viewMath";
 import type { ColorBook } from "./colorBook";
 
@@ -67,6 +67,17 @@ export class DrawingController {
     private events: Events,
   ) {
     this.draft = new Draft(pixels, width, height);
+  }
+
+  // The core answered with the palette: the new colors have their real keys
+  // now, so the pixels drawn with a waiting color use the key instead.
+  settle(palette: PaletteColor[]) {
+    const replace = this.colors.settle(palette);
+    if (replace.size === 0) return;
+    for (let i = 0; i < this.pixels.length; i++) {
+      const key = replace.get(this.pixels[i]);
+      if (key !== undefined) this.pixels[i] = key;
+    }
   }
 
   get drawing() {

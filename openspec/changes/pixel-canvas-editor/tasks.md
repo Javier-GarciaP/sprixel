@@ -20,7 +20,7 @@
 - [x] 3.3 Build the Bucket and verify the closed outline test and the 512x512 timing
 - [x] 3.4 Build Line, Rectangle and Ellipse with preview, Shift and fill options, and verify the Shift scenarios
 - [x] 3.5 Build Select and Move with clipping and verify the move test
-- [ ] 3.6 Implement the growing palette in the core and use it for any color the user picks (next free key, palette `main` created when there is none, limit of 93 colors, one undo step with the stroke), and verify the new color, the full palette and the undo scenarios
+- [x] 3.6 Implement the growing palette in the core and use it for any color the user picks (next free key, palette `main` created when there is none, limit of 93 colors, one undo step with the stroke), and verify the new color, the full palette and the undo scenarios
 
 ## 4. History and onion skin
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Toast } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
@@ -145,11 +146,6 @@ function Ready(props: ReadyProps) {
   // frame lasts. A new copy from the core makes a new controller.
   const canvasRef = useRef<PixelCanvasHandle>(null);
   const send = useRef<(changes: PixelChange[]) => void>(() => {});
-  send.current = (changes) => {
-    props.api
-      .applyChanges(sprite, props.frame, changes)
-      .catch(() => props.reload());
-  };
   const controller = useMemo(
     () =>
       new DrawingController(
@@ -167,6 +163,31 @@ function Ready(props: ReadyProps) {
     // A new copy of the pixels is a new controller.
     [pixels],
   );
+  // The palette of the sprite as the core has it. A stroke can add colors.
+  const [palette, setPalette] = useState(info.palette);
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => setPalette(info.palette), [info]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  send.current = (changes) => {
+    props.api
+      .applyChanges(sprite, props.frame, changes)
+      .then((result) => {
+        controller.settle(result.palette);
+        setPalette(result.palette);
+      })
+      .catch((error: { code?: string; message?: string }) => {
+        // The core is the truth: read the frame again so the screen shows
+        // what the core has, without the stroke it refused.
+        if (error?.code === "palette_full") setNotice(t("colors.paletteFull"));
+        else
+          setNotice(t("editor.strokeError", { message: error?.message ?? "" }));
+        props.reload();
+      });
+  };
   useEffect(() => {
     controller.tool = props.tool;
     controller.main = props.main;
@@ -263,7 +284,7 @@ function Ready(props: ReadyProps) {
       <RightPanel
         palette={
           <PalettePanel
-            colors={info.palette}
+            colors={palette}
             main={props.main}
             secondary={props.secondary}
             onMain={props.onMain}
@@ -279,6 +300,7 @@ function Ready(props: ReadyProps) {
           />
         }
       />
+      {notice && <Toast tone="error" message={notice} />}
     </div>
   );
 }

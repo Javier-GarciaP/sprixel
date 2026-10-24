@@ -154,6 +154,26 @@ impl Palette {
     pub fn accepts(&self, key: char) -> bool {
         key == TRANSPARENT || self.colors.iter().any(|c| c.key == key)
     }
+
+    /// The key of the color with this `#RRGGBB` value, ignoring letter case.
+    pub fn key_of_hex(&self, hex: &str) -> Option<char> {
+        self.colors
+            .iter()
+            .find(|c| c.hex.eq_ignore_ascii_case(hex))
+            .map(|c| c.key)
+    }
+
+    /// The key a new color gets: the first one of `A` to `Z`, `a` to `z`,
+    /// `0` to `9` and then the other printable ASCII characters (not the
+    /// space and not the dot) that no color uses. `None` when the palette
+    /// has all of them.
+    pub fn next_free_key(&self) -> Option<char> {
+        let letters = ('A'..='Z').chain('a'..='z').chain('0'..='9');
+        let others = ('!'..='~').filter(|c| !c.is_ascii_alphanumeric() && *c != TRANSPARENT);
+        letters
+            .chain(others)
+            .find(|key| !self.colors.iter().any(|c| c.key == *key))
+    }
 }
 
 fn is_hex_color(hex: &str) -> bool {

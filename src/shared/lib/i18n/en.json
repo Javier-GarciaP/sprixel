@@ -87,6 +87,8 @@
   "editor.shapeStyle": "Shape style",
   "editor.outline": "Outline",
   "editor.filled": "Filled",
+  "colors.paletteFull": "The palette is full",
+  "editor.strokeError": "The change could not be saved: {message}",
   "shortcuts.group.project": "Project",
   "shortcuts.group.tools": "Tools",
   "shortcuts.group.editor": "Editor and view",
