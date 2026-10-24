@@ -412,3 +412,131 @@ describe("opening a sprite", () => {
     );
   });
 });
+
+describe("empty folder", () => {
+  // Checks that a folder with no sprites (in a project that has some) says so
+  // and still offers the New sprite card.
+  it("says an empty folder has no sprites", async () => {
+    const tree = sampleTree();
+    tree.root.folders[1].sprites = [];
+    core.projectTree.mockResolvedValue(tree);
+    renderBrowser();
+
+    await openFolder(/^Enemigos/);
+
+    expect(
+      await screen.findByText("This folder has no sprites yet."),
+    ).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "New sprite" })).toHaveLength(
+      2,
+    );
+  });
+});
+
+describe("search", () => {
+  const searchBox = () =>
+    screen.findByRole("searchbox", { name: "Search sprites..." });
+  const typeSearch = async (text: string) =>
+    fireEvent.change(await searchBox(), { target: { value: text } });
+  const results = () => screen.findByRole("list", { name: "Search results" });
+
+  // Checks the spec scenario "Search by name": typing "gob" lists only the
+  // sprites and folders whose name contains it, in the cards and on the left.
+  it("lists only what matches while typing", async () => {
+    renderBrowser();
+    await screen.findByRole("treeitem", { name: /Personajes/ });
+
+    await typeSearch("gob");
+
+    const list = await results();
+    expect(within(list).getByRole("button", { name: /goblin/ })).toBeTruthy();
+    expect(within(list).queryByRole("button", { name: /hero/ })).toBeNull();
+    expect(screen.queryByRole("tree")).toBeNull();
+    const cards = within(screen.getByRole("region", { name: "Sprites" }));
+    expect(await cards.findByRole("button", { name: /^goblin/ })).toBeTruthy();
+    expect(cards.queryByRole("button", { name: /^hero/ })).toBeNull();
+    expect(
+      cards.getByRole("heading", { name: 'Results for "gob"' }),
+    ).toBeTruthy();
+  });
+
+  // Checks that folders match by name too, from any depth, and that choosing
+  // one clears the search and opens that folder.
+  it("finds folders and opens one from the results", async () => {
+    renderBrowser();
+    await typeSearch("enemi");
+
+    fireEvent.click(
+      await within(await results()).findByRole("button", { name: /Enemigos/ }),
+    );
+
+    await vi.waitFor(() =>
+      expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe(
+        "",
+      ),
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Sprites" })).getByRole(
+        "heading",
+        {
+          name: "Enemigos",
+        },
+      ),
+    ).toBeTruthy();
+  });
+
+  // Checks that case and accents do not matter ("GOB" and "gób" find goblin).
+  it("ignores case and accents", async () => {
+    renderBrowser();
+    for (const text of ["GOB", "gób"]) {
+      await typeSearch(text);
+      expect(
+        await within(await results()).findByRole("button", { name: /goblin/ }),
+      ).toBeTruthy();
+    }
+  });
+
+  // Checks that a text that matches nothing says so, and has no New sprite card.
+  it("says when nothing matches", async () => {
+    renderBrowser();
+
+    await typeSearch("zzz");
+
+    expect(await screen.findByText('Nothing matches "zzz"')).toBeTruthy();
+    expect(screen.getByText("No sprites or folders match")).toBeTruthy();
+    expect(
+      screen
+        .queryByRole("button", { name: "New sprite", hidden: false })
+        ?.closest("li"),
+    ).toBeFalsy();
+  });
+
+  // Checks that the clear button and Escape bring back the folders tree.
+  it("clears the search with the button and with Escape", async () => {
+    renderBrowser();
+    await typeSearch("gob");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Clear the search" }),
+    );
+    expect(await screen.findByRole("tree")).toBeTruthy();
+
+    await typeSearch("gob");
+    fireEvent.keyDown(await searchBox(), { key: "Escape" });
+
+    expect(await screen.findByRole("tree")).toBeTruthy();
+  });
+
+  // Checks that a sprite found by the search can be selected and its details show.
+  it("shows the details of a sprite chosen in the results", async () => {
+    renderBrowser();
+    await typeSearch("merch");
+
+    fireEvent.click(
+      await within(await results()).findByRole("button", { name: /merchant/ }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "merchant" }),
+    ).toBeTruthy();
+  });
+});

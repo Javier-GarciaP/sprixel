@@ -23,7 +23,10 @@ import { FolderTree } from "./FolderTree";
 import { NewFolderDialog } from "./NewFolderDialog";
 import { NewSpriteDialog } from "./NewSpriteDialog";
 import { PaletteList } from "./PaletteList";
+import { BrowserIcon } from "./icons";
 import { RenameDialog } from "./RenameDialog";
+import { SearchResultsList } from "./SearchResultsList";
+import { search } from "./search";
 import { SpriteGrid } from "./SpriteGrid";
 import {
   allSprites,
@@ -87,6 +90,7 @@ function Browser({
   // details always show what the core has now.
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [query, setQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   // The message after a delete. `revision` is the project revision right after
   // the delete: if anything else changes, Undo would undo that instead.
@@ -119,7 +123,15 @@ function Browser({
   // A folder that was deleted or renamed is gone: show the root instead.
   const folder = findFolder(tree, folderPath);
   const currentPath = folder ? folderPath : [];
-  const sprites = folder ? folder.sprites : tree.root.sprites;
+  // While the person searches, the middle area lists what matches in the
+  // whole project instead of the sprites of the open folder.
+  const searching = query.trim() !== "";
+  const results = search(tree, query);
+  const sprites = searching
+    ? results.sprites
+    : folder
+      ? folder.sprites
+      : tree.root.sprites;
   const hasSprites = everySprite.length > 0;
   const crumb = currentPath[currentPath.length - 1] ?? tree.name;
 
@@ -236,18 +248,55 @@ function Browser({
   return (
     <div className="flex h-full">
       <aside className="flex w-64 shrink-0 flex-col gap-4 overflow-auto border-r border-border p-3">
-        <FolderTree
-          tree={tree}
-          selectedFolder={currentPath}
-          selectedSprites={new Set(selectedKeys)}
-          expanded={expanded}
-          onSelectFolder={selectFolder}
-          onToggle={toggle}
-          onSelectSprite={selectSprite}
-          onRenameFolder={askRenameFolder}
-          onRenameSprite={askRename}
-          folderMenu={folderMenu}
-        />
+        <div className="relative">
+          <BrowserIcon
+            name="search"
+            className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-faint"
+          />
+          <input
+            type="search"
+            aria-label={t("browse.search")}
+            placeholder={t("browse.search")}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => event.key === "Escape" && setQuery("")}
+            className="w-full rounded-md border border-border bg-bg py-2 pl-9 pr-8 text-sm text-text"
+          />
+          {searching && (
+            <button
+              type="button"
+              aria-label={t("browse.clearSearch")}
+              onClick={() => setQuery("")}
+              className="absolute right-2 top-2 text-text-muted"
+            >
+              <BrowserIcon name="close" className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {searching ? (
+          <SearchResultsList
+            results={results}
+            selectedSprites={new Set(selectedKeys)}
+            onSelectFolder={(folder) => {
+              setQuery("");
+              selectFolder(folder.path);
+            }}
+            onSelectSprite={selectSprite}
+          />
+        ) : (
+          <FolderTree
+            tree={tree}
+            selectedFolder={currentPath}
+            selectedSprites={new Set(selectedKeys)}
+            expanded={expanded}
+            onSelectFolder={selectFolder}
+            onToggle={toggle}
+            onSelectSprite={selectSprite}
+            onRenameFolder={askRenameFolder}
+            onRenameSprite={askRename}
+            folderMenu={folderMenu}
+          />
+        )}
         <PaletteList
           palettes={tree.palettes}
           onOpen={onOpenPalette}
@@ -263,19 +312,27 @@ function Browser({
             <header className="mb-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-baseline gap-2">
-                  {currentPath.length > 0 && (
-                    <span className="text-sm text-text-muted">
-                      {tree.name} /
-                    </span>
+                  {searching ? (
+                    <h2 className="font-title text-xl font-bold">
+                      {t("browse.resultsFor", { query: query.trim() })}
+                    </h2>
+                  ) : (
+                    <>
+                      {currentPath.length > 0 && (
+                        <span className="text-sm text-text-muted">
+                          {tree.name} /
+                        </span>
+                      )}
+                      <h2
+                        className="font-title text-xl font-bold"
+                        onDoubleClick={() =>
+                          currentPath.length > 0 && askRenameFolder(currentPath)
+                        }
+                      >
+                        {crumb}
+                      </h2>
+                    </>
                   )}
-                  <h2
-                    className="font-title text-xl font-bold"
-                    onDoubleClick={() =>
-                      currentPath.length > 0 && askRenameFolder(currentPath)
-                    }
-                  >
-                    {crumb}
-                  </h2>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => setDialog({ kind: "folder" })}>
@@ -298,8 +355,19 @@ function Browser({
               onSelect={selectSprite}
               onOpen={open}
               onNewSprite={newSprite}
+              showNew={!searching}
               menuFor={menuFor}
             />
+            {!searching && sprites.length === 0 && (
+              <p className="mb-4 text-sm text-text-muted">
+                {t("browse.folderEmpty")}
+              </p>
+            )}
+            {searching && sprites.length === 0 && (
+              <p className="text-sm text-text-muted">
+                {t("browse.noResultsMain", { query: query.trim() })}
+              </p>
+            )}
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">

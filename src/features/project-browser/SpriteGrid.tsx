@@ -14,6 +14,8 @@ type Props = {
   onSelect: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
   onNewSprite: () => void;
+  // The "New sprite" card is not shown among search results.
+  showNew: boolean;
   menuFor: (sprite: SpriteSummary) => MenuItem[];
 };
 
@@ -26,6 +28,7 @@ export function SpriteGrid({
   onSelect,
   onOpen,
   onNewSprite,
+  showNew,
   menuFor,
 }: Props) {
   const t = useT();
@@ -44,16 +47,18 @@ export function SpriteGrid({
           />
         </li>
       ))}
-      <li>
-        <button
-          type="button"
-          onClick={onNewSprite}
-          className="flex h-full min-h-[190px] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border text-sm text-text-muted hover:bg-surface"
-        >
-          <BrowserIcon name="plus" className="h-8 w-8" />
-          {t("browse.newSprite")}
-        </button>
-      </li>
+      {showNew && (
+        <li>
+          <button
+            type="button"
+            onClick={onNewSprite}
+            className="flex h-full min-h-[190px] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border text-sm text-text-muted hover:bg-surface"
+          >
+            <BrowserIcon name="plus" className="h-8 w-8" />
+            {t("browse.newSprite")}
+          </button>
+        </li>
+      )}
     </ul>
   );
 }

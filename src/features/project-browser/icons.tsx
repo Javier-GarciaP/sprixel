@@ -13,6 +13,7 @@ const paths = {
   copy: "M8 8h12v12H8zM4 16V4h12",
   search: "M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5",
   check: "M5 12l5 5 9-10",
+  close: "M6 6l12 12M18 6L6 18",
 };
 
 export type BrowserIconName = keyof typeof paths;

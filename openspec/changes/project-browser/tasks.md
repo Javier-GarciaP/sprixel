@@ -31,7 +31,7 @@
 
 ## After the demo
 
-- [ ] 2.3 Build search (case and accent insensitive) and the empty states, and verify with tests
+- [x] 2.3 Build search (case and accent insensitive) and the empty states, and verify with tests
 - [ ] 4.2 Implement move with the "Move to folder" submenu and the destination conflict message, and verify with tests
 - [ ] 4.4 Implement the folder and group delete confirmation with focus on Cancel, and verify the dialog text lists the contents
 - [ ] 5.1 Implement multiple selection with the action bar and combined details and verify the "3 selected" scenario
