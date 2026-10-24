@@ -38,6 +38,8 @@ pub struct History {
     entries: Vec<Entry>,
     /// Undone entries. Redo takes from the end.
     undone: Vec<Entry>,
+    /// What changed place or name in the last apply, undo or redo.
+    moved: Vec<(Target, Target)>,
 }
 
 impl History {
@@ -63,6 +65,7 @@ impl History {
             return Ok(Vec::new());
         }
         let applied = project.apply_group(&ops)?;
+        self.moved = applied.moved;
         self.entries.push(Entry {
             author: author.to_string(),
             forward: ops,
@@ -87,6 +90,13 @@ impl History {
             })
     }
 
+    /// The sprites and folders that changed place or name in the last apply,
+    /// undo or redo, from the old place to the new one. Storage uses it to
+    /// move their files.
+    pub fn last_moves(&self) -> &[(Target, Target)] {
+        &self.moved
+    }
+
     pub fn can_redo(&self) -> bool {
         !self.undone.is_empty()
     }
@@ -100,6 +110,7 @@ impl History {
             .ok_or_else(|| DocError::new("nothing_to_undo", "there is nothing to undo"))?;
         match project.apply_group(&entry.inverse) {
             Ok(applied) => {
+                self.moved = applied.moved;
                 self.undone.push(entry);
                 Ok(applied.touched)
             }
@@ -117,6 +128,7 @@ impl History {
             .ok_or_else(|| DocError::new("nothing_to_redo", "there is nothing to redo"))?;
         match project.apply_group(&entry.forward) {
             Ok(applied) => {
+                self.moved = applied.moved;
                 self.entries.push(entry);
                 Ok(applied.touched)
             }

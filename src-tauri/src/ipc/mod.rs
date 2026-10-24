@@ -160,3 +160,34 @@ pub fn create_folder(
 ) -> Result<Vec<String>, CoreError> {
     finish(&app, browser::create_folder(&state, &parent, &name))
 }
+
+#[tauri::command]
+pub fn rename_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    new_name: String,
+) -> Result<SpriteTarget, CoreError> {
+    finish(&app, browser::rename_sprite(&state, &folder, &name, &new_name))
+}
+
+#[tauri::command]
+pub fn rename_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    path: Vec<String>,
+    new_name: String,
+) -> Result<Vec<String>, CoreError> {
+    finish(&app, browser::rename_folder(&state, &path, &new_name))
+}
+
+#[tauri::command]
+pub fn duplicate_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+) -> Result<SpriteTarget, CoreError> {
+    finish(&app, browser::duplicate_sprite(&state, &folder, &name))
+}

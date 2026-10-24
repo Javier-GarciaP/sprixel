@@ -482,3 +482,184 @@ fn a_good_group_is_one_revision_and_can_be_undone_together() {
     }
     assert_eq!(content(&project), before);
 }
+
+// Checks that renaming a sprite keeps everything else: its pixels, its frames,
+// its position and its animations. Only the name changes.
+#[test]
+fn renaming_a_sprite_keeps_its_content() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    project.apply(&create_sprite(&["Personajes"], "orc", 4, 4)).unwrap();
+    project.apply(&set_pixels(&goblin_ref, vec![pixel(0, 0, 'R')])).unwrap();
+    let before = goblin(&project).clone();
+
+    let applied = project
+        .apply(&Operation::RenameSprite {
+            sprite: goblin_ref.clone(),
+            name: "hero".to_string(),
+        })
+        .unwrap();
+
+    let renamed = goblin(&project);
+    assert_eq!(renamed.name, "hero");
+    assert_eq!(Sprite { name: "goblin".to_string(), ..renamed.clone() }, before);
+    assert_eq!(project.root.folders[0].sprites[1].name, "orc");
+    assert_eq!(
+        applied.touched,
+        [
+            Target::Sprite(goblin_ref),
+            Target::Sprite(SpriteRef::new(&["Personajes"], "hero"))
+        ]
+    );
+}
+
+// Checks that undoing a rename gives back the old name and the same project.
+#[test]
+fn a_rename_can_be_undone() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    let before = content(&project);
+
+    let applied = project
+        .apply(&Operation::RenameSprite {
+            sprite: goblin_ref,
+            name: "hero".to_string(),
+        })
+        .unwrap();
+    project.apply(&applied.inverse).unwrap();
+
+    assert_eq!(content(&project), before);
+}
+
+// Checks that a rename needs a valid name that no sprite or folder uses in that
+// folder (ignoring case), and that a refused rename changes nothing.
+#[test]
+fn a_rename_checks_the_name() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    project.apply(&create_sprite(&["Personajes"], "orc", 4, 4)).unwrap();
+    project
+        .apply(&Operation::CreateFolder {
+            parent: names(&["Personajes"]),
+            name: "Armas".to_string(),
+        })
+        .unwrap();
+    let before = project.clone();
+    let rename = |name: &str| Operation::RenameSprite {
+        sprite: goblin_ref.clone(),
+        name: name.to_string(),
+    };
+
+    assert_eq!(project.apply(&rename("ORC")).unwrap_err().code, "name_exists");
+    assert_eq!(project.apply(&rename("armas")).unwrap_err().code, "name_exists");
+    assert_eq!(project.apply(&rename("a/b")).unwrap_err().code, "invalid_name");
+    assert_eq!(project.apply(&rename("")).unwrap_err().code, "invalid_name");
+    assert_eq!(project, before);
+}
+
+// Checks that a sprite can change only the case of its name ("goblin" to
+// "Goblin"): it does not clash with itself.
+#[test]
+fn a_sprite_can_change_the_case_of_its_name() {
+    let (mut project, goblin_ref) = project_with_goblin();
+
+    project
+        .apply(&Operation::RenameSprite {
+            sprite: goblin_ref,
+            name: "Goblin".to_string(),
+        })
+        .unwrap();
+
+    assert_eq!(goblin(&project).name, "Goblin");
+}
+
+// Checks that renaming a folder keeps its sprites and subfolders, that the
+// project root cannot be renamed, and that undo gives the old name.
+#[test]
+fn a_folder_can_be_renamed_and_the_rename_undone() {
+    let (mut project, _) = project_with_goblin();
+    let before = content(&project);
+
+    let applied = project
+        .apply(&Operation::RenameFolder {
+            path: names(&["personajes"]),
+            name: "Heroes".to_string(),
+        })
+        .unwrap();
+
+    assert_eq!(project.root.folders[0].name, "Heroes");
+    assert_eq!(project.root.folders[0].sprites[0].name, "goblin");
+    assert_eq!(
+        applied.touched,
+        [
+            Target::Folder(names(&["Personajes"])),
+            Target::Folder(names(&["Heroes"]))
+        ]
+    );
+    project.apply(&applied.inverse).unwrap();
+    assert_eq!(content(&project), before);
+    let root = project.apply(&Operation::RenameFolder {
+        path: vec![],
+        name: "x".to_string(),
+    });
+    assert_eq!(root.unwrap_err().code, "bad_path");
+}
+
+// Checks that a folder cannot take the name of a sibling folder or sprite.
+#[test]
+fn a_folder_rename_checks_the_name() {
+    let (mut project, _) = project_with_goblin();
+    project.apply(&create_sprite(&[], "orc", 4, 4)).unwrap();
+    project
+        .apply(&Operation::CreateFolder { parent: vec![], name: "Enemigos".to_string() })
+        .unwrap();
+    let rename = |name: &str| Operation::RenameFolder {
+        path: names(&["Personajes"]),
+        name: name.to_string(),
+    };
+
+    assert_eq!(project.apply(&rename("enemigos")).unwrap_err().code, "name_exists");
+    assert_eq!(project.apply(&rename("Orc")).unwrap_err().code, "name_exists");
+    assert_eq!(project.apply(&rename("a:b")).unwrap_err().code, "invalid_name");
+}
+
+// Checks that a duplicate has the same content with the new name, sits right
+// after the original, and that undo removes it.
+#[test]
+fn a_duplicate_has_the_same_content_after_the_original() {
+    let (mut project, goblin_ref) = project_with_goblin();
+    project.apply(&create_sprite(&["Personajes"], "orc", 4, 4)).unwrap();
+    project.apply(&set_pixels(&goblin_ref, vec![pixel(1, 1, 'A')])).unwrap();
+    let before = content(&project);
+
+    let applied = project
+        .apply(&Operation::DuplicateSprite {
+            sprite: goblin_ref,
+            name: "goblin copy".to_string(),
+        })
+        .unwrap();
+
+    let sprites = &project.root.folders[0].sprites;
+    assert_eq!(
+        sprites.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(),
+        ["goblin", "goblin copy", "orc"]
+    );
+    assert_eq!(
+        Sprite { name: "goblin".to_string(), ..sprites[1].clone() },
+        sprites[0]
+    );
+    project.apply(&applied.inverse).unwrap();
+    assert_eq!(content(&project), before);
+}
+
+// Checks that a duplicate cannot use a name that is taken.
+#[test]
+fn a_duplicate_needs_a_free_name() {
+    let (mut project, goblin_ref) = project_with_goblin();
+
+    let error = project
+        .apply(&Operation::DuplicateSprite {
+            sprite: goblin_ref,
+            name: "GOBLIN".to_string(),
+        })
+        .unwrap_err();
+
+    assert_eq!(error.code, "name_exists");
+}

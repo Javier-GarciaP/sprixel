@@ -1,6 +1,8 @@
+import type { MenuItem } from "@/shared/components";
 import type { SpriteSummary } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import type { FrameCache } from "@/shared/lib/render";
+import { ItemMenu } from "./ItemMenu";
 import { SpriteThumb } from "./SpriteThumb";
 
 type Props = {
@@ -10,6 +12,8 @@ type Props = {
   selected: boolean;
   onSelect: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
+  // The actions of the "..." button.
+  menuItems: MenuItem[];
 };
 
 // A sprite of the selected folder: its thumbnail, name, size and frames.
@@ -21,6 +25,7 @@ export function SpriteCard({
   selected,
   onSelect,
   onOpen,
+  menuItems,
 }: Props) {
   const t = useT();
   const frames = t(sprite.frames === 1 ? "browse.frameOne" : "browse.frames", {
@@ -28,7 +33,7 @@ export function SpriteCard({
   });
   return (
     <article
-      className={`rounded-lg border-2 bg-surface p-2 ${selected ? "border-amber" : "border-border"}`}
+      className={`relative rounded-lg border-2 bg-surface p-2 ${selected ? "border-amber" : "border-border"}`}
     >
       <button
         type="button"
@@ -50,6 +55,11 @@ export function SpriteCard({
           {sprite.width}x{sprite.height} - {frames}
         </span>
       </button>
+      <ItemMenu
+        label={t("browse.moreActions", { name: sprite.name })}
+        items={menuItems}
+        className="absolute right-3 top-3"
+      />
     </article>
   );
 }

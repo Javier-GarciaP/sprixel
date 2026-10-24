@@ -119,7 +119,7 @@ describe("Project tab in the app", () => {
     fireEvent.doubleClick(
       await within(screen.getByRole("region", { name: "Sprites" })).findByRole(
         "button",
-        { name: /goblin/ },
+        { name: /^goblin/ },
       ),
     );
 

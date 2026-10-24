@@ -1,3 +1,4 @@
+import type { MenuItem } from "@/shared/components";
 import type { SpriteSummary } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import type { FrameCache } from "@/shared/lib/render";
@@ -13,6 +14,7 @@ type Props = {
   onSelect: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
   onNewSprite: () => void;
+  menuFor: (sprite: SpriteSummary) => MenuItem[];
 };
 
 // The sprites of a folder as cards, with a "New sprite" card at the end.
@@ -24,6 +26,7 @@ export function SpriteGrid({
   onSelect,
   onOpen,
   onNewSprite,
+  menuFor,
 }: Props) {
   const t = useT();
   return (
@@ -37,6 +40,7 @@ export function SpriteGrid({
             selected={selected.has(spriteKey(sprite))}
             onSelect={onSelect}
             onOpen={onOpen}
+            menuItems={menuFor(sprite)}
           />
         </li>
       ))}

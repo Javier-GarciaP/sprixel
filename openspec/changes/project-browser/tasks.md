@@ -22,7 +22,7 @@
 
 ### 4. Organizing
 
-- [ ] 4.1 Implement rename (menu, F2, double-click) and duplicate with unique names, and verify with tests
+- [x] 4.1 Implement rename (menu, F2, double-click) and duplicate with unique names, and verify with tests
 - [ ] 4.3 Implement delete to the trash with the 8 second Undo message and Ctrl+Z, and verify a delete and undo test
 
 ### 6. Documentation

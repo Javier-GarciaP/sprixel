@@ -44,3 +44,30 @@ fn is_reserved_on_windows(name: &str) -> bool {
     };
     numbered("COM") || numbered("LPT")
 }
+
+/// The name of a duplicate: "goblin copy", then "goblin copy 2", "goblin copy
+/// 3"... `taken` says if a name is already used. Duplicating a copy starts
+/// from the name of the original, so "goblin copy" gives "goblin copy 2".
+pub fn copy_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
+    let base = original_name(name);
+    let first = format!("{base} copy");
+    if !taken(&first) {
+        return first;
+    }
+    (2..)
+        .map(|n| format!("{base} copy {n}"))
+        .find(|candidate| !taken(candidate))
+        .expect("the counter does not end")
+}
+
+// "goblin copy 3" and "goblin copy" both come from "goblin".
+fn original_name(name: &str) -> &str {
+    let without_number = match name.rsplit_once(' ') {
+        Some((rest, number)) if number.bytes().all(|b| b.is_ascii_digit()) && rest.ends_with(" copy") => rest,
+        _ => name,
+    };
+    match without_number.strip_suffix(" copy") {
+        Some(base) if !base.trim().is_empty() => base,
+        _ => name,
+    }
+}

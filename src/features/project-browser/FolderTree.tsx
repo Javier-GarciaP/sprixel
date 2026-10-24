@@ -1,6 +1,8 @@
+import type { MenuItem } from "@/shared/components";
 import type { FolderNode, ProjectTree, SpriteSummary } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { BrowserIcon } from "./icons";
+import { ItemMenu } from "./ItemMenu";
 import { itemCount, pathKey, spriteKey } from "./paths";
 
 type Props = {
@@ -12,6 +14,10 @@ type Props = {
   onSelectFolder: (path: string[]) => void;
   onToggle: (path: string[]) => void;
   onSelectSprite: (sprite: SpriteSummary) => void;
+  // Double-clicking a name renames it.
+  onRenameFolder: (path: string[]) => void;
+  onRenameSprite: (sprite: SpriteSummary) => void;
+  folderMenu: (path: string[]) => MenuItem[];
 };
 
 const indent = (depth: number) => ({ paddingLeft: `${8 + depth * 16}px` });
@@ -73,6 +79,7 @@ function FolderRow({
         <button
           type="button"
           onClick={() => props.onSelectFolder(folder.path)}
+          onDoubleClick={() => depth > 0 && props.onRenameFolder(folder.path)}
           className={`flex flex-1 items-center gap-2 py-1.5 text-left ${selected ? "text-amber" : ""}`}
         >
           <BrowserIcon name="folder" />
@@ -81,6 +88,12 @@ function FolderRow({
             {itemCount(folder)}
           </span>
         </button>
+        {depth > 0 && (
+          <ItemMenu
+            label={t("browse.moreActions", { name })}
+            items={props.folderMenu(folder.path)}
+          />
+        )}
       </div>
       {open && (
         <div role="group">
@@ -100,6 +113,7 @@ function FolderRow({
               depth={depth + 1}
               selected={props.selectedSprites.has(spriteKey(sprite))}
               onSelect={props.onSelectSprite}
+              onRename={props.onRenameSprite}
             />
           ))}
         </div>
@@ -113,11 +127,13 @@ function SpriteRow({
   depth,
   selected,
   onSelect,
+  onRename,
 }: {
   sprite: SpriteSummary;
   depth: number;
   selected: boolean;
   onSelect: (sprite: SpriteSummary) => void;
+  onRename: (sprite: SpriteSummary) => void;
 }) {
   return (
     <div
@@ -130,6 +146,7 @@ function SpriteRow({
       <button
         type="button"
         onClick={() => onSelect(sprite)}
+        onDoubleClick={() => onRename(sprite)}
         className={`flex flex-1 items-center gap-2 py-1.5 text-left ${selected ? "text-amber" : ""}`}
       >
         <BrowserIcon name="sprite" />

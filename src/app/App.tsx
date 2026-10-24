@@ -23,7 +23,8 @@ import {
   pickFolder,
   type ProjectInfo,
 } from "./api/project";
-import { detectPlatform } from "./commands/shortcut";
+import { formatShortcut, detectPlatform } from "./commands/shortcut";
+import { commands } from "./commands/registry";
 import { shortcutGroups } from "./commands/shortcutGroups";
 import { useShortcuts } from "./commands/useShortcuts";
 import { AppProviders } from "./AppProviders";
@@ -37,6 +38,11 @@ import { NewProjectDialog } from "./welcome/NewProjectDialog";
 import { WelcomeScreen } from "./welcome/WelcomeScreen";
 
 type OpenedProject = { name: string; path: string };
+
+// The Project tab listens to the shortcuts of the list of commands, with the
+// same rules as the rest of the app (see useShortcuts).
+const useBrowserShortcuts = (handlers: Record<string, () => void>) =>
+  useShortcuts(handlers, detectPlatform());
 
 function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const t = useT();
@@ -130,6 +136,13 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   } else if (tab === "project" && project) {
     body = (
       <ProjectBrowser
+        shortcuts={{
+          useHandlers: useBrowserShortcuts,
+          hint: (id) => {
+            const shortcut = commands.find((c) => c.id === id)?.shortcut;
+            return shortcut && formatShortcut(shortcut, platform, t);
+          },
+        }}
         onOpenSprite={(sprite) => {
           setActiveSprite(sprite);
           setTab("editor");

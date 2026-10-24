@@ -46,3 +46,16 @@ export function folderOptions(tree: ProjectTree): FolderOption[] {
   walk(tree.root);
   return out;
 }
+
+// Swaps the start of a path: a folder was renamed from `from` to `to`, so
+// everything inside it has a new path. A path outside the folder stays.
+export function followRename(
+  path: string[],
+  from: string[],
+  to: string[],
+): string[] {
+  const inside = from.every((name, i) => path[i] === name);
+  return inside && path.length >= from.length
+    ? [...to, ...path.slice(from.length)]
+    : path;
+}

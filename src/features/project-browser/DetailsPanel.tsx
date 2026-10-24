@@ -9,6 +9,8 @@ type Props = {
   cache: FrameCache;
   revision: number;
   onOpen: (sprite: SpriteSummary) => void;
+  onRename: (sprite: SpriteSummary) => void;
+  onDuplicate: (sprite: SpriteSummary) => void;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -21,7 +23,14 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 // The right side of the Project tab: everything about the selected sprite.
-export function DetailsPanel({ sprite, cache, revision, onOpen }: Props) {
+export function DetailsPanel({
+  sprite,
+  cache,
+  revision,
+  onOpen,
+  onRename,
+  onDuplicate,
+}: Props) {
   const t = useT();
   const language = useLanguage();
 
@@ -52,7 +61,12 @@ export function DetailsPanel({ sprite, cache, revision, onOpen }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="truncate font-title text-xl font-bold">{sprite.name}</h2>
+      <h2
+        className="truncate font-title text-xl font-bold"
+        onDoubleClick={() => onRename(sprite)}
+      >
+        {sprite.name}
+      </h2>
       <SpriteThumb
         sprite={sprite}
         cache={cache}
@@ -109,6 +123,14 @@ export function DetailsPanel({ sprite, cache, revision, onOpen }: Props) {
       >
         {t("command.sprite.open")}
       </Button>
+      <div className="flex gap-2">
+        <Button
+          className="flex-1 justify-center"
+          onClick={() => onDuplicate(sprite)}
+        >
+          {t("command.sprite.duplicate")}
+        </Button>
+      </div>
     </div>
   );
 }

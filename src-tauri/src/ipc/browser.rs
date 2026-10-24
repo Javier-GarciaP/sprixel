@@ -4,7 +4,8 @@
 //! directly; the commands in `ipc/mod.rs` add the `project://changed` event.
 
 use crate::document::{
-    DocError, Folder, Operation, Palette, Sprite, SpriteRef, Target, same_name, validate_name,
+    DocError, Folder, Operation, Palette, Sprite, SpriteRef, Target, copy_name, same_name,
+    validate_name,
 };
 use crate::ipc::project::{self, ProjectState};
 use crate::storage::Session;
@@ -408,6 +409,97 @@ pub fn create_folder(
             })
             .expect("a created folder is touched");
         Ok((path, touched))
+    })
+}
+
+// The first sprite or folder the change touched at its new place.
+fn new_sprite_target(touched: &[Target]) -> SpriteTarget {
+    touched
+        .iter()
+        .rev()
+        .find_map(|t| match t {
+            Target::Sprite(sprite) => Some(SpriteTarget {
+                folder: sprite.folder.clone(),
+                name: sprite.name.clone(),
+            }),
+            _ => None,
+        })
+        .expect("the change touched a sprite")
+}
+
+/// Changes the name of a sprite. It keeps its content and its history.
+pub fn rename_sprite(
+    state: &ProjectState,
+    folder: &[String],
+    name: &str,
+    new_name: &str,
+) -> Result<(SpriteTarget, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let touched = session.apply(
+            "user",
+            vec![Operation::RenameSprite {
+                sprite: SpriteRef {
+                    folder: folder.to_vec(),
+                    name: name.to_string(),
+                },
+                name: new_name.to_string(),
+            }],
+        )?;
+        Ok((new_sprite_target(&touched), touched))
+    })
+}
+
+/// Changes the name of a folder. Returns its new path.
+pub fn rename_folder(
+    state: &ProjectState,
+    path: &[String],
+    new_name: &str,
+) -> Result<(Vec<String>, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let touched = session.apply(
+            "user",
+            vec![Operation::RenameFolder {
+                path: path.to_vec(),
+                name: new_name.to_string(),
+            }],
+        )?;
+        let new_path = touched
+            .iter()
+            .rev()
+            .find_map(|t| match t {
+                Target::Folder(path) => Some(path.clone()),
+                _ => None,
+            })
+            .expect("the change touched a folder");
+        Ok((new_path, touched))
+    })
+}
+
+/// Adds a copy of a sprite in the same folder, named "goblin copy",
+/// "goblin copy 2"... Returns the copy.
+pub fn duplicate_sprite(
+    state: &ProjectState,
+    folder: &[String],
+    name: &str,
+) -> Result<(SpriteTarget, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let sprite = SpriteRef {
+            folder: folder.to_vec(),
+            name: name.to_string(),
+        };
+        let siblings = session
+            .project
+            .find_folder(folder)
+            .ok_or_else(|| DocError::new("not_found", "the folder does not exist"))?;
+        let copy = copy_name(name, |candidate| {
+            siblings.sprites.iter().any(|s| same_name(&s.name, candidate))
+                || siblings.folders.iter().any(|f| same_name(&f.name, candidate))
+        });
+        let touched = session.apply(
+            "user",
+            vec![Operation::DuplicateSprite { sprite, name: copy }],
+        )?;
+        Ok((new_sprite_target(&touched), touched))
     })
 }
 

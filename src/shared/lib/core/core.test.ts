@@ -13,8 +13,11 @@ import {
   checkName,
   createFolder,
   createSprite,
+  duplicateSprite,
   onProjectChanged,
   projectTree,
+  renameFolder,
+  renameSprite,
   spriteFrame,
 } from ".";
 
@@ -70,6 +73,31 @@ describe("core api", () => {
     expect(invoke).toHaveBeenNthCalledWith(3, "create_folder", {
       parent: [],
       name: "Enemigos",
+    });
+  });
+
+  // Checks that rename and duplicate use the argument names of the Rust
+  // commands (Tauri turns new_name into newName).
+  it("calls rename and duplicate", async () => {
+    insideApp();
+    invoke.mockResolvedValue(null);
+
+    await renameSprite(["A"], "goblin", "orc");
+    await renameFolder(["A"], "B");
+    await duplicateSprite(["A"], "goblin");
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "rename_sprite", {
+      folder: ["A"],
+      name: "goblin",
+      newName: "orc",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, "rename_folder", {
+      path: ["A"],
+      newName: "B",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, "duplicate_sprite", {
+      folder: ["A"],
+      name: "goblin",
     });
   });
 

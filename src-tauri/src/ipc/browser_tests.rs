@@ -370,3 +370,92 @@ fn a_folder_name_in_use_is_refused() {
     assert_eq!(error.code, "name_exists");
     assert_eq!(names(&crate::ipc::project::read(&state, |s| s.project.root.clone()).unwrap()), ["orc"]);
 }
+
+// Checks the spec scenario "Rename with F2": the sprite shows with its new
+// name and, once saved, its file has the new name. History and content stay.
+#[test]
+fn a_renamed_sprite_keeps_its_content_and_changes_its_file() {
+    let (parent, state) = sample();
+    crate::ipc::project::close_project(&state);
+    let again = crate::ipc::project::open_project(&state, &parent.path().join("Kit")).unwrap();
+    assert_eq!(again.name, "Kit");
+
+    let (target, event) =
+        rename_sprite(&state, &["Personajes".to_string()], "goblin", "orc2").unwrap();
+
+    assert_eq!(target.name, "orc2");
+    assert_eq!(event.touched.len(), 2);
+    let sprite = session_sprite(&state, &["Personajes"], "orc2").unwrap();
+    assert_eq!(sprite.frame_count(), 2);
+    assert!(session_sprite(&state, &["Personajes"], "goblin").is_none());
+    crate::ipc::project::close_project(&state);
+    let folder = parent.path().join("Kit/sprites/Personajes");
+    assert!(folder.join("orc2.sprite.json").is_file());
+    assert!(!folder.join("goblin.sprite.json").exists());
+}
+
+// Checks that renaming to a name in use is refused with `name_exists` and nothing changes.
+#[test]
+fn a_rename_to_a_used_name_is_refused() {
+    let (_parent, state) = sample();
+    let before = project_tree(&state).unwrap().revision;
+
+    let error = rename_sprite(&state, &[], "orc", "ENEMIGOS").unwrap_err();
+
+    assert_eq!(error.code, "name_exists");
+    assert_eq!(project_tree(&state).unwrap().revision, before);
+}
+
+// Checks that a folder is renamed with its sprites, and that the new path is returned.
+#[test]
+fn a_folder_is_renamed_with_its_sprites() {
+    let (_parent, state) = sample();
+
+    let (path, _) = rename_folder(&state, &["Personajes".to_string()], "Heroes").unwrap();
+
+    assert_eq!(path, ["Heroes"]);
+    let tree = project_tree(&state).unwrap();
+    assert_eq!(tree.root.folders[0].path, ["Heroes"]);
+    assert_eq!(tree.root.folders[0].sprites[0].folder, ["Heroes"]);
+}
+
+// Checks the spec scenario "Duplicate twice": "goblin copy" and "goblin copy
+// 2" exist with the same content, each duplicate in the same folder.
+#[test]
+fn duplicating_twice_gives_copy_and_copy_2() {
+    let (_parent, state) = sample();
+    let folder = vec!["Personajes".to_string()];
+
+    let (first, _) = duplicate_sprite(&state, &folder, "goblin").unwrap();
+    let (second, _) = duplicate_sprite(&state, &folder, "goblin").unwrap();
+
+    assert_eq!((first.name.as_str(), second.name.as_str()), ("goblin copy", "goblin copy 2"));
+    let original = session_sprite(&state, &["Personajes"], "goblin").unwrap();
+    for name in ["goblin copy", "goblin copy 2"] {
+        let copy = session_sprite(&state, &["Personajes"], name).unwrap();
+        assert_eq!(crate::document::Sprite { name: "goblin".to_string(), ..copy }, original);
+    }
+}
+
+// Checks that a folder with the name "x copy" also counts as taken for a duplicate.
+#[test]
+fn a_duplicate_name_avoids_folders_too() {
+    let (_parent, state) = sample();
+    create_folder(&state, &[], "orc copy").unwrap();
+
+    let (copy, _) = duplicate_sprite(&state, &[], "orc").unwrap();
+
+    assert_eq!(copy.name, "orc copy 2");
+}
+
+// Checks that undo takes back a rename (the command and the history agree).
+#[test]
+fn undo_takes_back_a_rename() {
+    let (_parent, state) = sample();
+    rename_sprite(&state, &[], "orc", "ogre").unwrap();
+
+    crate::ipc::project::edit(&state, |s| s.undo()).unwrap().unwrap();
+
+    assert!(session_sprite(&state, &[], "orc").is_some());
+    assert!(session_sprite(&state, &[], "ogre").is_none());
+}

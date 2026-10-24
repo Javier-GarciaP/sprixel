@@ -69,6 +69,18 @@ export const createSprite = (
 export const createFolder = (parent: string[], name: string) =>
   call<string[]>("create_folder", { parent, name });
 
+// Changes the name of a sprite. It keeps its content and its history.
+export const renameSprite = (folder: string[], name: string, newName: string) =>
+  call<SpriteTarget>("rename_sprite", { folder, name, newName });
+
+// Returns the new path of the folder.
+export const renameFolder = (path: string[], newName: string) =>
+  call<string[]>("rename_folder", { path, newName });
+
+// Adds a copy named "goblin copy", "goblin copy 2"... Returns the copy.
+export const duplicateSprite = (folder: string[], name: string) =>
+  call<SpriteTarget>("duplicate_sprite", { folder, name });
+
 // Runs `listener` after every change to the open project. Returns a function
 // that stops listening. Outside the app nothing is ever emitted.
 export async function onProjectChanged(

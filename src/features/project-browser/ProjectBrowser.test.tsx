@@ -70,7 +70,8 @@ async function openFolder(name: RegExp) {
 // A card of the middle area (the tree has buttons with the same names).
 const card = (name: RegExp) =>
   within(screen.getByRole("region", { name: "Sprites" })).findByRole("button", {
-    name,
+    // The card button starts with the name ("More actions for..." does not).
+    name: new RegExp(`^${name.source}`),
   });
 
 const folderRow = (name: RegExp) => screen.findByRole("treeitem", { name });
