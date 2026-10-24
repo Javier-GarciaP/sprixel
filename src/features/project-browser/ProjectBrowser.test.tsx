@@ -21,6 +21,13 @@ vi.mock("@/shared/lib/core", async (original) => ({
   ...core,
 }));
 
+// jsdom has no canvas: the drawing is replaced by a spy that records the frame.
+const drawFrame = vi.hoisted(() => vi.fn());
+vi.mock("@/shared/lib/render", async (original) => ({
+  ...(await original<typeof import("@/shared/lib/render")>()),
+  drawFrame,
+}));
+
 import { ProjectBrowser } from "./ProjectBrowser";
 
 beforeEach(() => {
@@ -30,6 +37,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  drawFrame.mockReset();
   for (const fn of Object.values(core)) fn.mockReset();
 });
 
@@ -49,6 +57,21 @@ function renderBrowser(
   );
   return handlers;
 }
+
+// Selects the folder from the tree, so its sprites show in the middle.
+async function openFolder(name: RegExp) {
+  fireEvent.click(
+    within(await screen.findByRole("treeitem", { name })).getByRole("button", {
+      name,
+    }),
+  );
+}
+
+// A card of the middle area (the tree has buttons with the same names).
+const card = (name: RegExp) =>
+  within(screen.getByRole("region", { name: "Sprites" })).findByRole("button", {
+    name,
+  });
 
 const folderRow = (name: RegExp) => screen.findByRole("treeitem", { name });
 
@@ -192,5 +215,167 @@ describe("palettes list", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New palette" }));
 
     expect(handlers.onNewPalette).toHaveBeenCalled();
+  });
+});
+
+describe("sprite cards", () => {
+  // Checks the spec scenario "Card information": a card shows the name and
+  // "8x8 - 4 frames", and the cards end with the "New sprite" card.
+  it("shows the card of a sprite with its size and frames", async () => {
+    renderBrowser();
+    await openFolder(/^Personajes/);
+
+    const goblin = await card(/goblin/);
+
+    expect(within(goblin).getByText("goblin")).toBeTruthy();
+    expect(within(goblin).getByText("8x8 - 4 frames")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New sprite" })).toBeTruthy();
+  });
+
+  // Checks that a sprite with one frame says "1 frame", not "1 frames".
+  it("uses the singular for one frame", async () => {
+    renderBrowser();
+
+    expect(await screen.findByText("8x8 - 1 frame")).toBeTruthy();
+  });
+
+  // Checks that the first frame is asked from the core and drawn on the card.
+  it("draws the first frame of each sprite", async () => {
+    renderBrowser();
+    await openFolder(/^Personajes/);
+
+    await vi.waitFor(() => expect(drawFrame).toHaveBeenCalled());
+    expect(core.spriteFrame).toHaveBeenCalledWith(["Personajes"], "goblin", 1);
+    expect(drawFrame.mock.calls[0][1]).toEqual(frameOf());
+  });
+
+  // Checks that a changed sprite is drawn again (and a sprite that was not
+  // touched is not asked again): the thumbnail follows the document.
+  it("draws a sprite again after the core says it changed", async () => {
+    let notify: (event: unknown) => void = () => {};
+    core.onProjectChanged.mockImplementation(async (listener) => {
+      notify = listener;
+      return () => {};
+    });
+    renderBrowser();
+    await openFolder(/^Personajes/);
+    await vi.waitFor(() =>
+      expect(core.spriteFrame).toHaveBeenCalledWith(["Personajes"], "hero", 1),
+    );
+    await vi.waitFor(() => expect(drawFrame).toHaveBeenCalled());
+    core.spriteFrame.mockResolvedValue(frameOf(2));
+    core.projectTree.mockResolvedValue(sampleTree(2));
+    await vi.waitFor(() => expect(core.onProjectChanged).toHaveBeenCalled());
+
+    notify({
+      revision: 2,
+      touched: [{ kind: "sprite", path: ["Personajes", "goblin"] }],
+    });
+
+    await vi.waitFor(() =>
+      expect(drawFrame.mock.calls.some(([, f]) => f.revision === 2)).toBe(true),
+    );
+    const asked = core.spriteFrame.mock.calls.filter(
+      ([, name]) => name === "goblin",
+    );
+    expect(asked).toHaveLength(2);
+    const others = core.spriteFrame.mock.calls.filter(
+      ([, name]) => name === "hero",
+    );
+    expect(others).toHaveLength(1);
+  });
+});
+
+describe("sprite details", () => {
+  // Checks that selecting a card shows its details: size, frames, palette and animations.
+  it("shows the details of the selected sprite", async () => {
+    renderBrowser();
+    await openFolder(/^Personajes/);
+
+    fireEvent.click(await card(/goblin/));
+
+    const details = await screen.findByRole("complementary", {
+      name: "Details",
+    });
+    expect(
+      within(details).getByRole("heading", { name: "goblin" }),
+    ).toBeTruthy();
+    expect(within(details).getByText("8 × 8 px")).toBeTruthy();
+    expect(within(details).getByText("dungeon16")).toBeTruthy();
+    expect(within(details).getByText("walk")).toBeTruthy();
+    expect(
+      within(details).getByText("frames 1-4 · 12 fps · repeats"),
+    ).toBeTruthy();
+  });
+
+  // Checks the spec scenario "Last edited by an AI": the client name and the time show.
+  it("says which AI client edited the sprite last", async () => {
+    const tree = sampleTree();
+    tree.root.folders[0].sprites[0].lastEditor = {
+      author: "claude-code",
+      atMs: Date.now(),
+    };
+    core.projectTree.mockResolvedValue(tree);
+    renderBrowser();
+    await openFolder(/^Personajes/);
+
+    fireEvent.click(await card(/goblin/));
+
+    expect(await screen.findByText(/Edited by claude-code · /)).toBeTruthy();
+  });
+
+  // Checks that a sprite nobody edited in this session shows no "Edited by" line.
+  it("shows no editor when there is none", async () => {
+    renderBrowser();
+    await openFolder(/^Personajes/);
+
+    fireEvent.click(await card(/goblin/));
+
+    await screen.findByRole("heading", { name: "goblin" });
+    expect(screen.queryByText(/Edited by/)).toBeNull();
+  });
+
+  // Checks that a sprite with no animation says so.
+  it("says when a sprite has no animations", async () => {
+    renderBrowser();
+    await openFolder(/^Personajes/);
+
+    fireEvent.click(await card(/hero/));
+
+    expect(await screen.findByText("No animations")).toBeTruthy();
+  });
+
+  // Checks that selecting a sprite in the tree selects it in the middle and shows its details.
+  it("shows the details when a sprite is chosen in the tree", async () => {
+    renderBrowser();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Expand Personajes" }),
+    );
+
+    fireEvent.click(
+      within(
+        await screen.findByRole("treeitem", { name: /merchant/ }),
+      ).getByRole("button"),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "merchant" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /merchant/, pressed: true }),
+    ).toBeTruthy();
+  });
+});
+
+describe("empty states", () => {
+  // Checks the spec scenario "New project": the empty message with one main
+  // action, and no details panel.
+  it("shows the empty message and no details in a project without sprites", async () => {
+    core.projectTree.mockResolvedValue(emptyTree());
+    renderBrowser();
+
+    expect(await screen.findByText("No sprites yet")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New sprite" })).toBeTruthy();
+    expect(screen.queryByRole("complementary", { name: "Details" })).toBeNull();
   });
 });

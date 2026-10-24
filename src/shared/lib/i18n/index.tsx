@@ -44,3 +44,8 @@ export function useT() {
     [language],
   );
 }
+
+// The language in use, for formatting dates and times.
+export function useLanguage(): Language {
+  return useContext(LanguageContext);
+}

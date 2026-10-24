@@ -12,7 +12,7 @@
 ### 2. Project tab
 
 - [x] 2.1 Build the folders tree with counts, selection and the palettes list, and verify against screens 06 and 03
-- [ ] 2.2 Build the sprite cards, the "New sprite" card and the details panel (animations, last edited by) and verify the scenarios in the spec
+- [x] 2.2 Build the sprite cards, the "New sprite" card and the details panel (animations, last edited by) and verify the scenarios in the spec
 - [ ] 2.4 Open a sprite in the editor from double-click and the button, and verify the tab switch
 
 ### 3. Creating
