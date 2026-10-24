@@ -34,4 +34,4 @@
 
 ## 6. Documentation
 
-- [ ] 6.1 Update `docs/usage.md` (tools, shortcuts, onion skin) and verify it matches the app
+- [x] 6.1 Update `docs/usage.md` (tools, shortcuts, onion skin) and verify it matches the app
