@@ -41,7 +41,8 @@ afterEach(() => {
   for (const fn of Object.values(core)) fn.mockReset();
 });
 
-const renameButton = () => screen.getByRole("button", { name: "Rename" });
+const renameButton = () =>
+  within(screen.getByRole("dialog")).getByRole("button", { name: "Rename" });
 
 async function selectGoblin() {
   renderBrowser();

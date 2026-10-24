@@ -130,4 +130,39 @@ describe("Project tab in the app", () => {
         .getAttribute("aria-current"),
     ).toBe("page");
   });
+
+  // Checks that the menu of a card shows the shortcuts of the list of
+  // commands of the app (F2, Ctrl+D, Delete): one list for menus and keys.
+  it("shows the shortcuts of the commands in the menu of a card", async () => {
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open project" }),
+    );
+    fireEvent.click(
+      within(
+        await screen.findByRole("treeitem", { name: /Personajes/ }),
+      ).getByRole("button", { name: /^Personajes/ }),
+    );
+    await within(screen.getByRole("region", { name: "Sprites" })).findByRole(
+      "button",
+      {
+        name: /^goblin/,
+      },
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "More actions for goblin" }),
+    );
+
+    const menu = await screen.findByRole("menu");
+    // The shortcut is the small mono text at the end of the row.
+    const hint = (item: string) =>
+      within(menu)
+        .getByRole("menuitem", { name: new RegExp(`^${item}`) })
+        .querySelector(".font-mono")?.textContent;
+    expect(hint("Rename")).toBe("F2");
+    expect(hint("Duplicate")).toBe("Ctrl+D");
+    expect(hint("Delete")).toBe("Delete");
+    expect(hint("Open in editor")).toBe("Enter");
+  });
 });

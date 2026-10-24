@@ -19,6 +19,8 @@ export type Props = {
   // The checkbox of the card adds or removes it from the selection.
   onToggle: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
+  // A right click on the card, with the place of the pointer.
+  onContextMenu: (sprite: SpriteSummary, at: { x: number; y: number }) => void;
   // The actions of the "..." button.
   menuItems: MenuItem[];
   // The sprites that move when this card is dragged: the whole selection when
@@ -36,6 +38,7 @@ export function SpriteCard({
   onSelect,
   onToggle,
   onOpen,
+  onContextMenu,
   menuItems,
   dragSprites,
 }: Props) {
@@ -45,6 +48,10 @@ export function SpriteCard({
   });
   return (
     <article
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onContextMenu(sprite, { x: event.clientX, y: event.clientY });
+      }}
       draggable
       onDragStart={(event) => {
         const sprites = dragSprites.map(({ folder, name }) => ({

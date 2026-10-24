@@ -1,4 +1,5 @@
-import { Button } from "@/shared/components";
+import { useState } from "react";
+import { Button, Menu, type MenuItem } from "@/shared/components";
 import type { SpriteSummary, Tag } from "@/shared/lib/core";
 import { useLanguage, useT } from "@/shared/lib/i18n";
 import type { FrameCache } from "@/shared/lib/render";
@@ -12,6 +13,8 @@ type Props = {
   onRename: (sprite: SpriteSummary) => void;
   onDuplicate: (sprite: SpriteSummary) => void;
   onDelete: (sprite: SpriteSummary) => void;
+  // The folders the sprite can move to.
+  moveItems: MenuItem[];
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -32,8 +35,10 @@ export function DetailsPanel({
   onRename,
   onDuplicate,
   onDelete,
+  moveItems,
 }: Props) {
   const t = useT();
+  const [moving, setMoving] = useState(false);
   const language = useLanguage();
 
   if (!sprite) {
@@ -139,6 +144,26 @@ export function DetailsPanel({
         >
           {t("command.sprite.delete")}
         </Button>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          className="flex-1 justify-center"
+          onClick={() => onRename(sprite)}
+        >
+          {t("command.sprite.rename")}
+        </Button>
+        <div className="relative flex-1">
+          <Button
+            className="w-full justify-center"
+            aria-haspopup="menu"
+            onClick={() => setMoving(!moving)}
+          >
+            {t("command.sprite.move")}
+          </Button>
+          {moving && (
+            <Menu items={moveItems} onClose={() => setMoving(false)} />
+          )}
+        </div>
       </div>
     </div>
   );

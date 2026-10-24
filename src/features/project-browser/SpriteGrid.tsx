@@ -14,6 +14,7 @@ type Props = {
   onSelect: SpriteCardProps["onSelect"];
   onToggle: (sprite: SpriteSummary) => void;
   onOpen: (sprite: SpriteSummary) => void;
+  onContextMenu: SpriteCardProps["onContextMenu"];
   onNewSprite: () => void;
   // The "New sprite" card is not shown among search results.
   showNew: boolean;
@@ -30,6 +31,7 @@ export function SpriteGrid({
   onSelect,
   onToggle,
   onOpen,
+  onContextMenu,
   onNewSprite,
   showNew,
   menuFor,
@@ -48,6 +50,7 @@ export function SpriteGrid({
             onSelect={onSelect}
             onToggle={onToggle}
             onOpen={onOpen}
+            onContextMenu={onContextMenu}
             menuItems={menuFor(sprite)}
             dragSprites={dragSpritesFor(sprite)}
           />

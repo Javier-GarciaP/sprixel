@@ -26,6 +26,7 @@ import {
   spriteMenuItems,
   type HintFor,
 } from "./actions";
+import { ContextMenu } from "./ContextMenu";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { DetailsPanel } from "./DetailsPanel";
 import { FolderTree } from "./FolderTree";
@@ -107,6 +108,14 @@ function Browser({
   const [anchor, setAnchor] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [query, setQuery] = useState("");
+  // The menu of a right click: what it is for and where it opens.
+  const [context, setContext] = useState<{
+    kind: "sprite" | "folder";
+    sprite?: SpriteSummary;
+    path?: string[];
+    x: number;
+    y: number;
+  } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // The message after a delete. `revision` is the project revision right after
   // the delete: if anything else changes, Undo would undo that instead.
@@ -330,6 +339,19 @@ function Browser({
       folders,
     });
   // Dropping on the folder a sprite is already in does nothing.
+  // A right click on a card selects it (unless it is part of the selection)
+  // and opens its menu next to the pointer.
+  const openSpriteMenu = (
+    sprite: SpriteSummary,
+    at: { x: number; y: number },
+  ) => {
+    const inSelection = selectedKeys.includes(spriteKey(sprite));
+    if (!inSelection) {
+      setSelectedKeys([spriteKey(sprite)]);
+      setAnchor(spriteKey(sprite));
+    }
+    setContext({ kind: "sprite", sprite, ...at });
+  };
   const dropSprites = (sprites: SpriteTarget[], to: string[]) => {
     const moving = sprites.filter((s) => pathKey(s.folder) !== pathKey(to));
     if (moving.length > 0) move(moving, to);
@@ -427,6 +449,9 @@ function Browser({
             onRenameSprite={askRename}
             folderMenu={folderMenu}
             onDropSprites={dropSprites}
+            onFolderContextMenu={(path, at) =>
+              setContext({ kind: "folder", path, ...at })
+            }
           />
         )}
         <PaletteList
@@ -500,6 +525,7 @@ function Browser({
               onSelect={clickSprite}
               onToggle={toggleSprite}
               onOpen={open}
+              onContextMenu={openSpriteMenu}
               onNewSprite={newSprite}
               showNew={!searching}
               menuFor={menuFor}
@@ -557,6 +583,11 @@ function Browser({
               onRename={askRename}
               onDuplicate={duplicate}
               onDelete={(sprite) => trash([sprite])}
+              moveItems={moveMenuItems(selected, {
+                actions: spriteActions,
+                t,
+                folders,
+              })}
             />
           )}
         </aside>
@@ -599,6 +630,23 @@ function Browser({
           name={dialog.path[dialog.path.length - 1]}
           rename={(newName) => doRenameFolder(dialog.path, newName)}
           onClose={() => setDialog(null)}
+        />
+      )}
+      {context && (
+        <ContextMenu
+          x={context.x}
+          y={context.y}
+          items={
+            context.kind === "sprite" && context.sprite
+              ? spriteMenuItems(context.sprite, targetsFor(context.sprite), {
+                  actions: spriteActions,
+                  t,
+                  hint,
+                  folders,
+                })
+              : folderMenu(context.path ?? [])
+          }
+          onClose={() => setContext(null)}
         />
       )}
       {dialog?.kind === "delete-folder" && (

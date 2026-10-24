@@ -24,6 +24,8 @@ type Props = {
   onRenameFolder: (path: string[]) => void;
   onRenameSprite: (sprite: SpriteSummary) => void;
   folderMenu: (path: string[]) => MenuItem[];
+  // A right click on a folder (not the project root).
+  onFolderContextMenu: (path: string[], at: { x: number; y: number }) => void;
   // Sprite cards dropped on a folder move there.
   onDropSprites: (sprites: SpriteTarget[], to: string[]) => void;
 };
@@ -69,6 +71,14 @@ function FolderRow({
         aria-expanded={open}
         className={`group flex items-center gap-1 rounded-md pr-2 ${over ? "outline outline-2 outline-amber" : ""} ${selected ? "bg-surface-2 font-semibold text-text" : "text-text-muted hover:bg-surface-2"}`}
         style={indent(depth)}
+        onContextMenu={(event) => {
+          if (depth === 0) return;
+          event.preventDefault();
+          props.onFolderContextMenu(folder.path, {
+            x: event.clientX,
+            y: event.clientY,
+          });
+        }}
         onDragOver={(event) => {
           if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
           event.preventDefault();
