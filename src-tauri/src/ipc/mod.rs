@@ -226,3 +226,12 @@ pub fn move_sprites(
 ) -> Result<(), CoreError> {
     finish(&app, browser::move_sprites(&state, &sprites, &to))
 }
+
+#[tauri::command]
+pub fn delete_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    path: Vec<String>,
+) -> Result<u64, CoreError> {
+    finish(&app, browser::delete_folder(&state, &path))
+}

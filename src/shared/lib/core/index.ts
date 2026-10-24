@@ -86,6 +86,11 @@ export const duplicateSprite = (folder: string[], name: string) =>
 export const deleteSprites = (sprites: SpriteTarget[]) =>
   call<number>("delete_sprites", { sprites });
 
+// Moves a folder and everything inside it to the trash. Returns the revision
+// of the project after the change.
+export const deleteFolder = (path: string[]) =>
+  call<number>("delete_folder", { path });
+
 // Moves sprites to another folder (an empty path is the project root), in one
 // step. Fails with `name_exists` if a name is taken in the destination.
 export const moveSprites = (sprites: SpriteTarget[], to: string[]) =>

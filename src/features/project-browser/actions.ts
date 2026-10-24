@@ -103,6 +103,7 @@ export function spriteMenuItems(
 // What a person can do with a folder.
 export type FolderActions = {
   rename: (path: string[]) => void;
+  delete: (path: string[]) => void;
 };
 
 export function folderMenuItems(
@@ -117,6 +118,13 @@ export function folderMenuItems(
       label: t("command.sprite.rename"),
       hint: hint("sprite.rename"),
       onSelect: () => actions.rename(path),
+    },
+    {
+      id: "delete",
+      label: t("command.folder.delete"),
+      hint: hint("sprite.delete"),
+      separator: true,
+      onSelect: () => actions.delete(path),
     },
   ];
 }

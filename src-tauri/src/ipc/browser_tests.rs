@@ -614,3 +614,39 @@ fn several_sprites_move_together_or_not_at_all() {
     assert!(session_sprite(&state, &["Personajes"], "hero").is_some());
     assert!(session_sprite(&state, &["Enemigos"], "orc").is_some());
 }
+
+// Checks the spec scenario "Delete a folder": the folder and the sprites inside
+// it leave the tree and go to the trash as one step, and one undo brings the
+// folder back with its sprites, on the disk too.
+#[test]
+fn a_deleted_folder_goes_to_the_trash_with_its_sprites_and_undo_restores_it() {
+    let (parent, state) = sample();
+    let root = parent.path().join("Kit");
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+    assert!(root.join("sprites/Personajes/goblin.sprite.json").is_file());
+
+    let (revision, event) = delete_folder(&state, &["Personajes".to_string()]).unwrap();
+
+    assert_eq!(revision, event.revision);
+    assert_eq!(event.touched[0].kind, "folder");
+    assert!(project_tree(&state).unwrap().root.folders.iter().all(|f| f.name != "Personajes"));
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+    assert!(!root.join("sprites/Personajes").exists());
+    assert!(trash_has_a_sprite_file(&root));
+
+    undo(&state).unwrap();
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+
+    assert!(session_sprite(&state, &["Personajes"], "goblin").is_some());
+    assert!(root.join("sprites/Personajes/goblin.sprite.json").is_file());
+    assert!(!trash_has_a_sprite_file(&root));
+}
+
+// Checks that the project root cannot be deleted and a missing folder is `not_found`.
+#[test]
+fn the_root_and_missing_folders_cannot_be_deleted() {
+    let (_parent, state) = sample();
+
+    assert_eq!(delete_folder(&state, &[]).unwrap_err().code, "bad_path");
+    assert_eq!(delete_folder(&state, &["Nope".to_string()]).unwrap_err().code, "not_found");
+}

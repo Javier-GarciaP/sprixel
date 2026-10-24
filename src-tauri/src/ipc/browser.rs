@@ -524,6 +524,23 @@ pub fn delete_sprites(
     })
 }
 
+/// Moves a folder and everything inside it to the trash. Returns the revision
+/// after the change, like `delete_sprites`.
+pub fn delete_folder(
+    state: &ProjectState,
+    path: &[String],
+) -> Result<(u64, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let touched = session.apply(
+            "user",
+            vec![Operation::DeleteFolder {
+                path: path.to_vec(),
+            }],
+        )?;
+        Ok((session.project.revision, touched))
+    })
+}
+
 /// Moves sprites to another folder (an empty path is the root), all in one
 /// step. If a sprite cannot move (its name exists there) none moves.
 pub fn move_sprites(

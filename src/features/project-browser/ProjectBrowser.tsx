@@ -4,6 +4,7 @@ import {
   asCoreFailure,
   createFolder,
   createSprite,
+  deleteFolder,
   deleteSprites,
   duplicateSprite,
   moveSprites,
@@ -12,6 +13,7 @@ import {
   renameFolder,
   renameSprite,
   spriteFrame,
+  type FolderNode,
   type ProjectTree,
   type SpriteSummary,
   type SpriteTarget,
@@ -19,6 +21,7 @@ import {
 import { useT } from "@/shared/lib/i18n";
 import { FrameCache } from "@/shared/lib/render";
 import { folderMenuItems, spriteMenuItems, type HintFor } from "./actions";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { DetailsPanel } from "./DetailsPanel";
 import { FolderTree } from "./FolderTree";
 import { NewFolderDialog } from "./NewFolderDialog";
@@ -66,7 +69,9 @@ type Dialog =
   // `thenMove`: the sprites to move into the new folder (from "Move to folder").
   | { kind: "folder"; thenMove?: SpriteSummary[] }
   | { kind: "rename-sprite"; sprite: SpriteTarget }
-  | { kind: "rename-folder"; path: string[] };
+  | { kind: "rename-folder"; path: string[] }
+  | { kind: "delete-folder"; path: string[] }
+  | { kind: "delete-sprites"; sprites: SpriteSummary[] };
 
 // The Project tab: folders on the left, sprites in the middle and the
 // details on the right.
@@ -167,14 +172,34 @@ function Browser({
   const duplicate = (sprite: SpriteTarget) =>
     duplicateSprite(sprite.folder, sprite.name).then(selectSprite, fail);
 
-  const trash = async (sprites: SpriteSummary[]) => {
+  // Sends sprites to the trash and offers Undo. One sprite goes at once;
+  // several ask first, because more is at stake.
+  const trash = (sprites: SpriteSummary[]) => {
+    if (sprites.length > 1) setDialog({ kind: "delete-sprites", sprites });
+    else if (sprites.length === 1) trashNow(sprites);
+  };
+  const trashNow = async (sprites: SpriteSummary[]) => {
     try {
       const revision = await deleteSprites(
         sprites.map(({ folder, name }) => ({ folder, name })),
       );
       setSelectedKeys([]);
       setTrashed({
-        message: t("trash.moved", { name: sprites[0].name }),
+        message:
+          sprites.length === 1
+            ? t("trash.moved", { name: sprites[0].name })
+            : t("trash.groupMoved", { count: sprites.length }),
+        revision,
+      });
+    } catch (error) {
+      fail(error);
+    }
+  };
+  const trashFolder = async (path: string[]) => {
+    try {
+      const revision = await deleteFolder(path);
+      setTrashed({
+        message: t("trash.folderMoved", { name: path[path.length - 1] }),
         revision,
       });
     } catch (error) {
@@ -274,7 +299,16 @@ function Browser({
     if (moving.length > 0) move(moving, to);
   };
   const folderMenu = (path: string[]) =>
-    folderMenuItems(path, { rename: askRenameFolder }, t, hint);
+    folderMenuItems(
+      path,
+      {
+        rename: askRenameFolder,
+        delete: (folderPath) =>
+          setDialog({ kind: "delete-folder", path: folderPath }),
+      },
+      t,
+      hint,
+    );
 
   // Keys: F2 renames the selected sprite, or the open folder when no sprite is
   // selected. They do nothing while a dialog is open.
@@ -293,7 +327,11 @@ function Browser({
                 "sprite.delete": () => trash([only]),
               }
             : currentPath.length > 0
-              ? { "sprite.rename": () => askRenameFolder(currentPath) }
+              ? {
+                  "sprite.rename": () => askRenameFolder(currentPath),
+                  "sprite.delete": () =>
+                    setDialog({ kind: "delete-folder", path: currentPath }),
+                }
               : {}),
         },
   );
@@ -499,6 +537,32 @@ function Browser({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === "delete-folder" && (
+        <ConfirmFolderDelete
+          folder={findFolder(tree, dialog.path)}
+          path={dialog.path}
+          onConfirm={() => {
+            setDialog(null);
+            trashFolder(dialog.path);
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "delete-sprites" && (
+        <ConfirmDeleteDialog
+          title={t("confirm.groupTitle", { count: dialog.sprites.length })}
+          message={t("confirm.groupBody", { count: dialog.sprites.length })}
+          items={dialog.sprites.map((s) => [...s.folder, s.name].join(" / "))}
+          confirmLabel={t("confirm.deleteGroup", {
+            count: dialog.sprites.length,
+          })}
+          onConfirm={() => {
+            setDialog(null);
+            trashNow(dialog.sprites);
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {trashed ? (
         <Toast
           message={trashed.message}
@@ -509,5 +573,39 @@ function Browser({
         notice && <Toast tone="error" message={notice} />
       )}
     </div>
+  );
+}
+
+// The question before a folder goes to the trash: what is inside it.
+function ConfirmFolderDelete({
+  folder,
+  path,
+  onConfirm,
+  onClose,
+}: {
+  folder: FolderNode | null;
+  path: string[];
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const inside = folder ? allSprites(folder) : [];
+  const message =
+    inside.length === 0
+      ? t("confirm.folderBodyEmpty")
+      : inside.length === 1
+        ? t("confirm.folderBodyOne")
+        : t("confirm.folderBody", { count: inside.length });
+  return (
+    <ConfirmDeleteDialog
+      title={t("confirm.folderTitle", { name: path[path.length - 1] })}
+      message={message}
+      items={inside.map((s) =>
+        [...s.folder.slice(path.length), s.name].join(" / "),
+      )}
+      confirmLabel={t("confirm.delete")}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
   );
 }

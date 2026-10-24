@@ -13,6 +13,7 @@ import {
   checkName,
   createFolder,
   createSprite,
+  deleteFolder,
   deleteSprites,
   duplicateSprite,
   moveSprites,
@@ -114,10 +115,14 @@ describe("core api", () => {
     await projectUndo();
     await projectRedo();
     await moveSprites([{ folder: [], name: "orc" }], ["Enemigos"]);
+    await deleteFolder(["Personajes"]);
 
     expect(invoke).toHaveBeenNthCalledWith(4, "move_sprites", {
       sprites: [{ folder: [], name: "orc" }],
       to: ["Enemigos"],
+    });
+    expect(invoke).toHaveBeenNthCalledWith(5, "delete_folder", {
+      path: ["Personajes"],
     });
     expect(invoke).toHaveBeenNthCalledWith(1, "delete_sprites", {
       sprites: [{ folder: ["A"], name: "goblin" }],
