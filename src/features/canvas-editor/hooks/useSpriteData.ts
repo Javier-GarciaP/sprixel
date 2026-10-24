@@ -10,8 +10,6 @@ export type SpriteData =
       info: SpriteInfo;
       // The pixels of the current frame, one key code per pixel.
       pixels: Uint8Array;
-      // The previous frame, when there is one.
-      previous: Uint8Array | null;
     };
 
 export function keysToCodes(keys: string): Uint8Array {
@@ -45,19 +43,9 @@ export function useSpriteData(
       try {
         const info = await api.loadSprite(sprite);
         const current = Math.min(frame, info.frameCount);
-        const [pixels, previous] = await Promise.all([
-          api.loadFrame(sprite, current),
-          withPrevious && current > 1
-            ? api.loadFrame(sprite, current - 1)
-            : Promise.resolve(null),
-        ]);
+        const pixels = await api.loadFrame(sprite, current);
         if (stale) return;
-        setData({
-          status: "ready",
-          info,
-          pixels: keysToCodes(pixels),
-          previous: previous === null ? null : keysToCodes(previous),
-        });
+        setData({ status: "ready", info, pixels: keysToCodes(pixels) });
       } catch (error) {
         if (stale) return;
         const message =
@@ -71,10 +59,34 @@ export function useSpriteData(
       stale = true;
     };
     // `key` stands for `sprite`.
+  }, [api, key, frame, version]);
+
+  // The previous frame for onion skin. It is only a picture to look at: it
+  // is read on its own, so turning onion skin on or off does not reload the
+  // frame that is being drawn. There is none for frame 1.
+  const [previous, setPrevious] = useState<Uint8Array | null>(null);
+  useEffect(() => {
+    if (!sprite || !withPrevious || frame < 2) {
+      setPrevious(null);
+      return;
+    }
+    let stale = false;
+    api
+      .loadFrame(sprite, frame - 1)
+      .then((keys) => {
+        if (!stale) setPrevious(keysToCodes(keys));
+      })
+      .catch(() => {
+        if (!stale) setPrevious(null);
+      });
+    return () => {
+      stale = true;
+    };
   }, [api, key, frame, withPrevious, version]);
 
   return {
     data: sprite ? data : ({ status: "loading" } as SpriteData),
+    previous,
     reload,
   };
 }

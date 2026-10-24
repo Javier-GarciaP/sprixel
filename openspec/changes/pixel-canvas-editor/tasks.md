@@ -25,7 +25,7 @@
 ## 4. History and onion skin
 
 - [x] 4.1 Send each stroke as one operation and wire undo and redo, and verify a 30-pixel stroke undoes in one step
-- [ ] 4.2 Build onion skin with the switch and the opacity slider and verify frame 1 and frame 2 behavior
+- [x] 4.2 Build onion skin with the switch and the opacity slider and verify frame 1 and frame 2 behavior
 
 ## 5. Agents and speed
 

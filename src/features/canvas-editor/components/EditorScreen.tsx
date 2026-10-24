@@ -68,8 +68,13 @@ function OpenSprite({
   const [main, setMain] = useState("#000000");
   const [secondary, setSecondary] = useState("#FFFFFF");
   const [filled, setFilled] = useState(false);
-  const [onion, setOnion] = useState({ on: false, opacity: DEFAULT_OPACITY });
-  const { data, reload } = useSpriteData(api, sprite, frame, onion.on);
+  const [onion, setOnion] = useState({ on: true, opacity: DEFAULT_OPACITY });
+  const { data, previous, reload } = useSpriteData(
+    api,
+    sprite,
+    frame,
+    onion.on,
+  );
 
   if (data.status === "loading") return null;
   if (data.status === "error") {
@@ -87,7 +92,7 @@ function OpenSprite({
       sprite={sprite}
       info={data.info}
       pixels={data.pixels}
-      previous={data.previous}
+      previous={previous}
       frame={frame}
       onFrame={setFrame}
       tool={tool}
@@ -224,6 +229,8 @@ function Ready(props: ReadyProps) {
       tools.map((tool) => [`tool.${tool.id}`, () => props.onTool(tool.id)]),
     ),
     "colors.swap": props.onSwap,
+    "view.onionSkin": () =>
+      props.onOnion({ ...props.onion, on: !props.onion.on }),
     "view.zoomIn": () => canvas.zoomIn(),
     "view.zoomOut": () => canvas.zoomOut(),
     "view.fit": canvas.fit,
@@ -235,14 +242,26 @@ function Ready(props: ReadyProps) {
       height: info.height,
       pixels,
       colors: controller.colors.table,
-      onion: null,
+      onion:
+        props.onion.on && props.previous
+          ? { pixels: props.previous, opacity: props.onion.opacity / 100 }
+          : null,
       grid: props.pixelGrid,
       // The controller owns the selection and repaints its area.
       get selection() {
         return controller.selection;
       },
     }),
-    [info.width, info.height, pixels, controller, props.pixelGrid],
+    [
+      info.width,
+      info.height,
+      pixels,
+      controller,
+      props.pixelGrid,
+      props.previous,
+      props.onion.on,
+      props.onion.opacity,
+    ],
   );
 
   return (
