@@ -33,6 +33,7 @@ pub fn run() {
             ipc::rename_folder,
             ipc::duplicate_sprite,
             ipc::delete_sprites,
+            ipc::move_sprites,
             ipc::project_undo,
             ipc::project_redo
         ])

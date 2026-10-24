@@ -524,6 +524,29 @@ pub fn delete_sprites(
     })
 }
 
+/// Moves sprites to another folder (an empty path is the root), all in one
+/// step. If a sprite cannot move (its name exists there) none moves.
+pub fn move_sprites(
+    state: &ProjectState,
+    sprites: &[SpriteTarget],
+    to: &[String],
+) -> Result<((), ChangedEvent), CoreError> {
+    change(state, |session| {
+        let ops = sprites
+            .iter()
+            .map(|sprite| Operation::MoveSprite {
+                sprite: SpriteRef {
+                    folder: sprite.folder.clone(),
+                    name: sprite.name.clone(),
+                },
+                to: to.to_vec(),
+                index: None,
+            })
+            .collect();
+        Ok(((), session.apply("user", ops)?))
+    })
+}
+
 /// Undoes the last change, whoever made it.
 pub fn undo(state: &ProjectState) -> Result<((), ChangedEvent), CoreError> {
     change(state, |session| Ok(((), session.undo()?)))

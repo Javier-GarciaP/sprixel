@@ -86,6 +86,11 @@ export const duplicateSprite = (folder: string[], name: string) =>
 export const deleteSprites = (sprites: SpriteTarget[]) =>
   call<number>("delete_sprites", { sprites });
 
+// Moves sprites to another folder (an empty path is the project root), in one
+// step. Fails with `name_exists` if a name is taken in the destination.
+export const moveSprites = (sprites: SpriteTarget[], to: string[]) =>
+  call<void>("move_sprites", { sprites, to });
+
 // Undo and redo the last change of the project, whoever made it. They fail
 // with the code `nothing_to_undo` or `nothing_to_redo`.
 export const projectUndo = () => call<void>("project_undo");

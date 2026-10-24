@@ -17,6 +17,7 @@ type Props = {
   // The "New sprite" card is not shown among search results.
   showNew: boolean;
   menuFor: (sprite: SpriteSummary) => MenuItem[];
+  dragSpritesFor: (sprite: SpriteSummary) => SpriteSummary[];
 };
 
 // The sprites of a folder as cards, with a "New sprite" card at the end.
@@ -30,6 +31,7 @@ export function SpriteGrid({
   onNewSprite,
   showNew,
   menuFor,
+  dragSpritesFor,
 }: Props) {
   const t = useT();
   return (
@@ -44,6 +46,7 @@ export function SpriteGrid({
             onSelect={onSelect}
             onOpen={onOpen}
             menuItems={menuFor(sprite)}
+            dragSprites={dragSpritesFor(sprite)}
           />
         </li>
       ))}

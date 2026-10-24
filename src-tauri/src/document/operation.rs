@@ -86,6 +86,13 @@ pub enum Operation {
         path: Vec<String>,
         name: String,
     },
+    /// Moves a sprite to another folder (an empty path is the project root).
+    /// `index` is the place in that folder; `None` puts it at the end.
+    MoveSprite {
+        sprite: SpriteRef,
+        to: Vec<String>,
+        index: Option<usize>,
+    },
     /// Adds a copy of a sprite with a new name right after the original.
     DuplicateSprite {
         sprite: SpriteRef,
@@ -132,7 +139,9 @@ impl Operation {
     fn changes_place(&self) -> bool {
         matches!(
             self,
-            Operation::RenameSprite { .. } | Operation::RenameFolder { .. }
+            Operation::RenameSprite { .. }
+                | Operation::RenameFolder { .. }
+                | Operation::MoveSprite { .. }
         )
     }
 }
@@ -432,6 +441,37 @@ impl Project {
                         name: old,
                     },
                     touched: renamed(Target::Folder(from), Target::Folder(to)),
+                })
+            }
+            Operation::MoveSprite { sprite, to, index } => {
+                let (from, at) = self.locate(sprite)?;
+                let to = self.canonical_folder(to)?;
+                if from == to {
+                    return Err(DocError::new(
+                        "same_folder",
+                        "the sprite is already in that folder",
+                    ));
+                }
+                let name = self.folder(&from).sprites[at].name.clone();
+                if name_taken(self.folder(&to), &name) {
+                    return Err(name_exists(&name));
+                }
+                let moved = self.folder_mut(&from).sprites.remove(at);
+                let target = self.folder_mut(&to);
+                let place = index.unwrap_or(target.sprites.len()).min(target.sprites.len());
+                target.sprites.insert(place, moved);
+                let old = SpriteRef {
+                    folder: from,
+                    name: name.clone(),
+                };
+                let new = SpriteRef { folder: to, name };
+                Ok(Applied {
+                    inverse: Operation::MoveSprite {
+                        sprite: new.clone(),
+                        to: old.folder.clone(),
+                        index: Some(at),
+                    },
+                    touched: renamed(Target::Sprite(old), Target::Sprite(new)),
                 })
             }
             Operation::DuplicateSprite { sprite, name } => {

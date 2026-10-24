@@ -59,3 +59,6 @@ export function followRename(
     ? [...to, ...path.slice(from.length)]
     : path;
 }
+
+// The kind of data a dragged sprite card carries (a list of sprites as JSON).
+export const DRAG_TYPE = "application/x-sprixel-sprites";

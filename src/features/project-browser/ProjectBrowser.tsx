@@ -6,6 +6,7 @@ import {
   createSprite,
   deleteSprites,
   duplicateSprite,
+  moveSprites,
   projectRedo,
   projectUndo,
   renameFolder,
@@ -62,7 +63,8 @@ export const UNDO_MS = 8000;
 
 type Dialog =
   | { kind: "sprite" }
-  | { kind: "folder" }
+  // `thenMove`: the sprites to move into the new folder (from "Move to folder").
+  | { kind: "folder"; thenMove?: SpriteSummary[] }
   | { kind: "rename-sprite"; sprite: SpriteTarget }
   | { kind: "rename-folder"; path: string[] };
 
@@ -189,6 +191,37 @@ function Browser({
     });
   };
 
+  const move = async (
+    sprites: Pick<SpriteSummary, "folder" | "name">[],
+    to: string[],
+  ) => {
+    try {
+      await moveSprites(
+        sprites.map(({ folder, name }) => ({ folder, name })),
+        to,
+      );
+      setSelectedKeys([]);
+    } catch (error) {
+      if (asCoreFailure(error).code === "name_exists") {
+        const label = folderOptions(tree).find(
+          (option) => pathKey(option.path) === pathKey(to),
+        )?.label;
+        setNotice(t("move.conflict", { folder: label ?? "" }));
+      } else {
+        fail(error);
+      }
+    }
+  };
+  // Moving into a folder that is made right now: create it, then move.
+  const createFolderAndMove = async (
+    sprites: SpriteSummary[],
+    parent: string[],
+    name: string,
+  ) => {
+    const path = await createFolder(parent, name);
+    await move(sprites, path);
+  };
+
   const doRenameSprite = async (sprite: SpriteTarget, newName: string) => {
     const renamed = await renameSprite(sprite.folder, sprite.name, newName);
     selectSprite(renamed);
@@ -211,13 +244,35 @@ function Browser({
   };
 
   const { hint } = shortcuts;
+  const folders = folderOptions(tree);
+  const spriteActions = {
+    open,
+    rename: askRename,
+    duplicate,
+    move,
+    moveToNewFolder: (sprites: SpriteSummary[]) =>
+      setDialog({ kind: "folder", thenMove: sprites }),
+    delete: trash,
+  };
+  // A card acts on the whole selection when it is part of it (a menu, a drag),
+  // and only on itself otherwise.
+  const targetsFor = (sprite: SpriteSummary) =>
+    selected.length > 1 &&
+    selected.some((s) => spriteKey(s) === spriteKey(sprite))
+      ? selected
+      : [sprite];
   const menuFor = (sprite: SpriteSummary) =>
-    spriteMenuItems(
-      sprite,
-      { open, rename: askRename, duplicate, delete: (s) => trash([s]) },
+    spriteMenuItems(sprite, targetsFor(sprite), {
+      actions: spriteActions,
       t,
       hint,
-    );
+      folders,
+    });
+  // Dropping on the folder a sprite is already in does nothing.
+  const dropSprites = (sprites: SpriteTarget[], to: string[]) => {
+    const moving = sprites.filter((s) => pathKey(s.folder) !== pathKey(to));
+    if (moving.length > 0) move(moving, to);
+  };
   const folderMenu = (path: string[]) =>
     folderMenuItems(path, { rename: askRenameFolder }, t, hint);
 
@@ -295,6 +350,7 @@ function Browser({
             onRenameFolder={askRenameFolder}
             onRenameSprite={askRename}
             folderMenu={folderMenu}
+            onDropSprites={dropSprites}
           />
         )}
         <PaletteList
@@ -357,6 +413,7 @@ function Browser({
               onNewSprite={newSprite}
               showNew={!searching}
               menuFor={menuFor}
+              dragSpritesFor={targetsFor}
             />
             {!searching && sprites.length === 0 && (
               <p className="mb-4 text-sm text-text-muted">
@@ -404,7 +461,7 @@ function Browser({
       )}
       {dialog?.kind === "sprite" && (
         <NewSpriteDialog
-          folders={folderOptions(tree)}
+          folders={folders}
           palettes={tree.palettes}
           defaultFolder={currentPath}
           create={createSprite}
@@ -414,9 +471,13 @@ function Browser({
       )}
       {dialog?.kind === "folder" && (
         <NewFolderDialog
-          folders={folderOptions(tree)}
+          folders={folders}
           defaultParent={currentPath}
-          create={createFolder}
+          create={(parent, name) =>
+            dialog.thenMove
+              ? createFolderAndMove(dialog.thenMove, parent, name)
+              : createFolder(parent, name)
+          }
           onClose={() => setDialog(null)}
         />
       )}

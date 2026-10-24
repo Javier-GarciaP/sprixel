@@ -197,3 +197,45 @@ fn a_duplicate_writes_a_new_file() {
     assert!(sprite_path(&root, &goblin_ref()).exists());
     assert!(root.join("sprites/Personajes/goblin copy.sprite.json").exists());
 }
+
+// Checks that moving a sprite to another folder moves its file there (and
+// creates nothing in the trash), and that undo moves it back.
+#[test]
+fn moving_a_sprite_moves_its_file() {
+    let parent = tempfile::tempdir().unwrap();
+    let mut session = session_with_goblin(parent.path());
+    session
+        .apply(
+            "user",
+            vec![Operation::CreateFolder {
+                parent: vec![],
+                name: "Enemigos".to_string(),
+            }],
+        )
+        .unwrap();
+    session.flush();
+    let root = root_of(parent.path());
+    let text = fs::read_to_string(sprite_path(&root, &goblin_ref())).unwrap();
+
+    session
+        .apply(
+            "user",
+            vec![Operation::MoveSprite {
+                sprite: goblin_ref(),
+                to: vec!["Enemigos".to_string()],
+                index: None,
+            }],
+        )
+        .unwrap();
+    assert_eq!(session.flush(), SaveStatus::Saved);
+
+    assert!(!sprite_path(&root, &goblin_ref()).exists());
+    let moved = root.join("sprites/Enemigos/goblin.sprite.json");
+    assert_eq!(fs::read_to_string(moved).unwrap(), text);
+    assert_eq!(trash_files(&root), 0);
+
+    session.undo().unwrap();
+    session.flush();
+    assert!(sprite_path(&root, &goblin_ref()).exists());
+    assert!(!root.join("sprites/Enemigos/goblin.sprite.json").exists());
+}

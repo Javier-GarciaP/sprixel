@@ -216,3 +216,13 @@ pub fn project_redo(
 ) -> Result<(), CoreError> {
     finish(&app, browser::redo(&state))
 }
+
+#[tauri::command]
+pub fn move_sprites(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprites: Vec<SpriteTarget>,
+    to: Vec<String>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::move_sprites(&state, &sprites, &to))
+}

@@ -3,6 +3,7 @@ import type { SpriteSummary } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import type { FrameCache } from "@/shared/lib/render";
 import { ItemMenu } from "./ItemMenu";
+import { DRAG_TYPE } from "./paths";
 import { SpriteThumb } from "./SpriteThumb";
 
 type Props = {
@@ -14,6 +15,9 @@ type Props = {
   onOpen: (sprite: SpriteSummary) => void;
   // The actions of the "..." button.
   menuItems: MenuItem[];
+  // The sprites that move when this card is dragged: the whole selection when
+  // the card is part of it.
+  dragSprites: SpriteSummary[];
 };
 
 // A sprite of the selected folder: its thumbnail, name, size and frames.
@@ -26,6 +30,7 @@ export function SpriteCard({
   onSelect,
   onOpen,
   menuItems,
+  dragSprites,
 }: Props) {
   const t = useT();
   const frames = t(sprite.frames === 1 ? "browse.frameOne" : "browse.frames", {
@@ -33,6 +38,15 @@ export function SpriteCard({
   });
   return (
     <article
+      draggable
+      onDragStart={(event) => {
+        const sprites = dragSprites.map(({ folder, name }) => ({
+          folder,
+          name,
+        }));
+        event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(sprites));
+        event.dataTransfer.effectAllowed = "move";
+      }}
       className={`relative rounded-lg border-2 bg-surface p-2 ${selected ? "border-amber" : "border-border"}`}
     >
       <button

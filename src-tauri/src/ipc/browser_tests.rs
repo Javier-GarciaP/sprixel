@@ -574,3 +574,43 @@ fn undo_and_redo_with_nothing_to_do_have_codes() {
     assert_eq!(undo(&state).unwrap_err().code, "nothing_to_undo");
     assert_eq!(redo(&state).unwrap_err().code, "nothing_to_redo");
 }
+
+// Checks the spec scenario "Move to a folder": the sprite is in the new
+// folder (and in the tree) and no longer in the old one.
+#[test]
+fn a_sprite_is_moved_to_a_folder() {
+    let (_parent, state) = sample();
+    let orc = SpriteTarget { folder: vec![], name: "orc".to_string() };
+
+    let (_, event) = move_sprites(&state, &[orc], &["Enemigos".to_string()]).unwrap();
+
+    assert!(session_sprite(&state, &["Enemigos"], "orc").is_some());
+    assert!(session_sprite(&state, &[], "orc").is_none());
+    assert_eq!(event.touched.len(), 2);
+}
+
+// Checks that several sprites move as one step (one undo), and that a name that
+// exists in the destination refuses the whole move with `name_exists`.
+#[test]
+fn several_sprites_move_together_or_not_at_all() {
+    let (_parent, state) = sample();
+    create_sprite(&state, &["Enemigos".to_string()], "goblin", 4, 4, None).unwrap();
+    let both = [
+        SpriteTarget { folder: vec![], name: "orc".to_string() },
+        SpriteTarget { folder: vec!["Personajes".to_string()], name: "goblin".to_string() },
+    ];
+
+    let error = move_sprites(&state, &both, &["Enemigos".to_string()]).unwrap_err();
+
+    assert_eq!(error.code, "name_exists");
+    assert!(session_sprite(&state, &[], "orc").is_some());
+
+    let one = [both[0].clone()];
+    let two = [SpriteTarget { folder: vec!["Personajes".to_string()], name: "hero".to_string() }];
+    create_sprite(&state, &["Personajes".to_string()], "hero", 4, 4, None).unwrap();
+    move_sprites(&state, &one, &["Enemigos".to_string()]).unwrap();
+    move_sprites(&state, &two, &["Enemigos".to_string()]).unwrap();
+    undo(&state).unwrap();
+    assert!(session_sprite(&state, &["Personajes"], "hero").is_some());
+    assert!(session_sprite(&state, &["Enemigos"], "orc").is_some());
+}

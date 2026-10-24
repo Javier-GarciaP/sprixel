@@ -663,3 +663,148 @@ fn a_duplicate_needs_a_free_name() {
 
     assert_eq!(error.code, "name_exists");
 }
+
+fn project_with_two_folders() -> (Project, SpriteRef) {
+    let (mut project, goblin_ref) = project_with_goblin();
+    project
+        .apply(&Operation::CreateFolder {
+            parent: vec![],
+            name: "Enemigos".to_string(),
+        })
+        .unwrap();
+    (project, goblin_ref)
+}
+
+fn move_to(sprite: &SpriteRef, to: &[&str]) -> Operation {
+    Operation::MoveSprite {
+        sprite: sprite.clone(),
+        to: names(to),
+        index: None,
+    }
+}
+
+// Checks the spec scenario "Move to a folder": the sprite is in the new
+// folder, keeps its content, and is no longer in the old one.
+#[test]
+fn a_sprite_moves_to_another_folder() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+    let before = goblin(&project).clone();
+
+    let applied = project.apply(&move_to(&goblin_ref, &["enemigos"])).unwrap();
+
+    assert!(project.root.folders[0].sprites.is_empty());
+    assert_eq!(project.root.folders[1].sprites, [before]);
+    assert_eq!(
+        applied.touched,
+        [
+            Target::Sprite(goblin_ref),
+            Target::Sprite(SpriteRef::new(&["Enemigos"], "goblin"))
+        ]
+    );
+}
+
+// Checks that sprites can move to the project root too.
+#[test]
+fn a_sprite_can_move_to_the_root() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+
+    project.apply(&move_to(&goblin_ref, &[])).unwrap();
+
+    assert_eq!(project.root.sprites[0].name, "goblin");
+}
+
+// Checks that undo puts the sprite back in its old folder and at its old position.
+#[test]
+fn a_move_can_be_undone_to_the_same_position() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+    project.apply(&create_sprite(&["Personajes"], "orc", 4, 4)).unwrap();
+    project.apply(&create_sprite(&["Personajes"], "slime", 4, 4)).unwrap();
+    let before = content(&project);
+
+    let applied = project
+        .apply(&move_to(&SpriteRef::new(&["Personajes"], "orc"), &["Enemigos"]))
+        .unwrap();
+    project.apply(&applied.inverse).unwrap();
+
+    assert_eq!(content(&project), before);
+    let _ = goblin_ref;
+}
+
+// Checks the spec rule: moving fails with `name_exists` when the destination
+// has a sprite or a folder with that name (ignoring case), and nothing changes.
+#[test]
+fn a_move_fails_when_the_name_exists_in_the_destination() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+    project.apply(&create_sprite(&["Enemigos"], "GOBLIN", 4, 4)).unwrap();
+    let before = project.clone();
+
+    let error = project.apply(&move_to(&goblin_ref, &["Enemigos"])).unwrap_err();
+
+    assert_eq!(error.code, "name_exists");
+    assert_eq!(project, before);
+}
+
+// Checks that moving to the folder the sprite is already in, or to a folder
+// that does not exist, is refused.
+#[test]
+fn a_move_needs_another_existing_folder() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+
+    assert_eq!(
+        project.apply(&move_to(&goblin_ref, &["Personajes"])).unwrap_err().code,
+        "same_folder"
+    );
+    assert_eq!(
+        project.apply(&move_to(&goblin_ref, &["Nope"])).unwrap_err().code,
+        "not_found"
+    );
+}
+
+// Checks that several moves in one group are all or none: a conflict in the
+// second one puts the first sprite back.
+#[test]
+fn a_group_of_moves_is_all_or_none() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+    project.apply(&create_sprite(&["Personajes"], "orc", 4, 4)).unwrap();
+    project.apply(&create_sprite(&["Enemigos"], "orc", 4, 4)).unwrap();
+    let before = project.clone();
+
+    let result = project.apply_group(&[
+        move_to(&goblin_ref, &["Enemigos"]),
+        move_to(&SpriteRef::new(&["Personajes"], "orc"), &["Enemigos"]),
+    ]);
+
+    assert_eq!(result.unwrap_err().code, "name_exists");
+    assert_eq!(content(&project), content(&before));
+}
+
+// Checks that a group reports its renames and moves, in order, from the old
+// place to the new one (storage moves the files with this).
+#[test]
+fn a_group_reports_what_moved() {
+    let (mut project, goblin_ref) = project_with_two_folders();
+
+    let group = project
+        .apply_group(&[
+            move_to(&goblin_ref, &["Enemigos"]),
+            Operation::RenameSprite {
+                sprite: SpriteRef::new(&["Enemigos"], "goblin"),
+                name: "orc".to_string(),
+            },
+        ])
+        .unwrap();
+
+    assert_eq!(
+        group.moved,
+        [
+            (
+                Target::Sprite(goblin_ref),
+                Target::Sprite(SpriteRef::new(&["Enemigos"], "goblin"))
+            ),
+            (
+                Target::Sprite(SpriteRef::new(&["Enemigos"], "goblin")),
+                Target::Sprite(SpriteRef::new(&["Enemigos"], "orc"))
+            ),
+        ]
+    );
+}

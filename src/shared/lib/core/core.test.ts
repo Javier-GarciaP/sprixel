@@ -15,6 +15,7 @@ import {
   createSprite,
   deleteSprites,
   duplicateSprite,
+  moveSprites,
   onProjectChanged,
   projectRedo,
   projectTree,
@@ -112,7 +113,12 @@ describe("core api", () => {
     await deleteSprites([{ folder: ["A"], name: "goblin" }]);
     await projectUndo();
     await projectRedo();
+    await moveSprites([{ folder: [], name: "orc" }], ["Enemigos"]);
 
+    expect(invoke).toHaveBeenNthCalledWith(4, "move_sprites", {
+      sprites: [{ folder: [], name: "orc" }],
+      to: ["Enemigos"],
+    });
     expect(invoke).toHaveBeenNthCalledWith(1, "delete_sprites", {
       sprites: [{ folder: ["A"], name: "goblin" }],
     });

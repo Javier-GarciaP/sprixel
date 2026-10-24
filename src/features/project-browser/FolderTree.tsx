@@ -1,9 +1,15 @@
+import { useState } from "react";
 import type { MenuItem } from "@/shared/components";
-import type { FolderNode, ProjectTree, SpriteSummary } from "@/shared/lib/core";
+import type {
+  FolderNode,
+  ProjectTree,
+  SpriteSummary,
+  SpriteTarget,
+} from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { BrowserIcon } from "./icons";
 import { ItemMenu } from "./ItemMenu";
-import { itemCount, pathKey, spriteKey } from "./paths";
+import { DRAG_TYPE, itemCount, pathKey, spriteKey } from "./paths";
 
 type Props = {
   tree: ProjectTree;
@@ -18,6 +24,8 @@ type Props = {
   onRenameFolder: (path: string[]) => void;
   onRenameSprite: (sprite: SpriteSummary) => void;
   folderMenu: (path: string[]) => MenuItem[];
+  // Sprite cards dropped on a folder move there.
+  onDropSprites: (sprites: SpriteTarget[], to: string[]) => void;
 };
 
 const indent = (depth: number) => ({ paddingLeft: `${8 + depth * 16}px` });
@@ -51,6 +59,7 @@ function FolderRow({
   const open = depth === 0 || props.expanded.has(key);
   const selected = pathKey(props.selectedFolder) === key;
   const name = label || folder.name;
+  const [over, setOver] = useState(false);
 
   return (
     <>
@@ -58,8 +67,21 @@ function FolderRow({
         role="treeitem"
         aria-selected={selected}
         aria-expanded={open}
-        className={`group flex items-center gap-1 rounded-md pr-2 ${selected ? "bg-surface-2 font-semibold text-text" : "text-text-muted hover:bg-surface-2"}`}
+        className={`group flex items-center gap-1 rounded-md pr-2 ${over ? "outline outline-2 outline-amber" : ""} ${selected ? "bg-surface-2 font-semibold text-text" : "text-text-muted hover:bg-surface-2"}`}
         style={indent(depth)}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
+          event.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(event) => {
+          setOver(false);
+          const data = event.dataTransfer.getData(DRAG_TYPE);
+          if (!data) return;
+          event.preventDefault();
+          props.onDropSprites(JSON.parse(data) as SpriteTarget[], folder.path);
+        }}
       >
         {depth > 0 ? (
           <button
