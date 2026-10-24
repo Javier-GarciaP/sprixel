@@ -192,7 +192,10 @@ function Ready(props: ReadyProps) {
       colors: controller.colors.table,
       onion: null,
       grid: props.pixelGrid,
-      selection: null,
+      // The controller owns the selection and repaints its area.
+      get selection() {
+        return controller.selection;
+      },
     }),
     [info.width, info.height, pixels, controller, props.pixelGrid],
   );

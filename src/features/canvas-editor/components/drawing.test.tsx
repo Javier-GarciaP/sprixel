@@ -5,6 +5,7 @@ import { FakeEditorApi } from "../testing/fakeApi";
 import {
   colorOfPixel,
   mockLayout,
+  pictureAt,
   pixelPoint,
   renderEditor,
 } from "../testing/renderEditor";
@@ -288,5 +289,85 @@ describe("Shapes in the editor", () => {
     expect(
       await screen.findByRole("group", { name: "Shape style" }),
     ).toBeTruthy();
+  });
+});
+
+describe("Select and Move in the editor", () => {
+  async function drawn() {
+    const api = new FakeEditorApi(16, 16);
+    renderEditor(api);
+    await screen.findByText("1800%");
+    drag(
+      [16, 16],
+      [
+        [2, 2],
+        [3, 2],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    return api;
+  }
+  const useTool = async (name: string) => {
+    fireEvent.click(screen.getByRole("button", { name }));
+    await waitFor(() =>
+      expect(screen.getByTestId("active-tool").textContent).toContain(name),
+    );
+  };
+
+  // Checks that Select shows an outline on the edge of the chosen area (a
+  // black or white dash, not the checkerboard gray), and that a click clears
+  // it.
+  it("outlines the selected area", async () => {
+    await drawn();
+    await useTool("Select");
+    drag(
+      [16, 16],
+      [
+        [5, 5],
+        [8, 7],
+      ],
+    );
+    // The top left screen pixel of the area: the zoom is 1800%, so the
+    // center of a pixel is 9 screen pixels from its corner.
+    const corner = (x: number, y: number) => {
+      const point = pixelPoint(16, 16, x, y);
+      return pictureAt(point.clientX - 9, point.clientY - 9);
+    };
+    const outline = corner(5, 5);
+    expect(outline[0]).toBe(outline[1]);
+    expect([0, 255]).toContain(outline[0]);
+    drag([16, 16], [[12, 12]]);
+    await waitFor(() => {
+      const color = corner(5, 5);
+      expect(color[0] === 0 || color[0] === 255).toBe(false);
+    });
+  });
+
+  // Checks the "Move a selection" scenario through the real events: select
+  // the two pixels, drag them 3 pixels to the right, and one operation clears
+  // the old place and paints the new one.
+  it("moves a selection 3 pixels to the right in one operation", async () => {
+    const api = await drawn();
+    await useTool("Select");
+    drag(
+      [16, 16],
+      [
+        [2, 2],
+        [3, 2],
+      ],
+    );
+    await useTool("Move");
+    drag(
+      [16, 16],
+      [
+        [2, 2],
+        [5, 2],
+      ],
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(2));
+    expect(api.rows(1)[2].slice(0, 8)).toBe(".....AA.");
+    expect(
+      api.calls[1].changes.map((c) => `${c.x},${c.y},${c.color}`).sort(),
+    ).toEqual(["2,2,null", "3,2,null", "5,2,#000000", "6,2,#000000"]);
   });
 });

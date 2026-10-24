@@ -407,3 +407,153 @@ describe("Shapes", () => {
     expect(at(2, 1)).toBe("B");
   });
 });
+
+describe("Select and Move", () => {
+  // Draws a red pixel at each given place.
+  function withPixels(places: [number, number][], size = 12) {
+    const made = setup(size, size);
+    for (const [x, y] of places) {
+      made.controller.pointerDown(x, y, 0, plain);
+      made.controller.pointerUp();
+    }
+    made.commits.length = 0;
+    return made;
+  }
+  const select = (
+    controller: ReturnType<typeof setup>["controller"],
+    from: [number, number],
+    to: [number, number],
+  ) => {
+    controller.tool = "select";
+    controller.pointerDown(from[0], from[1], 0, plain);
+    controller.pointerMove(to[0], to[1], plain);
+    controller.pointerUp();
+  };
+  const drag = (
+    controller: ReturnType<typeof setup>["controller"],
+    from: [number, number],
+    to: [number, number],
+  ) => {
+    controller.tool = "move";
+    controller.pointerDown(from[0], from[1], 0, plain);
+    controller.pointerMove(to[0], to[1], plain);
+    controller.pointerUp();
+  };
+
+  // Checks that Select makes a rectangle between the press and the release
+  // (both pixels included), changes no pixels and sends nothing.
+  it("selects a rectangle", () => {
+    const { controller, commits } = withPixels([]);
+    select(controller, [2, 3], [5, 4]);
+    expect(controller.selection).toEqual({ x: 2, y: 3, width: 4, height: 2 });
+    expect(commits).toEqual([]);
+  });
+
+  // Checks that dragging in any direction gives the same rectangle, and that
+  // the part outside the sprite is cut off.
+  it("selects in any direction and clips to the sprite", () => {
+    const { controller } = withPixels([]);
+    select(controller, [5, 4], [2, 3]);
+    expect(controller.selection).toEqual({ x: 2, y: 3, width: 4, height: 2 });
+    select(controller, [10, 10], [20, 30]);
+    expect(controller.selection).toEqual({ x: 10, y: 10, width: 2, height: 2 });
+  });
+
+  // Checks that a click without a drag clears the selection.
+  it("clears the selection with a click", () => {
+    const { controller } = withPixels([]);
+    select(controller, [2, 2], [4, 4]);
+    controller.pointerDown(8, 8, 0, plain);
+    controller.pointerUp();
+    expect(controller.selection).toBeNull();
+  });
+
+  // Checks the "Move a selection" scenario: a selected area dragged 3 pixels
+  // to the right moves its pixels 3 pixels, the old place becomes transparent,
+  // the colors are the same, and it is one commit.
+  it("moves the selected pixels", () => {
+    const { controller, commits, at } = withPixels([
+      [2, 2],
+      [3, 2],
+      [3, 3],
+    ]);
+    select(controller, [2, 2], [3, 3]);
+    drag(controller, [2, 2], [5, 2]);
+    expect(at(2, 2)).toBe(".");
+    expect(at(3, 2)).toBe(".");
+    expect(at(3, 3)).toBe(".");
+    expect(at(5, 2)).toBe("R");
+    expect(at(6, 2)).toBe("R");
+    expect(at(6, 3)).toBe("R");
+    expect(commits).toHaveLength(1);
+    expect(controller.selection).toEqual({ x: 5, y: 2, width: 2, height: 2 });
+  });
+
+  // Checks that pixels outside the selection stay where they are.
+  it("leaves the pixels outside the selection alone", () => {
+    const { controller, at } = withPixels([
+      [2, 2],
+      [9, 9],
+    ]);
+    select(controller, [1, 1], [3, 3]);
+    drag(controller, [2, 2], [2, 4]);
+    expect(at(9, 9)).toBe("R");
+    expect(at(2, 4)).toBe("R");
+    expect(at(2, 2)).toBe(".");
+  });
+
+  // Checks the clipping rule: what leaves the canvas is lost, and what stays
+  // inside keeps its color.
+  it("cuts off what leaves the canvas", () => {
+    const { controller, at, commits } = withPixels([
+      [10, 5],
+      [11, 5],
+    ]);
+    select(controller, [10, 5], [11, 5]);
+    drag(controller, [10, 5], [11, 5]);
+    expect(at(10, 5)).toBe(".");
+    expect(at(11, 5)).toBe("R");
+    // (11, 5) was red and is red again, so only (10, 5) changed.
+    expect(commits[0]).toEqual([{ x: 10, y: 5, color: null }]);
+  });
+
+  // Checks that without a selection the Move tool moves the whole frame.
+  it("moves the whole frame when nothing is selected", () => {
+    const { controller, at } = withPixels([
+      [0, 0],
+      [4, 4],
+    ]);
+    drag(controller, [0, 0], [2, 1]);
+    expect(at(0, 0)).toBe(".");
+    expect(at(2, 1)).toBe("R");
+    expect(at(6, 5)).toBe("R");
+  });
+
+  // Checks that a moved piece does not erase what is under its transparent
+  // pixels: only its drawn pixels replace the destination.
+  it("does not erase with the transparent pixels of the moved piece", () => {
+    const { controller, at } = withPixels([
+      [1, 1],
+      [4, 1],
+    ]);
+    select(controller, [0, 1], [1, 1]);
+    drag(controller, [0, 1], [3, 1]);
+    expect(at(4, 1)).toBe("R");
+    expect(at(1, 1)).toBe(".");
+  });
+
+  // Checks that a move that comes back to the start sends nothing, and that a
+  // press without a move sends nothing.
+  it("sends nothing when the pixels end where they started", () => {
+    const { controller, commits } = withPixels([[2, 2]]);
+    select(controller, [1, 1], [3, 3]);
+    drag(controller, [2, 2], [5, 5]);
+    commits.length = 0;
+    controller.tool = "move";
+    controller.pointerDown(5, 5, 0, plain);
+    controller.pointerMove(9, 9, plain);
+    controller.pointerMove(5, 5, plain);
+    controller.pointerUp();
+    expect(commits).toEqual([]);
+  });
+});
