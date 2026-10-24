@@ -191,3 +191,28 @@ pub fn duplicate_sprite(
 ) -> Result<SpriteTarget, CoreError> {
     finish(&app, browser::duplicate_sprite(&state, &folder, &name))
 }
+
+#[tauri::command]
+pub fn delete_sprites(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprites: Vec<SpriteTarget>,
+) -> Result<u64, CoreError> {
+    finish(&app, browser::delete_sprites(&state, &sprites))
+}
+
+#[tauri::command]
+pub fn project_undo(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::undo(&state))
+}
+
+#[tauri::command]
+pub fn project_redo(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::redo(&state))
+}

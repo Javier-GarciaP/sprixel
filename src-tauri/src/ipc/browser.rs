@@ -9,7 +9,7 @@ use crate::document::{
 };
 use crate::ipc::project::{self, ProjectState};
 use crate::storage::Session;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// The event the core emits after every change to the open project.
 pub const CHANGED_EVENT: &str = "project://changed";
@@ -143,7 +143,7 @@ pub struct FrameInfo {
 }
 
 /// Where a sprite is, as the UI names it.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SpriteTarget {
     pub folder: Vec<String>,
     pub name: String,
@@ -501,6 +501,36 @@ pub fn duplicate_sprite(
         )?;
         Ok((new_sprite_target(&touched), touched))
     })
+}
+
+/// Moves sprites to the trash, all in one step. Returns the revision after
+/// the change, so the UI can tell if something else changed since.
+pub fn delete_sprites(
+    state: &ProjectState,
+    sprites: &[SpriteTarget],
+) -> Result<(u64, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let ops = sprites
+            .iter()
+            .map(|sprite| Operation::DeleteSprite {
+                sprite: SpriteRef {
+                    folder: sprite.folder.clone(),
+                    name: sprite.name.clone(),
+                },
+            })
+            .collect();
+        let touched = session.apply("user", ops)?;
+        Ok((session.project.revision, touched))
+    })
+}
+
+/// Undoes the last change, whoever made it.
+pub fn undo(state: &ProjectState) -> Result<((), ChangedEvent), CoreError> {
+    change(state, |session| Ok(((), session.undo()?)))
+}
+
+pub fn redo(state: &ProjectState) -> Result<((), ChangedEvent), CoreError> {
+    change(state, |session| Ok(((), session.redo()?)))
 }
 
 #[cfg(test)]

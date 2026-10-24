@@ -13,9 +13,12 @@ import {
   checkName,
   createFolder,
   createSprite,
+  deleteSprites,
   duplicateSprite,
   onProjectChanged,
+  projectRedo,
   projectTree,
+  projectUndo,
   renameFolder,
   renameSprite,
   spriteFrame,
@@ -99,6 +102,22 @@ describe("core api", () => {
       folder: ["A"],
       name: "goblin",
     });
+  });
+
+  // Checks the delete, undo and redo commands and their arguments.
+  it("calls delete, undo and redo", async () => {
+    insideApp();
+    invoke.mockResolvedValue(null);
+
+    await deleteSprites([{ folder: ["A"], name: "goblin" }]);
+    await projectUndo();
+    await projectRedo();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "delete_sprites", {
+      sprites: [{ folder: ["A"], name: "goblin" }],
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, "project_undo", undefined);
+    expect(invoke).toHaveBeenNthCalledWith(3, "project_redo", undefined);
   });
 
   // Checks that outside the app a call fails with `no_core` and does not touch the core.

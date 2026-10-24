@@ -16,6 +16,7 @@ export type SpriteActions = {
   open: (sprite: SpriteSummary) => void;
   rename: (sprite: SpriteSummary) => void;
   duplicate: (sprite: SpriteSummary) => void;
+  delete: (sprite: SpriteSummary) => void;
 };
 
 export function spriteMenuItems(
@@ -42,6 +43,13 @@ export function spriteMenuItems(
       label: t("command.sprite.duplicate"),
       hint: hint("sprite.duplicate"),
       onSelect: () => actions.duplicate(sprite),
+    },
+    {
+      id: "delete",
+      label: t("command.sprite.delete"),
+      hint: hint("sprite.delete"),
+      separator: true,
+      onSelect: () => actions.delete(sprite),
     },
   ];
 }

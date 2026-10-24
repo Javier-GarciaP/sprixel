@@ -81,6 +81,16 @@ export const renameFolder = (path: string[], newName: string) =>
 export const duplicateSprite = (folder: string[], name: string) =>
   call<SpriteTarget>("duplicate_sprite", { folder, name });
 
+// Moves sprites to the trash in one step. Returns the revision of the
+// project after the change.
+export const deleteSprites = (sprites: SpriteTarget[]) =>
+  call<number>("delete_sprites", { sprites });
+
+// Undo and redo the last change of the project, whoever made it. They fail
+// with the code `nothing_to_undo` or `nothing_to_redo`.
+export const projectUndo = () => call<void>("project_undo");
+export const projectRedo = () => call<void>("project_redo");
+
 // Runs `listener` after every change to the open project. Returns a function
 // that stops listening. Outside the app nothing is ever emitted.
 export async function onProjectChanged(

@@ -459,3 +459,118 @@ fn undo_takes_back_a_rename() {
     assert!(session_sprite(&state, &[], "orc").is_some());
     assert!(session_sprite(&state, &[], "ogre").is_none());
 }
+
+fn trash_has_a_sprite_file(root: &std::path::Path) -> bool {
+    fn walk(dir: &std::path::Path) -> bool {
+        let Ok(entries) = std::fs::read_dir(dir) else { return false };
+        entries.flatten().any(|e| {
+            let path = e.path();
+            if path.is_dir() {
+                walk(&path)
+            } else {
+                path.to_string_lossy().ends_with(".sprite.json")
+            }
+        })
+    }
+    walk(&root.join(".sprixel/trash"))
+}
+
+// Checks the spec scenario "Delete and undo": the sprite goes to the trash
+// (its file is kept in `.sprixel/trash/`, not erased), and a project opened
+// again does not have it.
+#[test]
+fn a_deleted_sprite_goes_to_the_trash() {
+    let (parent, state) = sample();
+    let root = parent.path().join("Kit");
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+    assert!(root.join("sprites/Personajes/goblin.sprite.json").is_file());
+    let target = SpriteTarget { folder: vec!["Personajes".to_string()], name: "goblin".to_string() };
+
+    let (revision, event) = delete_sprites(&state, &[target]).unwrap();
+
+    assert_eq!(revision, event.revision);
+    assert!(session_sprite(&state, &["Personajes"], "goblin").is_none());
+    crate::ipc::project::close_project(&state);
+    assert!(!root.join("sprites/Personajes/goblin.sprite.json").exists());
+    assert!(trash_has_a_sprite_file(&root));
+    crate::ipc::project::open_project(&state, &root).unwrap();
+    assert!(session_sprite(&state, &["Personajes"], "goblin").is_none());
+}
+
+// Checks that undo restores the content of the deleted sprite, and that redo deletes it again.
+#[test]
+fn undo_and_redo_bring_back_and_remove_the_sprite() {
+    let (_parent, state) = sample();
+    let before = session_sprite(&state, &["Personajes"], "goblin").unwrap();
+    let target = SpriteTarget { folder: vec!["Personajes".to_string()], name: "goblin".to_string() };
+    delete_sprites(&state, &[target]).unwrap();
+
+    let (_, event) = undo(&state).unwrap();
+    assert_eq!(event.touched[0].path, ["Personajes", "goblin"]);
+    assert_eq!(session_sprite(&state, &["Personajes"], "goblin"), Some(before));
+
+    redo(&state).unwrap();
+    assert!(session_sprite(&state, &["Personajes"], "goblin").is_none());
+}
+
+// Checks that undo after saving moves the file out of the trash to its place.
+#[test]
+fn undo_after_the_save_moves_the_file_back_from_the_trash() {
+    let (parent, state) = sample();
+    let root = parent.path().join("Kit");
+    let target = SpriteTarget { folder: vec!["Personajes".to_string()], name: "goblin".to_string() };
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+    delete_sprites(&state, &[target]).unwrap();
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+    assert!(!root.join("sprites/Personajes/goblin.sprite.json").exists());
+
+    undo(&state).unwrap();
+    crate::ipc::project::edit(&state, |s| s.flush()).unwrap();
+
+    assert!(root.join("sprites/Personajes/goblin.sprite.json").is_file());
+    assert!(!trash_has_a_sprite_file(&root));
+}
+
+// Checks that several sprites are deleted as one step: one undo brings all back.
+#[test]
+fn deleting_several_sprites_is_one_undo() {
+    let (_parent, state) = sample();
+    let targets = [
+        SpriteTarget { folder: vec!["Personajes".to_string()], name: "goblin".to_string() },
+        SpriteTarget { folder: vec![], name: "orc".to_string() },
+    ];
+
+    delete_sprites(&state, &targets).unwrap();
+    assert!(session_sprite(&state, &[], "orc").is_none());
+    undo(&state).unwrap();
+
+    assert!(session_sprite(&state, &[], "orc").is_some());
+    assert!(session_sprite(&state, &["Personajes"], "goblin").is_some());
+}
+
+// Checks that a delete of a sprite that does not exist is refused and the
+// sprites before it in the same call stay (all or none).
+#[test]
+fn a_refused_delete_changes_nothing() {
+    let (_parent, state) = sample();
+    let targets = [
+        SpriteTarget { folder: vec![], name: "orc".to_string() },
+        SpriteTarget { folder: vec![], name: "ghost".to_string() },
+    ];
+
+    let error = delete_sprites(&state, &targets).unwrap_err();
+
+    assert_eq!(error.code, "not_found");
+    assert!(session_sprite(&state, &[], "orc").is_some());
+}
+
+// Checks that undo and redo with nothing to do answer with a stable code.
+#[test]
+fn undo_and_redo_with_nothing_to_do_have_codes() {
+    let parent = tempfile::tempdir().unwrap();
+    let state = ProjectState::default();
+    create_project(&state, parent.path(), "Kit").unwrap();
+
+    assert_eq!(undo(&state).unwrap_err().code, "nothing_to_undo");
+    assert_eq!(redo(&state).unwrap_err().code, "nothing_to_redo");
+}

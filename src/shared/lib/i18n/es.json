@@ -29,6 +29,8 @@
   "command.project.export": "Exportar...",
   "command.project.close": "Cerrar proyecto",
   "menu.autosave": "El proyecto se guarda solo.",
+  "trash.moved": "{name} movido a la papelera",
+  "trash.undo": "Deshacer",
   "rename.sprite": "Renombrar sprite",
   "rename.folder": "Renombrar carpeta",
   "rename.confirm": "Renombrar",

@@ -11,6 +11,7 @@ type Props = {
   onOpen: (sprite: SpriteSummary) => void;
   onRename: (sprite: SpriteSummary) => void;
   onDuplicate: (sprite: SpriteSummary) => void;
+  onDelete: (sprite: SpriteSummary) => void;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -30,6 +31,7 @@ export function DetailsPanel({
   onOpen,
   onRename,
   onDuplicate,
+  onDelete,
 }: Props) {
   const t = useT();
   const language = useLanguage();
@@ -129,6 +131,13 @@ export function DetailsPanel({
           onClick={() => onDuplicate(sprite)}
         >
           {t("command.sprite.duplicate")}
+        </Button>
+        <Button
+          variant="danger"
+          className="flex-1 justify-center"
+          onClick={() => onDelete(sprite)}
+        >
+          {t("command.sprite.delete")}
         </Button>
       </div>
     </div>

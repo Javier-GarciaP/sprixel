@@ -31,7 +31,10 @@ pub fn run() {
             ipc::create_folder,
             ipc::rename_sprite,
             ipc::rename_folder,
-            ipc::duplicate_sprite
+            ipc::duplicate_sprite,
+            ipc::delete_sprites,
+            ipc::project_undo,
+            ipc::project_redo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

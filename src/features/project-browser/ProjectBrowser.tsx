@@ -4,7 +4,10 @@ import {
   asCoreFailure,
   createFolder,
   createSprite,
+  deleteSprites,
   duplicateSprite,
+  projectRedo,
+  projectUndo,
   renameFolder,
   renameSprite,
   spriteFrame,
@@ -51,6 +54,9 @@ type Props = {
   shortcuts?: Shortcuts;
 };
 
+// How long the message after a delete offers Undo.
+export const UNDO_MS = 8000;
+
 type Dialog =
   | { kind: "sprite" }
   | { kind: "folder" }
@@ -82,12 +88,28 @@ function Browser({
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The message after a delete. `revision` is the project revision right after
+  // the delete: if anything else changes, Undo would undo that instead.
+  const [trashed, setTrashed] = useState<{
+    message: string;
+    revision: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 6000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    if (!trashed) return;
+    const timer = setTimeout(() => setTrashed(null), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [trashed]);
+
+  useEffect(() => {
+    if (trashed && tree.revision > trashed.revision) setTrashed(null);
+  }, [tree.revision, trashed]);
 
   const everySprite = allSprites(tree.root);
   const selected = selectedKeys
@@ -131,6 +153,30 @@ function Browser({
   const duplicate = (sprite: SpriteTarget) =>
     duplicateSprite(sprite.folder, sprite.name).then(selectSprite, fail);
 
+  const trash = async (sprites: SpriteSummary[]) => {
+    try {
+      const revision = await deleteSprites(
+        sprites.map(({ folder, name }) => ({ folder, name })),
+      );
+      setSelectedKeys([]);
+      setTrashed({
+        message: t("trash.moved", { name: sprites[0].name }),
+        revision,
+      });
+    } catch (error) {
+      fail(error);
+    }
+  };
+  // Undo the last change of the project (a delete, usually). A message of the
+  // core that there is nothing to undo is not an error for the person.
+  const undo = (run: () => Promise<void>) => () => {
+    setTrashed(null);
+    run().catch((error) => {
+      const { code } = asCoreFailure(error);
+      if (code !== "nothing_to_undo" && code !== "nothing_to_redo") fail(error);
+    });
+  };
+
   const doRenameSprite = async (sprite: SpriteTarget, newName: string) => {
     const renamed = await renameSprite(sprite.folder, sprite.name, newName);
     selectSprite(renamed);
@@ -154,7 +200,12 @@ function Browser({
 
   const { hint } = shortcuts;
   const menuFor = (sprite: SpriteSummary) =>
-    spriteMenuItems(sprite, { open, rename: askRename, duplicate }, t, hint);
+    spriteMenuItems(
+      sprite,
+      { open, rename: askRename, duplicate, delete: (s) => trash([s]) },
+      t,
+      hint,
+    );
   const folderMenu = (path: string[]) =>
     folderMenuItems(path, { rename: askRenameFolder }, t, hint);
 
@@ -165,11 +216,14 @@ function Browser({
     dialog
       ? {}
       : {
+          "edit.undo": undo(projectUndo),
+          "edit.redo": undo(projectRedo),
           ...(only
             ? {
                 "sprite.open": () => open(only),
                 "sprite.rename": () => askRename(only),
                 "sprite.duplicate": () => duplicate(only),
+                "sprite.delete": () => trash([only]),
               }
             : currentPath.length > 0
               ? { "sprite.rename": () => askRenameFolder(currentPath) }
@@ -276,6 +330,7 @@ function Browser({
             onOpen={open}
             onRename={askRename}
             onDuplicate={duplicate}
+            onDelete={(sprite) => trash([sprite])}
           />
         </aside>
       )}
@@ -315,7 +370,15 @@ function Browser({
           onClose={() => setDialog(null)}
         />
       )}
-      {notice && <Toast tone="error" message={notice} />}
+      {trashed ? (
+        <Toast
+          message={trashed.message}
+          actionLabel={t("trash.undo")}
+          onAction={undo(projectUndo)}
+        />
+      ) : (
+        notice && <Toast tone="error" message={notice} />
+      )}
     </div>
   );
 }

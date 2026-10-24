@@ -29,6 +29,8 @@
   "command.project.export": "Export...",
   "command.project.close": "Close project",
   "menu.autosave": "The project saves by itself.",
+  "trash.moved": "{name} moved to the trash",
+  "trash.undo": "Undo",
   "rename.sprite": "Rename sprite",
   "rename.folder": "Rename folder",
   "rename.confirm": "Rename",
