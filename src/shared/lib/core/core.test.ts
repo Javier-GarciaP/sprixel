@@ -11,6 +11,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen }));
 import {
   asCoreFailure,
   checkName,
+  createFolder,
   createSprite,
   onProjectChanged,
   projectTree,
@@ -52,6 +53,7 @@ describe("core api", () => {
 
     await checkName(["A"], "x");
     await createSprite(["A"], "goblin", 16, 8, null);
+    await createFolder([], "Enemigos");
 
     expect(invoke).toHaveBeenNthCalledWith(1, "check_name", {
       parent: ["A"],
@@ -64,6 +66,10 @@ describe("core api", () => {
       width: 16,
       height: 8,
       palette: null,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, "create_folder", {
+      parent: [],
+      name: "Enemigos",
     });
   });
 

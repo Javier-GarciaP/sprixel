@@ -66,6 +66,9 @@ export const createSprite = (
 ) =>
   call<SpriteTarget>("create_sprite", { folder, name, width, height, palette });
 
+export const createFolder = (parent: string[], name: string) =>
+  call<string[]>("create_folder", { parent, name });
+
 // Runs `listener` after every change to the open project. Returns a function
 // that stops listening. Outside the app nothing is ever emitted.
 export async function onProjectChanged(

@@ -150,3 +150,13 @@ pub fn create_sprite(
         browser::create_sprite(&state, &folder, &name, width, height, palette.as_deref()),
     )
 }
+
+#[tauri::command]
+pub fn create_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    parent: Vec<String>,
+    name: String,
+) -> Result<Vec<String>, CoreError> {
+    finish(&app, browser::create_folder(&state, &parent, &name))
+}

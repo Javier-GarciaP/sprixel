@@ -213,6 +213,10 @@ fn the_event_and_the_errors_serialize_with_stable_names() {
     );
 }
 
+fn names(folder: &crate::document::Folder) -> Vec<&str> {
+    folder.sprites.iter().map(|s| s.name.as_str()).collect()
+}
+
 fn session_sprite(state: &ProjectState, folder: &[&str], name: &str) -> Option<crate::document::Sprite> {
     let at = SpriteRef::new(folder, name);
     crate::ipc::project::read(state, |s| s.project.find_sprite(&at).cloned()).unwrap()
@@ -338,4 +342,31 @@ fn check_name_ignores_the_item_being_renamed() {
 
     assert_eq!(check("Orc", "orc"), None);
     assert_eq!(check("enemigos", "orc"), Some("folder_exists"));
+}
+
+// Checks the spec scenario "Create a folder": the folder appears in the tree
+// and in the project's `sprites/` folder once saved; the same name twice is refused.
+#[test]
+fn a_folder_is_created_in_the_root_or_inside_another() {
+    let (parent, state) = sample();
+
+    let (path, _) = create_folder(&state, &[], "Items").unwrap();
+    create_folder(&state, &["Items".to_string()], "Potions").unwrap();
+
+    assert_eq!(path, ["Items"]);
+    let tree = project_tree(&state).unwrap();
+    assert_eq!(tree.root.folders[2].folders[0].path, ["Items", "Potions"]);
+    crate::ipc::project::close_project(&state);
+    assert!(parent.path().join("Kit/sprites/Items/Potions").is_dir());
+}
+
+// Checks that a folder name already used is refused with `name_exists`.
+#[test]
+fn a_folder_name_in_use_is_refused() {
+    let (_parent, state) = sample();
+
+    let error = create_folder(&state, &[], "enemigos").unwrap_err();
+
+    assert_eq!(error.code, "name_exists");
+    assert_eq!(names(&crate::ipc::project::read(&state, |s| s.project.root.clone()).unwrap()), ["orc"]);
 }

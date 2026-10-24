@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/shared/components";
 import {
+  createFolder,
   createSprite,
   spriteFrame,
   type SpriteSummary,
@@ -9,6 +10,7 @@ import {
 import { useT } from "@/shared/lib/i18n";
 import { FrameCache } from "@/shared/lib/render";
 import { FolderTree } from "./FolderTree";
+import { NewFolderDialog } from "./NewFolderDialog";
 import { NewSpriteDialog } from "./NewSpriteDialog";
 import { PaletteList } from "./PaletteList";
 import { DetailsPanel } from "./DetailsPanel";
@@ -43,7 +45,7 @@ export function ProjectBrowser({
   const [folderPath, setFolderPath] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<SpriteSummary[]>([]);
-  const [dialog, setDialog] = useState<"sprite" | null>(null);
+  const [dialog, setDialog] = useState<"sprite" | "folder" | null>(null);
 
   if (!tree) return null;
 
@@ -109,6 +111,9 @@ export function ProjectBrowser({
                   <h2 className="font-title text-xl font-bold">{crumb}</h2>
                 </div>
                 <div className="flex gap-2">
+                  <Button onClick={() => setDialog("folder")}>
+                    {t("browse.newFolder")}
+                  </Button>
                   <Button variant="primary" onClick={newSprite}>
                     {t("browse.newSprite")}
                   </Button>
@@ -135,6 +140,9 @@ export function ProjectBrowser({
             </h2>
             <p className="text-sm text-text-muted">{t("browse.empty.hint")}</p>
             <div className="flex gap-2">
+              <Button onClick={() => setDialog("folder")}>
+                {t("browse.newFolder")}
+              </Button>
               <Button variant="primary" onClick={newSprite}>
                 {t("browse.newSprite")}
               </Button>
@@ -162,6 +170,14 @@ export function ProjectBrowser({
           defaultFolder={currentPath}
           create={createSprite}
           onCreated={onOpenSprite}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === "folder" && (
+        <NewFolderDialog
+          folders={folderOptions(tree)}
+          defaultParent={currentPath}
+          create={createFolder}
           onClose={() => setDialog(null)}
         />
       )}

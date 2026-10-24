@@ -385,6 +385,32 @@ pub fn create_sprite(
     })
 }
 
+/// Creates a folder inside `parent` (an empty path is the project root).
+/// Returns the path of the new folder.
+pub fn create_folder(
+    state: &ProjectState,
+    parent: &[String],
+    name: &str,
+) -> Result<(Vec<String>, ChangedEvent), CoreError> {
+    change(state, |session| {
+        let touched = session.apply(
+            "user",
+            vec![Operation::CreateFolder {
+                parent: parent.to_vec(),
+                name: name.to_string(),
+            }],
+        )?;
+        let path = touched
+            .iter()
+            .find_map(|t| match t {
+                Target::Folder(path) => Some(path.clone()),
+                _ => None,
+            })
+            .expect("a created folder is touched");
+        Ok((path, touched))
+    })
+}
+
 #[cfg(test)]
 #[path = "browser_tests.rs"]
 mod tests;
