@@ -4,7 +4,7 @@
 
 ## 1. Canvas rendering
 
-- [ ] 1.1 Build the canvas renderer with exact scaling and the neutral checkerboard and verify screenshots in both themes
+- [x] 1.1 Build the canvas renderer with exact scaling and the neutral checkerboard and verify screenshots in both themes
 - [ ] 1.2 Add zoom (keys, wheel, buttons, Fit) and panning with the pointer kept fixed, and verify with tests
 - [ ] 1.3 Add the pixel grid option and the coordinates display and verify the 600% rule
 
