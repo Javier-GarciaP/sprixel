@@ -14,6 +14,7 @@ import { pixelAt } from "../view/viewMath";
 import { useCanvasView } from "../view/useCanvasView";
 import { CanvasArea } from "./CanvasArea";
 import { CanvasStatusBar } from "./CanvasStatusBar";
+import { useState } from "react";
 
 beforeEach(() => {
   // jsdom has no layout: the canvas area is 500x300.
@@ -40,6 +41,9 @@ const scene: Scene = {
 // The view logic and its two parts, wired like the editor does.
 function Harness() {
   const canvas = useCanvasView(scene.width, scene.height);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   return (
     <I18nProvider language="en">
       <div data-testid="view" data-view={JSON.stringify(canvas.view)} />
@@ -51,8 +55,10 @@ function Harness() {
           direction === 1 ? canvas.zoomIn(at) : canvas.zoomOut(at)
         }
         onMove={canvas.moveTo}
+        onHover={setPosition}
       />
       <CanvasStatusBar
+        position={position}
         zoom={canvas.view.zoom}
         onZoomIn={() => canvas.zoomIn()}
         onZoomOut={() => canvas.zoomOut()}
@@ -208,5 +214,53 @@ describe("panning", () => {
     });
     fireEvent.keyUp(window, { key: " " });
     await waitFor(() => expect(area.style.cursor).toBe("crosshair"));
+  });
+});
+
+describe("coordinates", () => {
+  // Checks the "Coordinates" scenario: over the pixel at column 3 and row 4
+  // the bar shows "x: 3 y: 4". The sprite is at 400% and starts at (10, 90).
+  it("shows the pixel under the pointer", async () => {
+    render(<Harness />);
+    await screen.findByText("400%");
+    const area = screen.getByTestId("canvas-area");
+    const { x, y } = view();
+    fireEvent.pointerMove(area, {
+      clientX: x + 3 * 4 + 1,
+      clientY: y + 4 * 4 + 2,
+      pointerId: 1,
+    });
+    expect((await screen.findByLabelText("Pointer position")).textContent).toBe(
+      "x: 3 y: 4",
+    );
+  });
+
+  // Checks that the bar shows dashes when the pointer is outside the sprite
+  // or leaves the canvas.
+  it("shows dashes outside the sprite", async () => {
+    render(<Harness />);
+    await screen.findByText("400%");
+    const area = screen.getByTestId("canvas-area");
+    const { x, y } = view();
+    fireEvent.pointerMove(area, {
+      clientX: x + 5,
+      clientY: y + 5,
+      pointerId: 1,
+    });
+    await screen.findByText("x: 1 y: 1");
+    fireEvent.pointerMove(area, {
+      clientX: x - 5,
+      clientY: y + 5,
+      pointerId: 1,
+    });
+    await screen.findByText("x: – y: –");
+    fireEvent.pointerMove(area, {
+      clientX: x + 5,
+      clientY: y + 5,
+      pointerId: 1,
+    });
+    await screen.findByText("x: 1 y: 1");
+    fireEvent.pointerLeave(area);
+    await screen.findByText("x: – y: –");
   });
 });

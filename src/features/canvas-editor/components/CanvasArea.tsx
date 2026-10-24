@@ -6,7 +6,7 @@ import {
   type WheelEvent,
 } from "react";
 import type { Scene, View } from "../render/renderer";
-import type { Point } from "../view/viewMath";
+import { pixelAt, type Point } from "../view/viewMath";
 import { PixelCanvas } from "./PixelCanvas";
 
 type Props = {
@@ -17,6 +17,8 @@ type Props = {
   onZoom: (direction: 1 | -1, at: Point) => void;
   // Move the view so the sprite starts at this screen position.
   onMove: (x: number, y: number) => void;
+  // The sprite pixel under the pointer, or null when it is outside the sprite.
+  onHover?: (pixel: Point | null) => void;
 };
 
 const typingInField = (target: EventTarget | null) =>
@@ -27,7 +29,14 @@ const typingInField = (target: EventTarget | null) =>
 // The area around the canvas. It reads the pointer: the wheel with Control
 // zooms, and holding Space and dragging, or dragging with the middle button,
 // moves the view.
-export function CanvasArea({ scene, view, onSize, onZoom, onMove }: Props) {
+export function CanvasArea({
+  scene,
+  view,
+  onSize,
+  onZoom,
+  onMove,
+  onHover,
+}: Props) {
   const holder = useRef<HTMLDivElement>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [panning, setPanning] = useState(false);
@@ -74,7 +83,23 @@ export function CanvasArea({ scene, view, onSize, onZoom, onMove }: Props) {
     holder.current?.setPointerCapture?.(event.pointerId);
   };
 
+  // Tells the parent which pixel is under the pointer, only when it changes.
+  const hovered = useRef<Point | null>(null);
+  const hover = (pixel: Point | null) => {
+    const before = hovered.current;
+    if (before?.x === pixel?.x && before?.y === pixel?.y) return;
+    hovered.current = pixel;
+    onHover?.(pixel);
+  };
+
   const onPointerMove = (event: PointerEvent) => {
+    const pixel = pixelAt(view, local(event));
+    const inside =
+      pixel.x >= 0 &&
+      pixel.y >= 0 &&
+      pixel.x < scene.width &&
+      pixel.y < scene.height;
+    hover(inside ? pixel : null);
     if (!drag.current) return;
     const now = local(event);
     onMove(
@@ -100,6 +125,7 @@ export function CanvasArea({ scene, view, onSize, onZoom, onMove }: Props) {
       onPointerMove={onPointerMove}
       onPointerUp={stopPan}
       onPointerCancel={stopPan}
+      onPointerLeave={() => hover(null)}
       onAuxClick={(event) => event.preventDefault()}
     >
       <PixelCanvas scene={scene} view={view} onSize={onSize} />

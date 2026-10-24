@@ -55,6 +55,8 @@
   "canvas.zoomIn": "Zoom in",
   "canvas.zoomOut": "Zoom out",
   "canvas.fit": "Fit",
+  "canvas.position": "x: {x} y: {y}",
+  "canvas.coordinates": "Pointer position",
   "shortcuts.group.project": "Project",
   "shortcuts.group.tools": "Tools",
   "shortcuts.group.editor": "Editor and view",

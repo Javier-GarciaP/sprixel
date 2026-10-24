@@ -62,4 +62,27 @@ describe("PixelCanvas", () => {
     const o = (4 * 64 + 4) * 4;
     expect([...image.data.slice(o, o + 4)]).toEqual([255, 0, 0, 255]);
   });
+
+  // The pixel at screen (4, 4) is the first of the sprite. With the grid on,
+  // that position is a grid line from 600% and plain color below 600%.
+  const firstPixel = async (zoom: number, grid: boolean) => {
+    render(
+      <PixelCanvas scene={{ ...scene, grid }} view={{ zoom, x: 4, y: 4 }} />,
+    );
+    await waitFor(() => expect(putImageData).toHaveBeenCalled());
+    const calls = putImageData.mock.calls;
+    const image = calls[calls.length - 1][0] as { data: Uint8ClampedArray };
+    cleanup();
+    const o = (4 * 64 + 4) * 4;
+    return [...image.data.slice(o, o + 3)];
+  };
+
+  // Checks the 600% rule through the real canvas: the grid option has no
+  // effect at 500% and draws lines at 600% and 800%.
+  it("draws the pixel grid only from 600%", async () => {
+    expect(await firstPixel(5, true)).toEqual([255, 0, 0]);
+    expect(await firstPixel(6, true)).not.toEqual([255, 0, 0]);
+    expect(await firstPixel(8, true)).not.toEqual([255, 0, 0]);
+    expect(await firstPixel(8, false)).toEqual([255, 0, 0]);
+  });
 });
