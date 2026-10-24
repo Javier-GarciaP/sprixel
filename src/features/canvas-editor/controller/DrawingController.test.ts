@@ -215,3 +215,83 @@ describe("Eyedropper", () => {
     expect(picks).toEqual([]);
   });
 });
+
+describe("Bucket", () => {
+  // Draws a closed 4x4 outline of blue in an 8x8 sprite, starting at (2, 2).
+  function outline() {
+    const made = setup();
+    made.controller.main = "#0000FF";
+    for (const [x, y] of [
+      [2, 2],
+      [3, 2],
+      [4, 2],
+      [5, 2],
+      [2, 5],
+      [3, 5],
+      [4, 5],
+      [5, 5],
+      [2, 3],
+      [2, 4],
+      [5, 3],
+      [5, 4],
+    ]) {
+      made.controller.pointerDown(x, y, 0, plain);
+      made.controller.pointerUp();
+    }
+    made.commits.length = 0;
+    made.controller.main = "#FF0000";
+    made.controller.tool = "bucket";
+    return made;
+  }
+
+  // Checks the "Fill an outline" scenario: filling inside a closed outline
+  // changes only the 4 connected pixels inside, in one commit.
+  it("fills only the connected pixels inside an outline", () => {
+    const { controller, commits, pixels } = outline();
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerUp();
+    expect(commits).toHaveLength(1);
+    expect(commits[0].map((c) => [c.x, c.y]).sort()).toEqual(
+      [
+        [3, 3],
+        [4, 3],
+        [3, 4],
+        [4, 4],
+      ].sort(),
+    );
+    expect(pixels.filter((c) => c === code("R"))).toHaveLength(4);
+    expect(pixels[0]).toBe(46);
+  });
+
+  // Checks that clicking an area that is already the active color changes
+  // nothing and sends nothing.
+  it("changes nothing on an area that already has the color", () => {
+    const { controller, commits } = outline();
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerUp();
+    commits.length = 0;
+    controller.pointerDown(3, 3, 0, plain);
+    controller.pointerUp();
+    expect(commits).toEqual([]);
+  });
+
+  // Checks that the right button fills with the secondary color.
+  it("fills with the secondary color on the right button", () => {
+    const { controller, at } = outline();
+    controller.pointerDown(3, 3, 2, plain);
+    controller.pointerUp();
+    expect(at(3, 3)).toBe("B");
+  });
+
+  // Checks the speed budget on a 512x512 sprite: a fill of the whole frame
+  // is one commit of 262,144 pixels and takes well under half a second.
+  it("fills a 512x512 sprite in a short time", () => {
+    const { controller, commits } = setup(512, 512);
+    controller.tool = "bucket";
+    const start = performance.now();
+    controller.pointerDown(100, 100, 0, plain);
+    controller.pointerUp();
+    expect(performance.now() - start).toBeLessThan(500);
+    expect(commits[0]).toHaveLength(512 * 512);
+  });
+});

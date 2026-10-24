@@ -1,5 +1,6 @@
 import type { PixelChange } from "../api/types";
 import { Draft } from "../tools/draft";
+import { floodFill } from "../tools/fill";
 import { linePoints } from "../tools/shapes";
 import type { ToolId } from "../tools/tools";
 import { TRANSPARENT_CODE, type Rect } from "../types";
@@ -56,6 +57,13 @@ export class DrawingController {
         const hex = this.colors.hexOf(this.pixels[y * this.width + x]);
         if (hex) this.events.onPick(hex, button);
       }
+      return;
+    }
+    if (this.tool === "bucket") {
+      // A fill is one click: it starts and ends here.
+      floodFill(this.draft, this.pixels, x, y, this.colors.codeFor(color));
+      this.flush();
+      this.finish();
       return;
     }
     if (this.tool === "pencil" || this.tool === "eraser") {

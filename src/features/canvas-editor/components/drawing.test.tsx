@@ -143,3 +143,47 @@ describe("Pencil and Eraser in the editor", () => {
     expect(menu).toBe(false);
   });
 });
+
+describe("Bucket in the editor", () => {
+  // Checks the fill through the real events: a click inside an outline sends
+  // one operation with only the inside pixels, and the canvas shows them.
+  it("fills inside a closed outline with one operation", async () => {
+    const api = new FakeEditorApi(8, 8, 1, [{ key: "K", hex: "#000000" }]);
+    api.setFrame(1, [
+      "........",
+      "..KKKK..",
+      "..K..K..",
+      "..K..K..",
+      "..KKKK..",
+      "........",
+      "........",
+      "........",
+    ]);
+    renderEditor(api);
+    await screen.findByText("3200%");
+    fireEvent.click(screen.getByRole("button", { name: "Bucket" }));
+    fireEvent.change(screen.getByLabelText("Hex color"), {
+      target: { value: "#FF0000" },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("main-color").style.background).toBe(
+        "rgb(255, 0, 0)",
+      ),
+    );
+    const area = screen.getByTestId("canvas-area");
+    const at = pixelPoint(8, 8, 3, 2);
+    fireEvent.pointerDown(area, { ...at, button: 0 });
+    fireEvent.pointerUp(area, at);
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    expect(api.calls[0].changes.map((c) => [c.x, c.y]).sort()).toEqual(
+      [
+        [3, 2],
+        [4, 2],
+        [3, 3],
+        [4, 3],
+      ].sort(),
+    );
+    expect(colorOfPixel(8, 8, 3, 2)).toEqual([255, 0, 0, 255]);
+    expect(colorOfPixel(8, 8, 0, 0)[0]).not.toBe(255);
+  });
+});
