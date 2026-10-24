@@ -269,6 +269,9 @@ function Ready(props: ReadyProps) {
     ...Object.fromEntries(
       tools.map((tool) => [`tool.${tool.id}`, () => props.onTool(tool.id)]),
     ),
+    "frame.previous": () => props.onFrame(Math.max(1, props.frame - 1)),
+    "frame.next": () =>
+      props.onFrame(Math.min(info.frameCount, props.frame + 1)),
     "colors.swap": props.onSwap,
     "view.onionSkin": () =>
       props.onOnion({ ...props.onion, on: !props.onion.on }),
