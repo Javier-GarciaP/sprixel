@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "./Icon";
 
 export type MenuItem = {
@@ -18,6 +18,9 @@ type Props = {
   onClose: () => void;
   // A small note under the list.
   footer?: string;
+  // Screen position. With it the menu is drawn above the page (not clipped
+  // by a scrolling column); without it, it sits under its parent.
+  position?: CSSProperties;
 };
 
 function Entry({ item, onClose }: { item: MenuItem; onClose: () => void }) {
@@ -67,7 +70,7 @@ function Entry({ item, onClose }: { item: MenuItem; onClose: () => void }) {
 }
 
 // A drop-down list of commands. Escape or a click outside closes it.
-export function Menu({ items, onClose, footer }: Props) {
+export function Menu({ items, onClose, footer, position }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,7 +90,8 @@ export function Menu({ items, onClose, footer }: Props) {
     <div
       ref={ref}
       role="menu"
-      className="absolute z-30 mt-1 min-w-[260px] rounded-lg border border-border-strong bg-surface p-1.5 shadow-lg"
+      style={position}
+      className={`${position ? "fixed" : "absolute mt-1"} z-30 min-w-[260px] rounded-lg border border-border-strong bg-surface p-1.5 shadow-lg`}
     >
       {items.map((item) => (
         <Entry key={item.id} item={item} onClose={onClose} />
