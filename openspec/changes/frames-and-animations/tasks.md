@@ -25,4 +25,4 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Update `docs/usage.md` (frames and animations) and verify it matches the app
+- [x] 5.1 Update `docs/usage.md` (frames and animations) and verify it matches the app
