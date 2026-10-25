@@ -15,7 +15,7 @@
 ## 3. Animations
 
 - [x] 3.1 Build the New and Edit animation dialog with validation and verify the valid and invalid range scenarios
-- [ ] 3.2 Show and edit the animations list in the sprite details and verify create, edit and delete
+- [x] 3.2 Show and edit the animations list in the sprite details and verify create, edit and delete
 - [ ] 3.3 Build the animation selector above the frames and verify it filters the column and the preview
 
 ## 4. Preview

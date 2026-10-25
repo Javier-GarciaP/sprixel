@@ -1,3 +1,10 @@
+export { AnimationDialog } from "./AnimationDialog";
 export { FramesColumn } from "./FramesColumn";
 export { coreFramesApi } from "./api";
-export type { FramesApi, FramesInfo, RepeatMode, Tag } from "./types";
+export type {
+  FramesApi,
+  FramesInfo,
+  RepeatMode,
+  SpriteRef,
+  Tag,
+} from "./types";
