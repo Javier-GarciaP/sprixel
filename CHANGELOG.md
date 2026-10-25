@@ -46,4 +46,6 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - The canvas no longer jumps when the "pick a color" hint goes away.
 - The project root lists the sprites of every folder.
 - An empty project shows the gray ghost, as in the design.
+- Opening another project from the menu now shows that project, not the old one.
+- The "..." button of a sprite card is at the top right, as in the design.
 
