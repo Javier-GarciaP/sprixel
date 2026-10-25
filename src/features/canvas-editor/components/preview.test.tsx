@@ -8,7 +8,13 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
-import { manualClock, mockLayout, renderEditor } from "../testing/renderEditor";
+import {
+  drag,
+  manualClock,
+  mockLayout,
+  putImageData,
+  renderEditor,
+} from "../testing/renderEditor";
 
 beforeEach(() => mockLayout(500, 300));
 afterEach(() => {
@@ -149,5 +155,60 @@ describe("Preview", () => {
       seen.push(shown());
     }
     expect(seen).toEqual([1, 2, 3, 1, 2]);
+  });
+});
+
+describe("Preview follows the drawing", () => {
+  // The preview draws at 200 pixels wide; this is its last picture, and the
+  // alpha of the pixel at the center of the sprite pixel (x, y) (25 px each).
+  const previewAlpha = (x: number, y: number) => {
+    const calls = putImageData.mock.calls.filter(
+      (call) => (call[0] as { width: number }).width === 200,
+    );
+    const image = calls[calls.length - 1][0] as { data: Uint8ClampedArray };
+    return image.data[((y * 25 + 12) * 200 + x * 25 + 12) * 4 + 3];
+  };
+
+  // Checks the "Edit while playing" scenario: while the preview plays, a stroke
+  // on frame 1 is read again from the core and the preview shows the new pixel
+  // the next time it comes to frame 1.
+  it("shows a new pixel on the next loop", async () => {
+    const api = new FakeEditorApi(8, 8, 2);
+    renderEditor(api);
+    await waitFor(() =>
+      expect(screen.getByTestId("preview").getAttribute("data-ready")).toBe(
+        "true",
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    pass(84);
+    expect(shown()).toBe(2);
+    await waitFor(() => expect(previewAlpha(1, 1)).toBe(0));
+
+    // The user is on frame 1 and draws while the preview plays.
+    await screen.findByText("3200%");
+    drag([8, 8], [[1, 1]]);
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    await waitFor(() => expect(api.rows(1)[1][1]).not.toBe("."));
+
+    // Next loop: frame 1 comes back with the new pixel.
+    await waitFor(() => {
+      pass(84);
+      expect(shown()).toBe(1);
+      expect(previewAlpha(1, 1)).toBe(255);
+    });
+  });
+
+  // Checks that the preview reads the frames again after an undo too (a change
+  // that does not come from the canvas).
+  it("reads the frames again after an undo", async () => {
+    const api = new FakeEditorApi(8, 8, 1);
+    renderEditor(api);
+    await screen.findByText("3200%");
+    drag([8, 8], [[1, 1]]);
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    await waitFor(() => expect(previewAlpha(1, 1)).toBe(255));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(previewAlpha(1, 1)).toBe(0));
   });
 });
