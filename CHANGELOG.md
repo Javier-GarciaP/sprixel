@@ -48,4 +48,7 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - An empty project shows the gray ghost, as in the design.
 - Opening another project from the menu now shows that project, not the old one.
 - The "..." button of a sprite card is at the top right, as in the design.
+- The folders column has a "Folders" title, no strong background on the selected
+  folder and "..." buttons that show only on hover, as in the design.
+- The Editor tab with no sprite shows the gray ghost and a "Go to project" button.
 
