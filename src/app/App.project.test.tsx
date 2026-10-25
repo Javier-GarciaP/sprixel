@@ -53,6 +53,7 @@ vi.mock("@/shared/lib/core", async (original) => ({
   onProjectChanged: vi.fn().mockResolvedValue(() => {}),
 }));
 
+import { projectTree } from "@/shared/lib/core";
 import App from "./App";
 
 const kit = {
@@ -304,5 +305,43 @@ describe("save status", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Retry" })[0]);
     await vi.waitFor(() => expect(api.retrySave).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Saved")).toBeTruthy();
+  });
+
+  // Checks that switching projects shows the data of the new project: the
+  // project tab reads the tree again instead of keeping the old one.
+  it("shows the new project when another one is opened from the menu", async () => {
+    api.createProject.mockResolvedValue(kit);
+    api.openProject.mockResolvedValue({
+      name: "Forest Run",
+      path: "/p/forest-run",
+      damagedFiles: 0,
+    });
+    vi.mocked(projectTree).mockResolvedValueOnce({
+      name: "Dungeon Kit",
+      revision: 0,
+      root: { name: "", path: [], folders: [], sprites: [] },
+      palettes: [],
+    });
+    vi.mocked(projectTree).mockResolvedValue({
+      name: "Forest Run",
+      revision: 0,
+      root: { name: "", path: [], folders: [], sprites: [] },
+      palettes: [],
+    });
+    await openNewProjectDialog();
+    create("Dungeon Kit");
+    expect(
+      await screen.findByRole("heading", { name: "Dungeon Kit" }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dungeon Kit" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Open recent/ }));
+    fireEvent.click(
+      within(screen.getAllByRole("menu")[1]).getByText("Forest Run"),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Forest Run" }),
+    ).toBeTruthy();
   });
 });

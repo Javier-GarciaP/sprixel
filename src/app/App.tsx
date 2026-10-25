@@ -143,8 +143,10 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   if (settingsOpen) {
     body = <SettingsScreen shortcutGroups={groups} />;
   } else if (tab === "project" && project) {
+    // Keyed by the project: another project starts with a clean view.
     body = (
       <ProjectBrowser
+        key={project.path}
         shortcuts={{
           useHandlers: useBrowserShortcuts,
           hint: (id) => {
@@ -174,7 +176,11 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     );
   } else if (tab === "editor") {
     body = (
-      <EditorScreen sprite={activeSprite} onCommands={registerEditorCommands} />
+      <EditorScreen
+        key={project?.path}
+        sprite={activeSprite}
+        onCommands={registerEditorCommands}
+      />
     );
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;
