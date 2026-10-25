@@ -5,7 +5,7 @@
 ## 1. Frame operations
 
 - [x] 1.1 Implement add, duplicate, delete and move frame operations with tag range updates and verify tests including overlapping tags
-- [ ] 1.2 Implement frame durations and the default from the animation speed and verify the 12 fps test
+- [x] 1.2 Implement frame durations and the default from the animation speed and verify the 12 fps test
 
 ## 2. Frames column
 

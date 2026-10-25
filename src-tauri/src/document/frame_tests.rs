@@ -330,3 +330,14 @@ fn a_tag_can_be_edited_and_renamed() {
     // The same name with other values is fine.
     project.apply(&edit("walk", tag("Walk", 1, 3))).unwrap();
 }
+
+// Checks the "Default duration" scenario: at 12 fps a frame that has no
+// duration of its own lasts about 83 ms; a frame with its own duration keeps
+// it, and the speed 1 to 60 gives 1000 ms to 17 ms.
+#[test]
+fn the_speed_decides_the_duration_of_a_frame_without_one() {
+    assert_eq!(frame_duration_ms(DEFAULT_FRAME_MS, 12), 83);
+    assert_eq!(frame_duration_ms(DEFAULT_FRAME_MS, 1), 1000);
+    assert_eq!(frame_duration_ms(DEFAULT_FRAME_MS, 60), 17);
+    assert_eq!(frame_duration_ms(250, 12), 250);
+}

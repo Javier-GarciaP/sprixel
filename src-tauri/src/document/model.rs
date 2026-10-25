@@ -4,6 +4,9 @@ pub const MAX_SIZE: u32 = 512;
 pub const MAX_COLORS: usize = 93;
 /// The pixel key of a transparent pixel. It is never a palette color.
 pub const TRANSPARENT: char = '.';
+/// The duration a new frame gets. A frame that still has it is a frame with
+/// no duration of its own: the speed of the animation decides.
+pub const DEFAULT_FRAME_MS: u32 = 100;
 
 /// A whole project. `revision` grows by one with every applied operation or
 /// group of operations.
@@ -96,6 +99,16 @@ impl TagMode {
             "pingpong" => Some(TagMode::PingPong),
             _ => None,
         }
+    }
+}
+
+/// How long a frame lasts when it is played in an animation of `fps` frames
+/// per second: its own duration, or `1000 / fps` when it has none.
+pub fn frame_duration_ms(duration_ms: u32, fps: u32) -> u32 {
+    if duration_ms == DEFAULT_FRAME_MS {
+        (1000.0 / fps.max(1) as f64).round() as u32
+    } else {
+        duration_ms
     }
 }
 
