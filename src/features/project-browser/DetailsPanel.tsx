@@ -1,4 +1,10 @@
 import { useState } from "react";
+import {
+  AnimationDialog,
+  coreFramesApi,
+  type FramesApi,
+  type Tag as Animation,
+} from "@/features/frames-animations";
 import { Button, Menu, type MenuItem } from "@/shared/components";
 import type { SpriteSummary, Tag } from "@/shared/lib/core";
 import { useLanguage, useT } from "@/shared/lib/i18n";
@@ -15,6 +21,8 @@ type Props = {
   onDelete: (sprite: SpriteSummary) => void;
   // The folders the sprite can move to.
   moveItems: MenuItem[];
+  // The calls to make, edit and delete animations. The tests give a fake one.
+  framesApi?: FramesApi;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -36,9 +44,12 @@ export function DetailsPanel({
   onDuplicate,
   onDelete,
   moveItems,
+  framesApi = coreFramesApi,
 }: Props) {
   const t = useT();
   const [moving, setMoving] = useState(false);
+  // The dialog of an animation: a new one, or the one that is edited.
+  const [editing, setEditing] = useState<{ tag?: Animation } | null>(null);
   const language = useLanguage();
 
   if (!sprite) {
@@ -54,6 +65,12 @@ export function DetailsPanel({
       fps: tag.fps,
       mode: t(`browse.mode.${tag.mode}`),
     });
+
+  const target = { folder: sprite.folder, name: sprite.name };
+  // The project refreshes by itself with the change event, and Undo (Ctrl+Z)
+  // brings an animation back.
+  const remove = (name: string) =>
+    framesApi.removeTag(target, name).catch(() => {});
 
   const editor = sprite.lastEditor;
   const editedBy = editor
@@ -102,19 +119,53 @@ export function DetailsPanel({
         aria-label={t("browse.animations")}
         className="rounded-lg border border-border bg-surface p-3"
       >
-        <h3 className="mb-1 text-xs font-semibold text-text-muted">
-          {t("browse.animations")}
-        </h3>
+        <div className="mb-1 flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-text-muted">
+            {t("browse.animations")}
+          </h3>
+          <button
+            type="button"
+            aria-label={t("anim.newTitle")}
+            title={t("anim.newTitle")}
+            onClick={() => setEditing({})}
+            className="flex h-5 w-5 items-center justify-center rounded border border-border text-sm"
+          >
+            +
+          </button>
+        </div>
         {sprite.tags.length === 0 ? (
           <p className="text-sm text-text-faint">{t("browse.noAnimations")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {sprite.tags.map((tag) => (
-              <li key={tag.name}>
-                <p className="text-sm font-bold">{tag.name}</p>
-                <p className="font-mono text-xs text-text-muted">
-                  {animation(tag)}
-                </p>
+              <li
+                key={tag.name}
+                className="flex items-start justify-between gap-2"
+              >
+                <div>
+                  <p className="text-sm font-bold">{tag.name}</p>
+                  <p className="font-mono text-xs text-text-muted">
+                    {animation(tag)}
+                  </p>
+                </div>
+                <div className="flex gap-1 text-xs">
+                  <button
+                    type="button"
+                    aria-label={t("anim.editNamed", { name: tag.name })}
+                    onClick={() => setEditing({ tag: tag as Animation })}
+                    className="rounded border border-border px-1.5 py-0.5"
+                  >
+                    {t("anim.edit")}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("anim.deleteNamed", { name: tag.name })}
+                    onClick={() => void remove(tag.name)}
+                    className="rounded border border-error px-1.5 py-0.5 text-error"
+                  >
+                    {t("anim.delete")}
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -165,6 +216,21 @@ export function DetailsPanel({
           )}
         </div>
       </div>
+      {editing && (
+        <AnimationDialog
+          frameCount={sprite.frames}
+          tag={editing.tag}
+          others={sprite.tags
+            .map((tag) => tag.name)
+            .filter((name) => name !== editing.tag?.name)}
+          onSave={(tag) =>
+            editing.tag
+              ? framesApi.setTag(target, editing.tag.name, tag)
+              : framesApi.addTag(target, tag)
+          }
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }

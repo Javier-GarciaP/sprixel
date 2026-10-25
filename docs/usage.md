@@ -239,17 +239,52 @@ finishes.
 
 ## Frames and animations
 
-- The column next to the tools lists the **frames**. Press **+** to add one.
+### Frames
+
+- The column next to the tools lists the **frames**, each with a picture and its
+  number. Click one to draw on it. The current frame has an amber border.
+- **+** adds an empty frame right after the current one, and the copy button
+  next to it adds a copy of the current frame. The new frame becomes the
+  current one.
+- The **...** button on a frame (or a right-click) opens its menu: **Duplicate**
+  and **Delete**. The last frame of a sprite cannot be deleted.
+- Drag a frame onto another one to move it there. The pixels of every frame stay
+  as they are.
+- `,` and `.` go to the previous and the next frame.
+- Add, delete and move are normal changes: `Ctrl+Z` takes them back.
 - **Onion skin** shows the previous frame in blue under your drawing, so you
   can see how the movement flows. Turn it on and set its opacity (10% to 80%,
   40% at the start) in the right panel; `O` toggles it. There is no onion skin
   on frame 1. The previous frame is only a guide: you cannot edit it and it is
   never exported.
-- The **preview** plays the animation. Choose the speed in FPS.
-- An **animation** is a name plus a range of frames. In the Project tab,
-  select a sprite and press **+** in the **Animations** box. For example
-  `walk`: frames 1 to 4, 12 fps, repeating.
-- The animation menu above the frames filters the frames you see.
+
+### Animations
+
+An **animation** is a name plus a range of frames, a speed and what happens at
+the end. A frame can be part of several animations.
+
+- In the Project tab, select a sprite and press **+** in the **Animations**
+  box. Choose a name, the first and the last frame, the speed (1 to 60 fps) and
+  **Repeat**, **Once** or **Ping-pong**. Mistakes show next to the field and the
+  button stays off. For example `walk`: frames 1 to 4, 12 fps, repeating shows
+  as "frames 1-4 · 12 fps · repeats".
+- **Edit** and **Delete** are next to each animation. Undo brings a deleted
+  animation back.
+- When you add, delete or move frames, the ranges follow the frames they hold.
+  If a move splits an animation, its range grows to hold all its frames.
+- The list **Animation** above the frames has **All** and your animations.
+  Choosing one shows only its frames in the column and in the preview.
+
+### Preview
+
+The **preview** in the right panel plays the chosen animation, or all the
+frames. **Play** and **Pause** start and stop it, and the slider sets the speed
+from 1 to 60 fps. **Repeat** loops, **Once** stops on the last frame, and
+**Ping-pong** goes forward and then backward. A frame lasts `1000 / fps`
+milliseconds (83 ms at 12 fps) unless it has a duration of its own.
+
+The preview follows your drawing: draw while it plays and the new pixels show
+the next time it reaches that frame.
 
 ## Palette
 

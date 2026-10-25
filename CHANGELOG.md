@@ -20,6 +20,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Onion skin: the previous frame in blue under the drawing, with an opacity
   from 10% to 80%.
 - A marker, a busy frame and a Stop button while an AI agent is drawing.
+- Frames: a column with thumbnails, add (empty or a copy) after the current
+  frame, duplicate, delete and drag to reorder, with animation ranges that
+  follow the frames.
+- Animations: create, edit and delete them in the sprite details (name, frames,
+  1 to 60 fps, repeat, once or ping-pong), and an animation list above the
+  frames that filters the column and the preview.
+- A live preview with play, pause and speed that follows what you draw.
 - Project tab: a folders tree with item counts, sprite cards with thumbnails,
   a details panel (size, frames, palette, animations, who edited it last) and
   the palettes of the project.

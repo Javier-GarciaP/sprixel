@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Toast } from "@/shared/components";
+import {
+  FramesColumn,
+  PreviewPanel,
+  chosenTag,
+  coreFramesApi,
+  rangeOf,
+  useFramesInfo,
+  type Clock,
+  type FramesApi,
+} from "@/features/frames-animations";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
@@ -20,7 +30,6 @@ import { CanvasArea } from "./CanvasArea";
 import type { PixelCanvasHandle } from "./PixelCanvas";
 import { CanvasBar } from "./CanvasBar";
 import { CanvasStatusBar } from "./CanvasStatusBar";
-import { FramesColumn } from "./FramesColumn";
 import { DEFAULT_OPACITY, OnionPanel } from "./OnionPanel";
 import { PalettePanel } from "./PalettePanel";
 import { RightPanel } from "./RightPanel";
@@ -33,12 +42,18 @@ type Props = {
   // The calls to the core. The tests give a fake one.
   api?: EditorApi;
   // Gives the app what the editor commands do (the app owns the keys).
+  // The calls for frames and animations. The tests give a fake one.
+  framesApi?: FramesApi;
+  // The clock of the preview. The tests give a manual one.
+  clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
 };
 
 export function EditorScreen({
   sprite,
   api = coreEditorApi,
+  framesApi = coreFramesApi,
+  clock,
   onCommands,
 }: Props) {
   const t = useT();
@@ -56,6 +71,8 @@ export function EditorScreen({
       key={JSON.stringify(sprite)}
       sprite={sprite}
       api={api}
+      framesApi={framesApi}
+      clock={clock}
       onCommands={onCommands}
     />
   );
@@ -64,10 +81,14 @@ export function EditorScreen({
 function OpenSprite({
   sprite,
   api,
+  framesApi,
+  clock,
   onCommands,
 }: {
   sprite: SpriteRef;
   api: EditorApi;
+  framesApi: FramesApi;
+  clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
 }) {
   const t = useT();
@@ -103,6 +124,12 @@ function OpenSprite({
   return (
     <Ready
       api={api}
+      framesApi={framesApi}
+      clock={clock}
+      onFramesChanged={(select) => {
+        if (select) setFrame(select);
+        reload();
+      }}
       onCommands={onCommands}
       reload={reload}
       sprite={sprite}
@@ -132,6 +159,9 @@ function OpenSprite({
 
 type ReadyProps = {
   api: EditorApi;
+  clock?: Clock;
+  framesApi: FramesApi;
+  onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
   // Reads the sprite from the core again.
   reload: () => void;
@@ -158,6 +188,18 @@ type ReadyProps = {
 function Ready(props: ReadyProps) {
   const t = useT();
   const { info, pixels, sprite } = props;
+  // The animation that filters the frames (null is "All").
+  const framesInfo = useFramesInfo(props.framesApi, sprite);
+  const tags = framesInfo?.tags ?? [];
+  const [animation, setAnimation] = useState<string | null>(null);
+  const chooseAnimation = (name: string | null) => {
+    setAnimation(name);
+    const range = rangeOf(tags, name);
+    // The current frame goes into the animation when it is outside of it.
+    if (range && (props.frame < range.from || props.frame > range.to)) {
+      props.onFrame(range.from);
+    }
+  };
   const canvas = useCanvasView(info.width, info.height);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     null,
@@ -339,10 +381,16 @@ function Ready(props: ReadyProps) {
         onSwap={props.onSwap}
       />
       <FramesColumn
+        api={props.framesApi}
+        sprite={sprite}
         frameCount={info.frameCount}
         frame={props.frame}
         onFrame={props.onFrame}
+        onChanged={props.onFramesChanged}
         busyFrame={writing?.frame}
+        tags={tags}
+        animation={animation}
+        onAnimation={chooseAnimation}
       />
       <section className="flex min-w-0 flex-1 flex-col">
         <CanvasBar
@@ -400,6 +448,15 @@ function Ready(props: ReadyProps) {
         />
       </section>
       <RightPanel
+        preview={
+          <PreviewPanel
+            api={props.framesApi}
+            sprite={sprite}
+            info={framesInfo}
+            tag={chosenTag(tags, animation)}
+            clock={props.clock}
+          />
+        }
         agent={writing ? agentText : null}
         palette={
           <PalettePanel

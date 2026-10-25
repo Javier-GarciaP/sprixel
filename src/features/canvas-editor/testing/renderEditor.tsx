@@ -7,10 +7,38 @@ import {
   PreferencesProvider,
   defaultPreferences,
 } from "@/shared/lib/preferences";
+import type { Clock, FramesApi } from "@/features/frames-animations";
 import { EditorScreen } from "../components/EditorScreen";
 import type { CommandHandlers } from "../hooks/useEditorCommands";
 import type { EditorApi, SpriteRef } from "../api/types";
 import { centeredView, fitZoom } from "../view/viewMath";
+
+// A clock the tests move by hand: `tick(ms)` passes that time and runs what was
+// waiting for the next frame.
+export const manualClock = (() => {
+  let time = 0;
+  let waiting: (() => void)[] = [];
+  return {
+    now: () => time,
+    frame: (callback: () => void) => {
+      waiting.push(callback);
+      return () => {
+        waiting = waiting.filter((w) => w !== callback);
+      };
+    },
+    tick(ms: number) {
+      time += ms;
+      const run = waiting;
+      waiting = [];
+      run.forEach((callback) => callback());
+    },
+    reset() {
+      time = 0;
+      waiting = [];
+    },
+  };
+})();
+const testClock: Clock = manualClock;
 
 export const goblin: SpriteRef = { folder: ["Characters"], name: "goblin" };
 
@@ -19,6 +47,8 @@ export const goblin: SpriteRef = { folder: ["Characters"], name: "goblin" };
 export const putImageData = vi.fn();
 
 export function mockLayout(width = 500, height = 300) {
+  manualClock.reset();
+  areaWidth = width;
   // Many test files run at once, so a slow machine needs more than 1 second.
   configure({ asyncUtilTimeout: 5000 });
   putImageData.mockClear();
@@ -41,14 +71,17 @@ export function mockLayout(width = 500, height = 300) {
   );
 }
 
-// The last picture sent to the canvas: RGBA of the whole area.
+let areaWidth = 500;
+
+// The last picture sent to the main canvas: RGBA of the whole area. The
+// thumbnails of the frames also use putImageData, with smaller pictures.
 export function lastPicture(): { data: Uint8ClampedArray; width: number } {
   const calls = putImageData.mock.calls;
-  const image = calls[calls.length - 1][0] as {
-    data: Uint8ClampedArray;
-    width: number;
-  };
-  return image;
+  for (let i = calls.length - 1; i >= 0; i--) {
+    const image = calls[i][0] as { data: Uint8ClampedArray; width: number };
+    if (image.width === areaWidth) return image;
+  }
+  throw new Error("nothing was painted on the main canvas yet");
 }
 
 export function pictureAt(x: number, y: number): number[] {
@@ -66,7 +99,16 @@ function Host({ sprite, api }: { sprite: SpriteRef | null; api: EditorApi }) {
     (next: CommandHandlers | null) => setHandlers(next ?? {}),
     [],
   );
-  return <EditorScreen sprite={sprite} api={api} onCommands={register} />;
+  // The fake core serves the frames too (it has the same sprite).
+  return (
+    <EditorScreen
+      sprite={sprite}
+      api={api}
+      framesApi={api as unknown as FramesApi}
+      clock={testClock}
+      onCommands={register}
+    />
+  );
 }
 
 export function renderEditor(
