@@ -66,7 +66,7 @@ the `palette-editor` and `drawing-tools` specs.
 | 3 | [`app-shell-and-settings`](../openspec/changes/archive/2026-10-22-app-shell-and-settings/) | Window layout, tabs, light and dark theme, Spanish and English, settings and shortcuts | 1 |
 | 4 | [`project-browser`](../openspec/changes/archive/2026-10-24-project-browser/) | Folders and sprites: create, rename, duplicate, move, delete, multi-select | 2, 3 |
 | 5 | [`pixel-canvas-editor`](../openspec/changes/archive/2026-10-24-pixel-canvas-editor/) | The canvas, tools, zoom, undo and redo, onion skin | 2, 3 |
-| 6 | [`frames-and-animations`](../openspec/changes/frames-and-animations/) | Frames, animation tags and the live preview | 5 |
+| 6 | [`frames-and-animations`](../openspec/changes/archive/2026-10-24-frames-and-animations/) | Frames, animation tags and the live preview | 5 |
 | 7 | [`palette-editor`](../openspec/changes/palette-editor/) | Palettes with one-letter keys, editing, creating and importing | 2, 5 |
 | 8 | [`text-grid-format`](../openspec/changes/text-grid-format/) | The text grid parser and validator, and the Text view | 5, 7 |
 | 9 | [`export-spritesheet`](../openspec/changes/export-spritesheet/) | Sprite sheet + JSON, PNG files and GIF | 6 |
