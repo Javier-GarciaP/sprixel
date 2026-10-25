@@ -3,6 +3,7 @@
 //! core owns the document; the UI only reads it and sends strokes. The
 //! functions here do not need a window, so the tests can call them directly.
 
+use super::browser::{CHANGED_EVENT, ChangedEvent, TargetInfo};
 use super::project::{self, ProjectState};
 use crate::document::{ColorChange, DocError, Project, SpriteRef};
 use serde::{Deserialize, Serialize};
@@ -238,7 +239,7 @@ pub fn apply_changes(
     sprite: &SpriteArg,
     frame: u32,
     changes: &[Change],
-) -> Result<ApplyResult, EditorError> {
+) -> Result<(ApplyResult, ChangedEvent), EditorError> {
     if agents.blocks(sprite, frame) {
         return Err(EditorError::new("frame_busy", "an agent is drawing on this frame"));
     }
@@ -253,11 +254,16 @@ pub fn apply_changes(
     project::edit(state, |session| {
         let target = sprite.to_ref();
         let ops = session.project.stroke_operations(&target, 0, frame, &changes)?;
-        session.apply(USER, ops)?;
-        Ok(ApplyResult {
+        let touched = session.apply(USER, ops)?;
+        let result = ApplyResult {
             palette: palette_of(&session.project, &target),
             history: history_of(session),
-        })
+        };
+        let event = ChangedEvent {
+            revision: session.project.revision,
+            touched: touched.iter().map(TargetInfo::from).collect(),
+        };
+        Ok((result, event))
     })
     .ok_or_else(no_project)?
 }
@@ -297,13 +303,17 @@ pub fn editor_frame(
 
 #[tauri::command]
 pub fn editor_apply(
+    app: tauri::AppHandle,
     state: tauri::State<ProjectState>,
     agents: tauri::State<EditorState>,
     sprite: SpriteArg,
     frame: u32,
     changes: Vec<Change>,
 ) -> Result<ApplyResult, EditorError> {
-    apply_changes(&state, &agents, &sprite, frame, &changes)
+    let (result, event) = apply_changes(&state, &agents, &sprite, frame, &changes)?;
+    // The project browser refreshes its thumbnails with this event.
+    let _ = tauri::Emitter::emit(&app, CHANGED_EVENT, event);
+    Ok(result)
 }
 
 #[tauri::command]
@@ -363,6 +373,7 @@ pub fn debug_agent_write(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ipc::browser;
     use crate::document::{Color, Operation, Palette};
     use crate::storage::Session;
     use std::path::Path;
@@ -417,6 +428,17 @@ mod tests {
         (parent, state, EditorState::default())
     }
 
+    /// A stroke, keeping only the result (the event has its own test).
+    fn apply(
+        state: &ProjectState,
+        agents: &EditorState,
+        sprite: &SpriteArg,
+        frame: u32,
+        changes: &[Change],
+    ) -> Result<ApplyResult, EditorError> {
+        apply_changes(state, agents, sprite, frame, changes).map(|(result, _)| result)
+    }
+
     fn frame(state: &ProjectState) -> String {
         frame_pixels(state, &arg("goblin"), 1).unwrap()
     }
@@ -456,7 +478,7 @@ mod tests {
             .map(|i| change(i % 16, i / 16, Some("#336699")))
             .collect();
 
-        let applied = apply_changes(&state, &agents, &arg("goblin"), 1, &changes).unwrap();
+        let applied = apply(&state, &agents, &arg("goblin"), 1, &changes).unwrap();
         assert_eq!(applied.palette.len(), 1);
         assert_eq!(applied.palette[0].key, "A");
         assert_eq!(applied.palette[0].hex, "#336699");
@@ -477,8 +499,8 @@ mod tests {
     #[test]
     fn each_stroke_is_its_own_undo_step() {
         let (_dir, state, agents) = open_project(vec![]);
-        apply_changes(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#336699"))]).unwrap();
-        apply_changes(&state, &agents, &arg("goblin"), 1, &[change(1, 0, Some("#336699"))]).unwrap();
+        apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#336699"))]).unwrap();
+        apply(&state, &agents, &arg("goblin"), 1, &[change(1, 0, Some("#336699"))]).unwrap();
         undo(&state).unwrap();
         assert!(frame(&state).starts_with("A."));
         undo(&state).unwrap();
@@ -490,7 +512,7 @@ mod tests {
     #[test]
     fn a_stroke_is_by_the_user() {
         let (_dir, state, agents) = open_project(vec![]);
-        apply_changes(&state, &agents, &arg("goblin"), 1, &[change(0, 0, None)]).unwrap();
+        apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, None)]).unwrap();
         // A stroke that changes nothing still is an action, by the user.
         let author = project::read(&state, |s| s.history.entries()[0].author.clone()).unwrap();
         assert_eq!(author, "user");
@@ -532,7 +554,7 @@ mod tests {
         let before = frame(&state);
 
         let error =
-            apply_changes(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#FEDCBA"))])
+            apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#FEDCBA"))])
                 .unwrap_err();
 
         assert_eq!(error.code, "palette_full");
@@ -553,7 +575,7 @@ mod tests {
             frame: 1,
         });
         let draw = |name: &str, frame: u32| {
-            apply_changes(&state, &agents, &arg(name), frame, &[change(0, 0, Some("#336699"))])
+            apply(&state, &agents, &arg(name), frame, &[change(0, 0, Some("#336699"))])
         };
 
         assert_eq!(draw("goblin", 1).unwrap_err().code, "frame_busy");
@@ -584,7 +606,7 @@ mod tests {
 
         assert_eq!(agents.writing(), None);
         assert!(agents.stop_requested());
-        assert!(apply_changes(&state, &agents, &arg("goblin"), 1, &[change(0, 0, None)]).is_ok());
+        assert!(apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, None)]).is_ok());
         agents.begin(write);
         assert!(!agents.stop_requested());
     }
@@ -595,7 +617,7 @@ mod tests {
     #[test]
     fn a_stroke_and_its_new_color_are_saved() {
         let (_dir, state, agents) = open_project(vec![]);
-        apply_changes(&state, &agents, &arg("goblin"), 1, &[change(2, 1, Some("#336699"))]).unwrap();
+        apply(&state, &agents, &arg("goblin"), 1, &[change(2, 1, Some("#336699"))]).unwrap();
         let root = project::read(&state, |s| s.root().to_path_buf()).unwrap();
 
         project::close_project(&state);
@@ -622,7 +644,7 @@ mod tests {
         assert!(info["revision"].is_u64());
         assert_eq!(info["palette"], serde_json::json!([]));
 
-        let applied = apply_changes(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#336699"))])
+        let applied = apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#336699"))])
             .unwrap();
         let applied = serde_json::to_value(applied).unwrap();
         assert_eq!(applied["palette"][0], serde_json::json!({"key": "A", "hex": "#336699"}));
@@ -639,5 +661,36 @@ mod tests {
         let json = serde_json::to_value(&write).unwrap();
         assert_eq!(json["sprite"]["folder"], serde_json::json!([]));
         assert_eq!(json["frame"], 2);
+    }
+
+    // Checks that a stroke gives the `project://changed` event with the new
+    // revision and the sprite it touched (and its palette when a color was
+    // added), so the thumbnails of the project browser refresh while drawing.
+    #[test]
+    fn a_stroke_gives_the_changed_event_with_the_sprite() {
+        let (_dir, state, agents) = open_project(vec![]);
+        let before = project::read(&state, |s| s.project.revision).unwrap();
+
+        let (_, event) = apply_changes(
+            &state,
+            &agents,
+            &arg("goblin"),
+            1,
+            &[change(0, 0, Some("#336699"))],
+        )
+        .unwrap();
+
+        assert!(event.revision > before);
+        let sprite = browser::TargetInfo { kind: "sprite", path: vec!["goblin".to_string()] };
+        assert!(event.touched.contains(&sprite));
+        let palette = browser::TargetInfo { kind: "palette", path: vec!["main".to_string()] };
+        assert!(event.touched.contains(&palette));
+    }
+
+    // Checks that a refused stroke gives no event (an error, nothing changed).
+    #[test]
+    fn a_refused_stroke_gives_no_event() {
+        let (_dir, state, agents) = open_project(vec![]);
+        assert!(apply_changes(&state, &agents, &arg("ghost"), 1, &[change(0, 0, None)]).is_err());
     }
 }
