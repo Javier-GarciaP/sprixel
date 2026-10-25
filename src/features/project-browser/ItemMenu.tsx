@@ -22,7 +22,7 @@ export function ItemMenu({ label, items, className = "" }: Props) {
     });
   };
   return (
-    <div className={`relative ${className}`}>
+    <div className={className}>
       <button
         type="button"
         aria-label={label}

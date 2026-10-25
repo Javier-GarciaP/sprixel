@@ -406,6 +406,21 @@ describe("folder menu", () => {
   });
 });
 
+describe("sprite card", () => {
+  // Checks that the "..." button sits at the top right of the card (design
+  // screen 06): its box is positioned by the card, not left in the flow.
+  it("puts the menu button at the top right of the card", async () => {
+    renderBrowser();
+    const button = await screen.findByRole("button", {
+      name: "More actions for orc",
+    });
+    const box = button.parentElement as HTMLElement;
+    expect(box.className).toContain("absolute");
+    expect(box.className).toContain("right-3");
+    expect(box.className).not.toContain("relative");
+  });
+});
+
 describe("empty states", () => {
   // Checks the spec scenario "New project": the empty message with one main
   // action, and no details panel.
