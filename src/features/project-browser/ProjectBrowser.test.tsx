@@ -592,3 +592,27 @@ describe("search", () => {
     ).toBeTruthy();
   });
 });
+
+describe("folders column", () => {
+  // Checks design screen 06: a "Folders" title above the tree, and the "..."
+  // of a folder hidden until the pointer is over its row, and no strong
+  // background that stays on the selected folder.
+  it("shows the title and keeps the folder menu and the row background light", async () => {
+    renderBrowser();
+    const menu = await screen.findByRole("button", {
+      name: "More actions for Enemigos",
+    });
+    expect(screen.getByRole("heading", { name: "Folders" })).toBeTruthy();
+    expect(menu.parentElement?.className).toContain("opacity-0");
+    expect(menu.parentElement?.className).toContain("group-hover:opacity-100");
+
+    fireEvent.click(
+      within(await folderRow(/Enemigos/)).getByRole("button", {
+        name: /^Enemigos/,
+      }),
+    );
+    expect((await folderRow(/Enemigos/)).className.split(" ")).not.toContain(
+      "bg-surface-2",
+    );
+  });
+});
