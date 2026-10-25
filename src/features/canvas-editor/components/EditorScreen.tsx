@@ -392,7 +392,7 @@ function Ready(props: ReadyProps) {
         animation={animation}
         onAnimation={chooseAnimation}
       />
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="relative flex min-w-0 flex-1 flex-col">
         <CanvasBar
           name={sprite.name}
           width={info.width}
@@ -435,7 +435,7 @@ function Ready(props: ReadyProps) {
           />
         </div>
         {isBlank(pixels) && (
-          <p className="mx-auto mb-3 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
+          <p className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
             {t("editor.hint")}
           </p>
         )}

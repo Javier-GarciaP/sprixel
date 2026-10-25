@@ -57,6 +57,14 @@ describe("editor layout", () => {
     expect(pictureAt(106 + 288, 6)[3]).toBe(0);
   });
 
+  // Checks that the "pick a color" hint floats over the canvas area, so when
+  // it goes away after the first pixel the canvas does not jump.
+  it("shows the start hint without taking space from the canvas", async () => {
+    renderEditor(new FakeEditorApi(16, 16, 1, palette));
+    const hint = await screen.findByText(/To start: pick a color/);
+    expect(hint.className).toContain("absolute");
+  });
+
   // Checks that the frames column lists the frames and that the palette
   // panel shows the colors of the sprite.
   it("lists the frames and the palette colors", async () => {
