@@ -3,6 +3,8 @@ import { Toast } from "@/shared/components";
 import {
   FramesColumn,
   coreFramesApi,
+  rangeOf,
+  useFramesInfo,
   type FramesApi,
 } from "@/features/frames-animations";
 import { useT } from "@/shared/lib/i18n";
@@ -175,6 +177,18 @@ type ReadyProps = {
 function Ready(props: ReadyProps) {
   const t = useT();
   const { info, pixels, sprite } = props;
+  // The animation that filters the frames (null is "All").
+  const framesInfo = useFramesInfo(props.framesApi, sprite);
+  const tags = framesInfo?.tags ?? [];
+  const [animation, setAnimation] = useState<string | null>(null);
+  const chooseAnimation = (name: string | null) => {
+    setAnimation(name);
+    const range = rangeOf(tags, name);
+    // The current frame goes into the animation when it is outside of it.
+    if (range && (props.frame < range.from || props.frame > range.to)) {
+      props.onFrame(range.from);
+    }
+  };
   const canvas = useCanvasView(info.width, info.height);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     null,
@@ -363,6 +377,9 @@ function Ready(props: ReadyProps) {
         onFrame={props.onFrame}
         onChanged={props.onFramesChanged}
         busyFrame={writing?.frame}
+        tags={tags}
+        animation={animation}
+        onAnimation={chooseAnimation}
       />
       <section className="flex min-w-0 flex-1 flex-col">
         <CanvasBar

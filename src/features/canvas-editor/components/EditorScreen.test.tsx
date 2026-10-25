@@ -101,7 +101,7 @@ describe("canvas bar", () => {
     renderEditor(new FakeEditorApi(16, 12, 1, palette));
     expect(await screen.findByText("16 × 12 px")).toBeTruthy();
     expect(screen.getByText("goblin")).toBeTruthy();
-    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /size/i })).toBeNull();
     expect(screen.getByTestId("active-tool").textContent).toBe("Pencil · 1 px");
     expect(
       (screen.getByRole("button", { name: "Undo" }) as HTMLButtonElement)

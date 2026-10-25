@@ -231,3 +231,86 @@ describe("Frame menu and reorder", () => {
     expect(move).not.toHaveBeenCalled();
   });
 });
+
+describe("Animation selector", () => {
+  const frameButtons = () =>
+    screen
+      .getAllByRole("button", { name: /^Frame \d$/ })
+      .map((b) => b.getAttribute("aria-label"));
+  const walk = { name: "walk", from: 1, to: 4, fps: 12, mode: "loop" as const };
+
+  function sevenFrames() {
+    const api = new FakeEditorApi(8, 8, 7);
+    api.tags = [
+      walk,
+      { name: "idle", from: 6, to: 7, fps: 6, mode: "pingpong" },
+    ];
+    return api;
+  }
+
+  // Checks that the list has "All" and the animations of the sprite, and that
+  // it starts on "All" with every frame in the column.
+  it("lists All and the animations, and shows every frame at first", async () => {
+    renderEditor(sevenFrames());
+    const select = (await screen.findByRole("combobox", {
+      name: "Animation",
+    })) as HTMLSelectElement;
+    await waitFor(() => expect(select.options).toHaveLength(3));
+    expect([...select.options].map((o) => o.text)).toEqual([
+      "All",
+      "walk",
+      "idle",
+    ]);
+    expect(frameButtons()).toHaveLength(7);
+  });
+
+  // Checks the "Filter by animation" scenario: choosing "walk" (frames 1 to 4)
+  // on a sprite with 7 frames shows only frames 1 to 4 in the column, and
+  // "All" shows them all again.
+  it("shows only the frames of the chosen animation", async () => {
+    renderEditor(sevenFrames());
+    const select = (await screen.findByRole("combobox", {
+      name: "Animation",
+    })) as HTMLSelectElement;
+    await waitFor(() => expect(select.options).toHaveLength(3));
+    fireEvent.change(select, { target: { value: "walk" } });
+    await waitFor(() =>
+      expect(frameButtons()).toEqual([
+        "Frame 1",
+        "Frame 2",
+        "Frame 3",
+        "Frame 4",
+      ]),
+    );
+    fireEvent.change(select, { target: { value: "" } });
+    await waitFor(() => expect(frameButtons()).toHaveLength(7));
+  });
+
+  // Checks that the current frame goes into the animation when it was outside
+  // of it.
+  it("moves the current frame into the chosen animation", async () => {
+    renderEditor(sevenFrames());
+    fireEvent.click(await screen.findByRole("button", { name: "Frame 2" }));
+    const select = screen.getByRole("combobox", { name: "Animation" });
+    await waitFor(() =>
+      expect((select as HTMLSelectElement).options).toHaveLength(3),
+    );
+    fireEvent.change(select, { target: { value: "idle" } });
+    await waitFor(() => expect(current()).toBe("Frame 6"));
+  });
+
+  // Checks that a deleted animation goes back to "All" by itself.
+  it("goes back to All when the animation is deleted", async () => {
+    const api = sevenFrames();
+    renderEditor(api);
+    const select = (await screen.findByRole("combobox", {
+      name: "Animation",
+    })) as HTMLSelectElement;
+    await waitFor(() => expect(select.options).toHaveLength(3));
+    fireEvent.change(select, { target: { value: "walk" } });
+    await waitFor(() => expect(frameButtons()).toHaveLength(4));
+    await api.removeTag({ folder: ["Characters"], name: "goblin" }, "walk");
+    await waitFor(() => expect(frameButtons()).toHaveLength(7));
+    expect(select.value).toBe("");
+  });
+});

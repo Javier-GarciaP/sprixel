@@ -202,6 +202,8 @@
   "anim.delete": "Borrar",
   "anim.editNamed": "Editar {name}",
   "anim.deleteNamed": "Borrar {name}",
+  "anim.select": "Animación",
+  "anim.all": "Todos",
   "shortcuts.group.project": "Proyecto",
   "shortcuts.group.tools": "Herramientas",
   "shortcuts.group.editor": "Editor y vista",

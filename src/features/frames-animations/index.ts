@@ -8,3 +8,5 @@ export type {
   SpriteRef,
   Tag,
 } from "./types";
+export { chosenTag, rangeOf } from "./animation";
+export { useFramesInfo } from "./useFramesInfo";

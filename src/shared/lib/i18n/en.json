@@ -202,6 +202,8 @@
   "anim.delete": "Delete",
   "anim.editNamed": "Edit {name}",
   "anim.deleteNamed": "Delete {name}",
+  "anim.select": "Animation",
+  "anim.all": "All",
   "shortcuts.group.project": "Project",
   "shortcuts.group.tools": "Tools",
   "shortcuts.group.editor": "Editor and view",

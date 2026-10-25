@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
 import { Menu } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
+import { AnimationSelect } from "./AnimationSelect";
+import { rangeOf } from "./animation";
 import { FrameThumb } from "./FrameThumb";
-import type { FramesApi, SpriteRef } from "./types";
+import type { FramesApi, SpriteRef, Tag } from "./types";
 import { useSpriteChanges } from "./useSpriteChanges";
 
 type Props = {
@@ -16,8 +18,11 @@ type Props = {
   onChanged: (select?: number) => void;
   // The frame an AI agent is writing to, if any.
   busyFrame?: number | null;
-  // Only the frames of the chosen animation, or all of them.
-  range?: { from: number; to: number } | null;
+  // The animations of the sprite and the chosen one (null is "All"). Only the
+  // frames of the chosen animation are listed.
+  tags: Tag[];
+  animation: string | null;
+  onAnimation: (animation: string | null) => void;
 };
 
 const button =
@@ -33,10 +38,13 @@ export function FramesColumn({
   onFrame,
   onChanged,
   busyFrame,
-  range,
+  tags,
+  animation,
+  onAnimation,
 }: Props) {
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
+  const range = rangeOf(tags, animation);
   const first = range?.from ?? 1;
   const last = Math.min(range?.to ?? frameCount, frameCount);
   const frames = Array.from(
@@ -76,6 +84,7 @@ export function FramesColumn({
       <h2 className="text-xs font-semibold text-text-muted">
         {t("editor.frames")}
       </h2>
+      <AnimationSelect tags={tags} value={animation} onChange={onAnimation} />
       {frames.map((n) => (
         <div
           key={n}
