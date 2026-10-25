@@ -1,3 +1,5 @@
+import type { FramesApi, FramesInfo, Tag } from "@/features/frames-animations";
+import type { ChangedEvent, FrameData } from "@/shared/lib/core";
 import type {
   AgentActivity,
   ApplyResult,
@@ -24,7 +26,7 @@ type Entry = {
   added: PaletteColor[];
 };
 
-export class FakeEditorApi implements EditorApi {
+export class FakeEditorApi implements EditorApi, FramesApi {
   frames: string[];
   palette: PaletteColor[];
   calls: { frame: number; changes: PixelChange[] }[] = [];
@@ -34,6 +36,10 @@ export class FakeEditorApi implements EditorApi {
   activity: AgentActivity | null = null;
   stopped = 0;
   revision = 0;
+  // The animations of the sprite (the core tests the range rules).
+  tags: Tag[] = [];
+  private sprite: SpriteRef = { folder: [], name: "goblin" };
+  private changed = new Set<(event: ChangedEvent) => void>();
 
   constructor(
     public width: number,
@@ -68,7 +74,7 @@ export class FakeEditorApi implements EditorApi {
   }
 
   async loadSprite(sprite: SpriteRef): Promise<SpriteInfo> {
-    void sprite;
+    this.sprite = sprite;
     return {
       width: this.width,
       height: this.height,
@@ -126,6 +132,7 @@ export class FakeEditorApi implements EditorApi {
     this.done.push(entry);
     this.undone = [];
     this.revision++;
+    this.notify(sprite);
     return { palette: palette.map((c) => ({ ...c })), ...this.history() };
   }
 
@@ -137,6 +144,7 @@ export class FakeEditorApi implements EditorApi {
       this.palette = this.palette.filter((c) => !keys.includes(c.key));
       this.undone.push(entry);
       this.revision++;
+      this.notify(this.sprite);
     }
     return this.history();
   }
@@ -148,6 +156,7 @@ export class FakeEditorApi implements EditorApi {
       this.palette = [...this.palette, ...entry.added];
       this.done.push(entry);
       this.revision++;
+      this.notify(this.sprite);
     }
     return this.history();
   }
@@ -172,5 +181,79 @@ export class FakeEditorApi implements EditorApi {
   emit(activity: AgentActivity | null) {
     this.activity = activity;
     this.listeners.forEach((listener) => listener(activity));
+  }
+
+  // The frames and animations calls (see `FramesApi`).
+  private notify(sprite: SpriteRef) {
+    const event: ChangedEvent = {
+      revision: this.revision,
+      touched: [{ kind: "sprite", path: [...sprite.folder, sprite.name] }],
+    };
+    this.changed.forEach((listener) => listener(event));
+  }
+
+  async loadInfo(sprite: SpriteRef): Promise<FramesInfo> {
+    void sprite;
+    return {
+      frameCount: this.frames.length,
+      durations: this.frames.map(() => 100),
+      defaultMs: 100,
+      tags: this.tags.map((t) => ({ ...t })),
+    };
+  }
+
+  async loadFrameData(sprite: SpriteRef, frame: number): Promise<FrameData> {
+    void sprite;
+    return {
+      revision: this.revision,
+      width: this.width,
+      height: this.height,
+      rows: this.rows(frame),
+      colors: this.palette.map((c) => ({ ...c })),
+    };
+  }
+
+  async insertFrame(sprite: SpriteRef, at: number, copyOf: number | null) {
+    const blank = ".".repeat(this.width * this.height);
+    this.frames.splice(at - 1, 0, copyOf ? this.frames[copyOf - 1] : blank);
+    this.revision++;
+    this.notify(sprite);
+    return at;
+  }
+
+  async deleteFrame(sprite: SpriteRef, frame: number) {
+    if (this.frames.length === 1) throw { code: "last_frame" };
+    this.frames.splice(frame - 1, 1);
+    this.revision++;
+    this.notify(sprite);
+  }
+
+  async moveFrame(sprite: SpriteRef, from: number, to: number) {
+    const [moved] = this.frames.splice(from - 1, 1);
+    this.frames.splice(to - 1, 0, moved);
+    this.revision++;
+    this.notify(sprite);
+  }
+
+  async addTag(sprite: SpriteRef, tag: Tag) {
+    this.tags.push({ ...tag });
+    this.notify(sprite);
+  }
+
+  async setTag(sprite: SpriteRef, name: string, tag: Tag) {
+    this.tags = this.tags.map((t) => (t.name === name ? { ...tag } : t));
+    this.notify(sprite);
+  }
+
+  async removeTag(sprite: SpriteRef, name: string) {
+    this.tags = this.tags.filter((t) => t.name !== name);
+    this.notify(sprite);
+  }
+
+  async onChanged(listener: (event: ChangedEvent) => void) {
+    this.changed.add(listener);
+    return () => {
+      this.changed.delete(listener);
+    };
   }
 }

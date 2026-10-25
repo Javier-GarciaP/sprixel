@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Toast } from "@/shared/components";
+import {
+  FramesColumn,
+  coreFramesApi,
+  type FramesApi,
+} from "@/features/frames-animations";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
@@ -20,7 +25,6 @@ import { CanvasArea } from "./CanvasArea";
 import type { PixelCanvasHandle } from "./PixelCanvas";
 import { CanvasBar } from "./CanvasBar";
 import { CanvasStatusBar } from "./CanvasStatusBar";
-import { FramesColumn } from "./FramesColumn";
 import { DEFAULT_OPACITY, OnionPanel } from "./OnionPanel";
 import { PalettePanel } from "./PalettePanel";
 import { RightPanel } from "./RightPanel";
@@ -33,12 +37,15 @@ type Props = {
   // The calls to the core. The tests give a fake one.
   api?: EditorApi;
   // Gives the app what the editor commands do (the app owns the keys).
+  // The calls for frames and animations. The tests give a fake one.
+  framesApi?: FramesApi;
   onCommands?: (handlers: CommandHandlers | null) => void;
 };
 
 export function EditorScreen({
   sprite,
   api = coreEditorApi,
+  framesApi = coreFramesApi,
   onCommands,
 }: Props) {
   const t = useT();
@@ -56,6 +63,7 @@ export function EditorScreen({
       key={JSON.stringify(sprite)}
       sprite={sprite}
       api={api}
+      framesApi={framesApi}
       onCommands={onCommands}
     />
   );
@@ -64,10 +72,12 @@ export function EditorScreen({
 function OpenSprite({
   sprite,
   api,
+  framesApi,
   onCommands,
 }: {
   sprite: SpriteRef;
   api: EditorApi;
+  framesApi: FramesApi;
   onCommands?: (handlers: CommandHandlers | null) => void;
 }) {
   const t = useT();
@@ -103,6 +113,11 @@ function OpenSprite({
   return (
     <Ready
       api={api}
+      framesApi={framesApi}
+      onFramesChanged={(select) => {
+        if (select) setFrame(select);
+        reload();
+      }}
       onCommands={onCommands}
       reload={reload}
       sprite={sprite}
@@ -132,6 +147,8 @@ function OpenSprite({
 
 type ReadyProps = {
   api: EditorApi;
+  framesApi: FramesApi;
+  onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
   // Reads the sprite from the core again.
   reload: () => void;
@@ -339,9 +356,12 @@ function Ready(props: ReadyProps) {
         onSwap={props.onSwap}
       />
       <FramesColumn
+        api={props.framesApi}
+        sprite={sprite}
         frameCount={info.frameCount}
         frame={props.frame}
         onFrame={props.onFrame}
+        onChanged={props.onFramesChanged}
         busyFrame={writing?.frame}
       />
       <section className="flex min-w-0 flex-1 flex-col">

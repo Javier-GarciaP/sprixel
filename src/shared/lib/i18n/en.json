@@ -177,6 +177,8 @@
   "marker.drawing": "{agent} is drawing frame {frame}",
   "marker.stop": "Stop",
   "marker.frameBusy": "An agent is drawing this frame",
+  "frames.add": "Add an empty frame after this one",
+  "frames.addCopy": "Add a copy of this frame after it",
   "shortcuts.group.project": "Project",
   "shortcuts.group.tools": "Tools",
   "shortcuts.group.editor": "Editor and view",

@@ -14,6 +14,13 @@ pub fn run() {
         .manage(ipc::project::ProjectState::default())
         .manage(ipc::editor::EditorState::default())
         .invoke_handler(tauri::generate_handler![
+            ipc::frames::frames_info_of,
+            ipc::frames::frames_insert,
+            ipc::frames::frames_delete,
+            ipc::frames::frames_move,
+            ipc::frames::tag_add,
+            ipc::frames::tag_set,
+            ipc::frames::tag_remove,
             ipc::editor::editor_sprite,
             ipc::editor::editor_frame,
             ipc::editor::editor_apply,
