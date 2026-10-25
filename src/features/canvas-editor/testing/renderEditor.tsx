@@ -92,7 +92,15 @@ export function pictureAt(x: number, y: number): number[] {
 
 // What the app does with the editor: it owns the shortcut keys and runs the
 // handlers the editor gives.
-function Host({ sprite, api }: { sprite: SpriteRef | null; api: EditorApi }) {
+function Host({
+  sprite,
+  api,
+  onGoToProject,
+}: {
+  sprite: SpriteRef | null;
+  api: EditorApi;
+  onGoToProject?: () => void;
+}) {
   const [handlers, setHandlers] = useState<CommandHandlers>({});
   useShortcuts(handlers, "other");
   const register = useCallback(
@@ -107,6 +115,7 @@ function Host({ sprite, api }: { sprite: SpriteRef | null; api: EditorApi }) {
       framesApi={api as unknown as FramesApi}
       clock={testClock}
       onCommands={register}
+      onGoToProject={onGoToProject}
     />
   );
 }
@@ -117,6 +126,7 @@ export function renderEditor(
     sprite?: SpriteRef | null;
     language?: "en" | "es";
     pixelGrid?: boolean;
+    onGoToProject?: () => void;
   } = {},
 ) {
   const language = options.language ?? "en";
@@ -128,7 +138,11 @@ export function renderEditor(
       }}
     >
       <I18nProvider language={language}>
-        <Host sprite={sprite} api={current} />
+        <Host
+          sprite={sprite}
+          api={current}
+          onGoToProject={options.onGoToProject}
+        />
       </I18nProvider>
     </PreferencesProvider>
   );

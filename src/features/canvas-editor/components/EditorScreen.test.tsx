@@ -57,6 +57,14 @@ describe("editor layout", () => {
     expect(pictureAt(106 + 288, 6)[3]).toBe(0);
   });
 
+  // Checks that the "pick a color" hint floats over the canvas area, so when
+  // it goes away after the first pixel the canvas does not jump.
+  it("shows the start hint without taking space from the canvas", async () => {
+    renderEditor(new FakeEditorApi(16, 16, 1, palette));
+    const hint = await screen.findByText(/To start: pick a color/);
+    expect(hint.className).toContain("absolute");
+  });
+
   // Checks that the frames column lists the frames and that the palette
   // panel shows the colors of the sprite.
   it("lists the frames and the palette colors", async () => {
@@ -71,7 +79,22 @@ describe("editor layout", () => {
   // read.
   it("explains when no sprite is open", async () => {
     renderEditor(new FakeEditorApi(8, 8), { sprite: null });
-    expect(await screen.findByText("No sprite is open")).toBeTruthy();
+    expect(await screen.findByText("No sprite open")).toBeTruthy();
+  });
+
+  // Checks design screen 17: with no sprite the gray ghost and a button
+  // lead to the Project tab.
+  it("offers a button to go to the project when no sprite is open", async () => {
+    const goToProject = vi.fn();
+    renderEditor(new FakeEditorApi(8, 8), {
+      sprite: null,
+      onGoToProject: goToProject,
+    });
+    expect(document.querySelector("img")).not.toBeNull();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Go to project" }),
+    );
+    expect(goToProject).toHaveBeenCalledTimes(1);
   });
 
   it("shows an error when the sprite cannot be read", async () => {

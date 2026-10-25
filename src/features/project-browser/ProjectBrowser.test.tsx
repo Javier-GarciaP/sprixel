@@ -370,6 +370,57 @@ describe("sprite details", () => {
   });
 });
 
+describe("the project root", () => {
+  // Checks that the root lists the sprites of every folder, and that a
+  // folder lists only its own sprites.
+  it("lists every sprite of the project, and a folder only its own", async () => {
+    renderBrowser();
+    const region = await screen.findByRole("region", { name: "Sprites" });
+    expect(await within(region).findByText("slime")).toBeTruthy();
+    for (const name of ["orc", "goblin", "hero", "merchant"]) {
+      expect(within(region).getByText(name)).toBeTruthy();
+    }
+
+    fireEvent.click(
+      within(await folderRow(/Enemigos/)).getByRole("button", {
+        name: /^Enemigos/,
+      }),
+    );
+
+    await vi.waitFor(() =>
+      expect(within(region).queryByText("orc")).toBeNull(),
+    );
+    expect(within(region).getByText("slime")).toBeTruthy();
+  });
+});
+
+describe("folder menu", () => {
+  // Checks that the "..." menu of a folder is placed on the screen, not
+  // inside the scrolling tree column, so the column cannot cut it.
+  it("opens the folder menu above the page", async () => {
+    renderBrowser();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "More actions for Enemigos" }),
+    );
+    expect(screen.getByRole("menu").className).toContain("fixed");
+  });
+});
+
+describe("sprite card", () => {
+  // Checks that the "..." button sits at the top right of the card (design
+  // screen 06): its box is positioned by the card, not left in the flow.
+  it("puts the menu button at the top right of the card", async () => {
+    renderBrowser();
+    const button = await screen.findByRole("button", {
+      name: "More actions for orc",
+    });
+    const box = button.parentElement as HTMLElement;
+    expect(box.className).toContain("absolute");
+    expect(box.className).toContain("right-3");
+    expect(box.className).not.toContain("relative");
+  });
+});
+
 describe("empty states", () => {
   // Checks the spec scenario "New project": the empty message with one main
   // action, and no details panel.
@@ -377,7 +428,8 @@ describe("empty states", () => {
     core.projectTree.mockResolvedValue(emptyTree());
     renderBrowser();
 
-    expect(await screen.findByText("No sprites yet")).toBeTruthy();
+    expect(await screen.findByText("Your project is empty")).toBeTruthy();
+    expect(document.querySelector("img")).not.toBeNull(); // the gray ghost
     expect(screen.getByRole("button", { name: "New sprite" })).toBeTruthy();
     expect(screen.queryByRole("complementary", { name: "Details" })).toBeNull();
   });
@@ -538,5 +590,29 @@ describe("search", () => {
     expect(
       await screen.findByRole("heading", { name: "merchant" }),
     ).toBeTruthy();
+  });
+});
+
+describe("folders column", () => {
+  // Checks design screen 06: a "Folders" title above the tree, and the "..."
+  // of a folder hidden until the pointer is over its row, and no strong
+  // background that stays on the selected folder.
+  it("shows the title and keeps the folder menu and the row background light", async () => {
+    renderBrowser();
+    const menu = await screen.findByRole("button", {
+      name: "More actions for Enemigos",
+    });
+    expect(screen.getByRole("heading", { name: "Folders" })).toBeTruthy();
+    expect(menu.parentElement?.className).toContain("opacity-0");
+    expect(menu.parentElement?.className).toContain("group-hover:opacity-100");
+
+    fireEvent.click(
+      within(await folderRow(/Enemigos/)).getByRole("button", {
+        name: /^Enemigos/,
+      }),
+    );
+    expect((await folderRow(/Enemigos/)).className.split(" ")).not.toContain(
+      "bg-surface-2",
+    );
   });
 });

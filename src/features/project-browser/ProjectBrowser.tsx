@@ -1,3 +1,4 @@
+import ghost from "@/assets/sprixel-ghost.png";
 import { useEffect, useState } from "react";
 import { Button, Toast } from "@/shared/components";
 import {
@@ -154,9 +155,9 @@ function Browser({
   const results = search(tree, query);
   const sprites = searching
     ? results.sprites
-    : folder
+    : folder && currentPath.length > 0
       ? folder.sprites
-      : tree.root.sprites;
+      : everySprite; // the project root lists the sprites of every folder
   const hasSprites = everySprite.length > 0;
   const crumb = currentPath[currentPath.length - 1] ?? tree.name;
 
@@ -543,15 +544,25 @@ function Browser({
             )}
           </>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <h2 className="font-title text-xl font-bold">
-              {t("browse.empty.title")}
-            </h2>
-            <p className="text-sm text-text-muted">{t("browse.empty.hint")}</p>
-            <div className="flex gap-2">
+          <div className="flex h-full flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-title text-xl font-bold">{tree.name}</h2>
               <Button onClick={() => setDialog({ kind: "folder" })}>
                 {t("browse.newFolder")}
               </Button>
+            </div>
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-border text-center">
+              <img
+                src={ghost}
+                alt=""
+                className="h-20 w-20 opacity-40 grayscale [image-rendering:pixelated]"
+              />
+              <h2 className="font-title text-xl font-bold">
+                {t("browse.empty.title")}
+              </h2>
+              <p className="text-sm text-text-muted">
+                {t("browse.empty.hint")}
+              </p>
               <Button variant="primary" onClick={newSprite}>
                 {t("browse.newSprite")}
               </Button>

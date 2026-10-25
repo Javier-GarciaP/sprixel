@@ -86,8 +86,12 @@ It has three parts:
   **Open in editor**, **Duplicate**, **Delete**, **Rename** and **Move to
   folder**.
 
-A new project has no sprites yet. The middle area says so and offers **New
-sprite**, and the tree says "No folders yet".
+The project root lists the sprites of every folder; a folder lists only its own
+sprites.
+
+A new project has no sprites yet. The middle area shows the gray ghost, says
+"Your project is empty" and offers **New sprite**; **New folder** is at the top
+right, and the tree says "No folders yet".
 
 **Open a sprite** with a double-click on its card, with **Open in editor**, or
 with `Enter`. The **Editor** tab shows it.

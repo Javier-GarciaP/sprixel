@@ -39,3 +39,16 @@ and the project follows [Semantic Versioning](https://semver.org/).
   action bar, a right-click menu and the keys F2, Ctrl+D, Delete and Enter.
 - The core sends the `project://changed` event after every change and answers
   `project_tree` and `sprite_frame` queries.
+
+### Fixed
+
+- The "..." menu of a folder is no longer cut by the folders column.
+- The canvas no longer jumps when the "pick a color" hint goes away.
+- The project root lists the sprites of every folder.
+- An empty project shows the gray ghost, as in the design.
+- Opening another project from the menu now shows that project, not the old one.
+- The "..." button of a sprite card is at the top right, as in the design.
+- The folders column has a "Folders" title, no strong background on the selected
+  folder and "..." buttons that show only on hover, as in the design.
+- The Editor tab with no sprite shows the gray ghost and a "Go to project" button.
+

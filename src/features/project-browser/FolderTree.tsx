@@ -39,6 +39,9 @@ export function FolderTree(props: Props) {
   const { tree } = props;
   return (
     <div role="tree" aria-label={t("browse.folders")} className="text-sm">
+      <h3 className="mb-1 px-2 text-xs font-semibold text-text-muted">
+        {t("browse.folders")}
+      </h3>
       <FolderRow {...props} folder={tree.root} label={tree.name} depth={0} />
       {tree.root.folders.length === 0 && (
         <p className="px-3 py-2 text-xs text-text-faint">
@@ -69,7 +72,7 @@ function FolderRow({
         role="treeitem"
         aria-selected={selected}
         aria-expanded={open}
-        className={`group flex items-center gap-1 rounded-md pr-2 ${over ? "outline outline-2 outline-amber" : ""} ${selected ? "bg-surface-2 font-semibold text-text" : "text-text-muted hover:bg-surface-2"}`}
+        className={`group flex items-center gap-1 rounded-md pr-2 ${over ? "outline outline-2 outline-amber" : ""} ${selected ? "text-text" : "text-text-muted"} hover:bg-surface-2`}
         style={indent(depth)}
         onContextMenu={(event) => {
           if (depth === 0) return;
@@ -112,9 +115,12 @@ function FolderRow({
           type="button"
           onClick={() => props.onSelectFolder(folder.path)}
           onDoubleClick={() => depth > 0 && props.onRenameFolder(folder.path)}
-          className={`flex flex-1 items-center gap-2 py-1.5 text-left ${selected ? "text-amber" : ""}`}
+          className="flex flex-1 items-center gap-2 py-1.5 text-left"
         >
-          <BrowserIcon name="folder" />
+          <BrowserIcon
+            name="folder"
+            className={`h-4 w-4 ${selected ? "text-amber" : ""}`}
+          />
           <span className="flex-1 truncate">{name}</span>
           <span className="font-mono text-xs text-text-faint">
             {itemCount(folder)}
@@ -124,6 +130,7 @@ function FolderRow({
           <ItemMenu
             label={t("browse.moreActions", { name })}
             items={props.folderMenu(folder.path)}
+            className="opacity-0 focus-within:opacity-100 group-hover:opacity-100"
           />
         )}
       </div>

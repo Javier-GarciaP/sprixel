@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Toast } from "@/shared/components";
+import ghost from "@/assets/sprixel-ghost.png";
+import { Button, Icon, Toast } from "@/shared/components";
 import {
   FramesColumn,
   PreviewPanel,
@@ -47,6 +48,8 @@ type Props = {
   // The clock of the preview. The tests give a manual one.
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
+  // With no sprite open, the button that leads to the Project tab.
+  onGoToProject?: () => void;
 };
 
 export function EditorScreen({
@@ -55,13 +58,23 @@ export function EditorScreen({
   framesApi = coreFramesApi,
   clock,
   onCommands,
+  onGoToProject,
 }: Props) {
   const t = useT();
   if (!sprite) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-        <p className="font-title text-lg font-bold">{t("editor.noSprite")}</p>
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+        <img
+          src={ghost}
+          alt=""
+          className="h-20 w-20 opacity-40 grayscale [image-rendering:pixelated]"
+        />
+        <p className="font-title text-xl font-bold">{t("editor.noSprite")}</p>
         <p className="text-sm text-text-muted">{t("editor.noSpriteHint")}</p>
+        <Button variant="primary" onClick={onGoToProject}>
+          <Icon name="folder" className="h-4 w-4" />
+          {t("editor.goToProject")}
+        </Button>
       </div>
     );
   }
@@ -392,7 +405,7 @@ function Ready(props: ReadyProps) {
         animation={animation}
         onAnimation={chooseAnimation}
       />
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="relative flex min-w-0 flex-1 flex-col">
         <CanvasBar
           name={sprite.name}
           width={info.width}
@@ -435,7 +448,7 @@ function Ready(props: ReadyProps) {
           />
         </div>
         {isBlank(pixels) && (
-          <p className="mx-auto mb-3 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
+          <p className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
             {t("editor.hint")}
           </p>
         )}
