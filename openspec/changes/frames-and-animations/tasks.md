@@ -10,7 +10,7 @@
 ## 2. Frames column
 
 - [x] 2.1 Build the frames column with thumbnails, selection and the "+" button and verify the add-after-current scenario
-- [ ] 2.2 Build the frame menu (duplicate, delete) and drag to reorder, and verify the last-frame rule and the reorder test
+- [x] 2.2 Build the frame menu (duplicate, delete) and drag to reorder, and verify the last-frame rule and the reorder test
 
 ## 3. Animations
 

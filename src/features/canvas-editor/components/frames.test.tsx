@@ -147,3 +147,87 @@ describe("Frames column", () => {
     );
   });
 });
+
+describe("Frame menu and reorder", () => {
+  // Four frames, each with a different first pixel: A, B, C, D.
+  function lettered(count = 4) {
+    const palette = "ABCD"
+      .split("")
+      .map((key, i) => ({ key, hex: `#00000${i}` }));
+    const api = new FakeEditorApi(4, 1, count, palette);
+    for (let n = 1; n <= count; n++)
+      api.setFrame(n, [String.fromCharCode(64 + n) + "..."]);
+    return api;
+  }
+  const letters = (api: FakeEditorApi) => api.frames.map((f) => f[0]).join("");
+  const openMenu = async (n: number) => {
+    fireEvent.click(
+      await screen.findByRole("button", { name: `Menu of frame ${n}` }),
+    );
+  };
+
+  // Checks that Duplicate in the frame menu puts a copy right after the frame
+  // and makes the copy the current frame.
+  it("duplicates a frame from its menu", async () => {
+    const api = lettered();
+    renderEditor(api);
+    await openMenu(2);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Duplicate" }));
+    await waitFor(() => expect(letters(api)).toBe("ABBCD"));
+    await waitFor(() => expect(current()).toBe("Frame 3"));
+  });
+
+  // Checks Delete from the menu: the frame goes, the others keep their
+  // pixels, and the current frame stays valid.
+  it("deletes a frame from its menu", async () => {
+    const api = lettered();
+    renderEditor(api);
+    await openMenu(2);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(letters(api)).toBe("ACD"));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Frame 4" })).toBeNull(),
+    );
+    expect(current()).toBeTruthy();
+  });
+
+  // Checks the "Delete the only frame" scenario: with one frame the Delete
+  // action is disabled and the frame stays.
+  it("cannot delete the last frame", async () => {
+    const api = lettered(1);
+    renderEditor(api);
+    await openMenu(1);
+    const item = (await screen.findByRole("menuitem", {
+      name: "Delete",
+    })) as HTMLButtonElement;
+    expect(item.disabled).toBe(true);
+    fireEvent.click(item);
+    expect(api.frames).toHaveLength(1);
+  });
+
+  // Checks the "Move a frame" scenario: dragging frame 4 onto frame 2 makes
+  // the order 1, 4, 2, 3 and every frame keeps its own pixels.
+  it("moves frame 4 before frame 2 by dragging", async () => {
+    const api = lettered();
+    renderEditor(api);
+    const four = await screen.findByRole("button", { name: "Frame 4" });
+    const two = screen.getByRole("button", { name: "Frame 2" });
+    fireEvent.dragStart(four.parentElement!);
+    fireEvent.dragOver(two.parentElement!);
+    fireEvent.drop(two.parentElement!);
+    await waitFor(() => expect(letters(api)).toBe("ADBC"));
+    await waitFor(() => expect(current()).toBe("Frame 2"));
+  });
+
+  // Checks that dropping a frame on itself changes nothing.
+  it("does nothing when a frame is dropped on itself", async () => {
+    const api = lettered();
+    const move = vi.spyOn(api, "moveFrame");
+    renderEditor(api);
+    const three = (await screen.findByRole("button", { name: "Frame 3" }))
+      .parentElement!;
+    fireEvent.dragStart(three);
+    fireEvent.drop(three);
+    expect(move).not.toHaveBeenCalled();
+  });
+});
