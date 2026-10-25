@@ -180,6 +180,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         key={project?.path}
         sprite={activeSprite}
         onCommands={registerEditorCommands}
+        onGoToProject={() => setTab("project")}
       />
     );
   } else {

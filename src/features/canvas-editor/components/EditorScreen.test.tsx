@@ -79,7 +79,22 @@ describe("editor layout", () => {
   // read.
   it("explains when no sprite is open", async () => {
     renderEditor(new FakeEditorApi(8, 8), { sprite: null });
-    expect(await screen.findByText("No sprite is open")).toBeTruthy();
+    expect(await screen.findByText("No sprite open")).toBeTruthy();
+  });
+
+  // Checks design screen 17: with no sprite the gray ghost and a button
+  // lead to the Project tab.
+  it("offers a button to go to the project when no sprite is open", async () => {
+    const goToProject = vi.fn();
+    renderEditor(new FakeEditorApi(8, 8), {
+      sprite: null,
+      onGoToProject: goToProject,
+    });
+    expect(document.querySelector("img")).not.toBeNull();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Go to project" }),
+    );
+    expect(goToProject).toHaveBeenCalledTimes(1);
   });
 
   it("shows an error when the sprite cannot be read", async () => {
