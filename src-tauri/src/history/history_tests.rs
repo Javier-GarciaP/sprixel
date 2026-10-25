@@ -291,3 +291,39 @@ fn undo_last_ai_action_without_ai_entries_fails() {
         "no_ai_action"
     );
 }
+
+// Checks that the history can say who edited a sprite last, and when: the
+// latest entry that touched it, and nobody for a sprite no entry touched.
+#[test]
+fn last_editor_is_the_latest_entry_that_touched_the_sprite() {
+    let (mut project, sprite) = project_with_sprite();
+    let mut history = History::new();
+    history
+        .apply(&mut project, USER, vec![draw(&sprite, 0, 'N')])
+        .unwrap();
+    history
+        .apply(&mut project, "claude-code", vec![draw(&sprite, 1, 'N')])
+        .unwrap();
+
+    let editor = history.last_editor(&sprite).expect("an editor");
+    assert_eq!(editor.author, "claude-code");
+    assert!(editor.at_ms > 0);
+    assert!(history.last_editor(&SpriteRef::new(&[], "other")).is_none());
+}
+
+// Checks that an undone entry does not count: after undo the previous editor is the last one.
+#[test]
+fn last_editor_ignores_undone_entries() {
+    let (mut project, sprite) = project_with_sprite();
+    let mut history = History::new();
+    history
+        .apply(&mut project, USER, vec![draw(&sprite, 0, 'N')])
+        .unwrap();
+    history
+        .apply(&mut project, "claude-code", vec![draw(&sprite, 1, 'N')])
+        .unwrap();
+
+    history.undo(&mut project).unwrap();
+
+    assert_eq!(history.last_editor(&sprite).unwrap().author, "user");
+}

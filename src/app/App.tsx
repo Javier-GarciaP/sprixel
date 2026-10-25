@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { EditorScreen, type SpriteRef } from "@/features/canvas-editor";
+import { EditorScreen } from "@/features/canvas-editor";
+import { ProjectBrowser, type SpriteTarget } from "@/features/project-browser";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
@@ -23,7 +24,8 @@ import {
   pickFolder,
   type ProjectInfo,
 } from "./api/project";
-import { detectPlatform } from "./commands/shortcut";
+import { formatShortcut, detectPlatform } from "./commands/shortcut";
+import { commands } from "./commands/registry";
 import { shortcutGroups } from "./commands/shortcutGroups";
 import { useShortcuts } from "./commands/useShortcuts";
 import { AppProviders } from "./AppProviders";
@@ -38,6 +40,11 @@ import { WelcomeScreen } from "./welcome/WelcomeScreen";
 
 type OpenedProject = { name: string; path: string };
 
+// The Project tab listens to the shortcuts of the list of commands, with the
+// same rules as the rest of the app (see useShortcuts).
+const useBrowserShortcuts = (handlers: Record<string, () => void>) =>
+  useShortcuts(handlers, detectPlatform());
+
 function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const t = useT();
   const platform = detectPlatform();
@@ -47,9 +54,9 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   // The core owns the project; this is only what the UI shows about it.
   const [project, setProject] = useState<OpenedProject | null>(null);
   const [newProjectFrom, setNewProjectFrom] = useState<string | null>(null);
+  // The sprite open in the Editor tab.
+  const [activeSprite, setActiveSprite] = useState<SpriteTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  // The sprite shown in the Editor tab. The core owns its data.
-  const [editorSprite, setEditorSprite] = useState<SpriteRef | null>(null);
   // What the editor commands do, given by the editor while it is open.
   const [editorHandlers, setEditorHandlers] = useState<
     Record<string, () => void>
@@ -70,6 +77,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
 
   const afterOpen = (info: ProjectInfo) => {
     setProject({ name: info.name, path: info.path });
+    setActiveSprite(null);
     setTab("project");
     setSettingsOpen(false);
     addRecentProject(info.path, info.name).then(setRecents);
@@ -108,7 +116,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const close = async () => {
     await closeProject();
     setProject(null);
-    setEditorSprite(null);
+    setActiveSprite(null);
     setTab("project");
   };
 
@@ -136,9 +144,22 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     body = <SettingsScreen shortcutGroups={groups} />;
   } else if (tab === "project" && project) {
     body = (
-      <p className="p-6 text-text-muted">
-        {t("project.placeholder", { name: project.name })}
-      </p>
+      <ProjectBrowser
+        shortcuts={{
+          useHandlers: useBrowserShortcuts,
+          hint: (id) => {
+            const shortcut = commands.find((c) => c.id === id)?.shortcut;
+            return shortcut && formatShortcut(shortcut, platform, t);
+          },
+        }}
+        onOpenSprite={(sprite) => {
+          setActiveSprite(sprite);
+          setTab("editor");
+        }}
+        // The palette editor belongs to another spec.
+        onOpenPalette={() => setNotice(t("body.soon"))}
+        onNewPalette={() => setNotice(t("body.soon"))}
+      />
     );
   } else if (tab === "project") {
     body = (
@@ -153,7 +174,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     );
   } else if (tab === "editor") {
     body = (
-      <EditorScreen sprite={editorSprite} onCommands={registerEditorCommands} />
+      <EditorScreen sprite={activeSprite} onCommands={registerEditorCommands} />
     );
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;

@@ -67,3 +67,40 @@ fn names_compare_ignoring_case_and_with_accents() {
     assert!(!same_name("arbol", "árbol"));
     assert!(!same_name("goblin", "goblin2"));
 }
+
+// Checks the names of duplicates: "goblin copy", then "goblin copy 2", and so
+// on, and that duplicating a copy starts from the original name.
+#[test]
+fn copy_names_count_up() {
+    use super::names::copy_name;
+    let taken = |names: &'static [&'static str]| move |n: &str| names.contains(&n);
+
+    assert_eq!(copy_name("goblin", taken(&["goblin"])), "goblin copy");
+    assert_eq!(
+        copy_name("goblin", taken(&["goblin", "goblin copy"])),
+        "goblin copy 2"
+    );
+    assert_eq!(
+        copy_name("goblin", taken(&["goblin", "goblin copy", "goblin copy 2"])),
+        "goblin copy 3"
+    );
+    assert_eq!(
+        copy_name("goblin copy", taken(&["goblin", "goblin copy"])),
+        "goblin copy 2"
+    );
+    assert_eq!(
+        copy_name("goblin copy 2", taken(&["goblin", "goblin copy", "goblin copy 2"])),
+        "goblin copy 3"
+    );
+}
+
+// Checks that names are compared ignoring case, like the rest of the project.
+#[test]
+fn copy_names_ignore_case() {
+    use super::names::copy_name;
+
+    assert_eq!(
+        copy_name("Goblin", |n: &str| n.eq_ignore_ascii_case("goblin copy")),
+        "Goblin copy 2"
+    );
+}

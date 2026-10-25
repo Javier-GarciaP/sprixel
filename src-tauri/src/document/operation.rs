@@ -88,6 +88,28 @@ pub enum Operation {
         index: usize,
         sprite: Sprite,
     },
+    /// Changes the name of a sprite. Its content and position stay.
+    RenameSprite {
+        sprite: SpriteRef,
+        name: String,
+    },
+    /// Changes the name of a folder. The project root cannot be renamed.
+    RenameFolder {
+        path: Vec<String>,
+        name: String,
+    },
+    /// Moves a sprite to another folder (an empty path is the project root).
+    /// `index` is the place in that folder; `None` puts it at the end.
+    MoveSprite {
+        sprite: SpriteRef,
+        to: Vec<String>,
+        index: Option<usize>,
+    },
+    /// Adds a copy of a sprite with a new name right after the original.
+    DuplicateSprite {
+        sprite: SpriteRef,
+        name: String,
+    },
     SetPixels {
         sprite: SpriteRef,
         layer: usize,
@@ -123,6 +145,19 @@ pub enum Operation {
     },
 }
 
+impl Operation {
+    /// True for the operations that change the name or the place of a sprite
+    /// or a folder (see `AppliedGroup::moved`).
+    fn changes_place(&self) -> bool {
+        matches!(
+            self,
+            Operation::RenameSprite { .. }
+                | Operation::RenameFolder { .. }
+                | Operation::MoveSprite { .. }
+        )
+    }
+}
+
 /// The result of one applied operation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Applied {
@@ -137,6 +172,10 @@ pub struct AppliedGroup {
     /// Applying them in this order undoes the whole group.
     pub inverses: Vec<Operation>,
     pub touched: Vec<Target>,
+    /// The sprites and folders that changed place or name, from the old
+    /// place to the new one, in the order they happened. Storage moves their
+    /// files instead of writing a copy and trashing the original.
+    pub moved: Vec<(Target, Target)>,
 }
 
 impl Project {
@@ -146,9 +185,15 @@ impl Project {
     pub fn apply_group(&mut self, ops: &[Operation]) -> Result<AppliedGroup, DocError> {
         let mut inverses = Vec::with_capacity(ops.len());
         let mut touched = Vec::new();
+        let mut moved = Vec::new();
         for op in ops {
             match self.apply_op(op) {
                 Ok(applied) => {
+                    if op.changes_place() {
+                        if let [from, to] = applied.touched.as_slice() {
+                            moved.push((from.clone(), to.clone()));
+                        }
+                    }
                     inverses.push(applied.inverse);
                     touched.extend(applied.touched);
                 }
@@ -164,7 +209,11 @@ impl Project {
         }
         inverses.reverse();
         self.revision += 1;
-        Ok(AppliedGroup { inverses, touched })
+        Ok(AppliedGroup {
+            inverses,
+            touched,
+            moved,
+        })
     }
 
     /// Applies one operation. On success the revision grows by one. On error
@@ -423,6 +472,113 @@ impl Project {
                         sprite: sprite_ref.clone(),
                     },
                     touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::RenameSprite { sprite, name } => {
+                validate_name(name)?;
+                let (folder, index) = self.locate(sprite)?;
+                let target = self.folder_mut(&folder);
+                let old = target.sprites[index].name.clone();
+                if name_taken_by_other(target, name, &old) {
+                    return Err(name_exists(name));
+                }
+                target.sprites[index].name = name.clone();
+                let from = SpriteRef {
+                    folder: folder.clone(),
+                    name: old,
+                };
+                let to = SpriteRef {
+                    folder,
+                    name: name.clone(),
+                };
+                Ok(Applied {
+                    inverse: Operation::RenameSprite {
+                        sprite: to.clone(),
+                        name: from.name.clone(),
+                    },
+                    touched: renamed(Target::Sprite(from), Target::Sprite(to)),
+                })
+            }
+            Operation::RenameFolder { path, name } => {
+                validate_name(name)?;
+                let mut path = self.canonical_folder(path)?;
+                let Some(old) = path.pop() else {
+                    return Err(DocError::new("bad_path", "the project root cannot be renamed"));
+                };
+                let parent = self.folder_mut(&path);
+                if name_taken_by_other(parent, name, &old) {
+                    return Err(name_exists(name));
+                }
+                parent
+                    .folders
+                    .iter_mut()
+                    .find(|f| f.name == old)
+                    .expect("canonical path exists")
+                    .name = name.clone();
+                let mut from = path.clone();
+                from.push(old.clone());
+                let mut to = path;
+                to.push(name.clone());
+                Ok(Applied {
+                    inverse: Operation::RenameFolder {
+                        path: to.clone(),
+                        name: old,
+                    },
+                    touched: renamed(Target::Folder(from), Target::Folder(to)),
+                })
+            }
+            Operation::MoveSprite { sprite, to, index } => {
+                let (from, at) = self.locate(sprite)?;
+                let to = self.canonical_folder(to)?;
+                if from == to {
+                    return Err(DocError::new(
+                        "same_folder",
+                        "the sprite is already in that folder",
+                    ));
+                }
+                let name = self.folder(&from).sprites[at].name.clone();
+                if name_taken(self.folder(&to), &name) {
+                    return Err(name_exists(&name));
+                }
+                let moved = self.folder_mut(&from).sprites.remove(at);
+                let target = self.folder_mut(&to);
+                let place = index.unwrap_or(target.sprites.len()).min(target.sprites.len());
+                target.sprites.insert(place, moved);
+                let old = SpriteRef {
+                    folder: from,
+                    name: name.clone(),
+                };
+                let new = SpriteRef { folder: to, name };
+                Ok(Applied {
+                    inverse: Operation::MoveSprite {
+                        sprite: new.clone(),
+                        to: old.folder.clone(),
+                        index: Some(at),
+                    },
+                    touched: renamed(Target::Sprite(old), Target::Sprite(new)),
+                })
+            }
+            Operation::DuplicateSprite { sprite, name } => {
+                validate_name(name)?;
+                let (folder, index) = self.locate(sprite)?;
+                let target = self.folder_mut(&folder);
+                if name_taken(target, name) {
+                    return Err(name_exists(name));
+                }
+                let copy = Sprite {
+                    name: name.clone(),
+                    ..target.sprites[index].clone()
+                };
+                target.sprites.insert(index + 1, copy);
+                let copy_ref = SpriteRef {
+                    folder,
+                    name: name.clone(),
+                };
+                Ok(Applied {
+                    inverse: Operation::DeleteSprite {
+                        sprite: copy_ref.clone(),
+                    },
+                    touched: vec![Target::Sprite(copy_ref)],
                 })
             }
             Operation::SetPixels {
@@ -716,6 +872,29 @@ fn all_sprites(folder: &Folder) -> Box<dyn Iterator<Item = &Sprite> + '_> {
 fn name_taken(folder: &Folder, name: &str) -> bool {
     folder.sprites.iter().any(|s| same_name(&s.name, name))
         || folder.folders.iter().any(|f| same_name(&f.name, name))
+}
+
+// Like `name_taken`, but the item called `own` (the one being renamed) does
+// not count, so a name can change only in case.
+fn name_taken_by_other(folder: &Folder, name: &str, own: &str) -> bool {
+    folder
+        .sprites
+        .iter()
+        .any(|s| same_name(&s.name, name) && s.name != own)
+        || folder
+            .folders
+            .iter()
+            .any(|f| same_name(&f.name, name) && f.name != own)
+}
+
+// The touched parts of a rename or a move: the old place, then the new one.
+// When the place did not change, it is one part.
+fn renamed(from: Target, to: Target) -> Vec<Target> {
+    if from == to {
+        vec![from]
+    } else {
+        vec![from, to]
+    }
 }
 
 fn check_frame(sprite: &Sprite, frame: u32) -> Result<(), DocError> {

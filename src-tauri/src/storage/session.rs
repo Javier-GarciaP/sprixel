@@ -60,6 +60,9 @@ pub struct Session {
     pub history: History,
     /// The parts of the project changed since they were last saved.
     pending: BTreeSet<Target>,
+    /// Renames and moves not yet done on the disk, oldest first. A file is
+    /// moved to its new name, not written again and trashed.
+    pending_moves: Vec<(Target, Target)>,
     writer: Arc<dyn FileWriter>,
     trash: Trash,
     /// A fingerprint of each project file as the app last saw or wrote it
@@ -130,6 +133,7 @@ impl Session {
             project,
             history: History::new(),
             pending: BTreeSet::new(),
+            pending_moves: Vec::new(),
             writer: Arc::new(DiskWriter),
             trash,
             known: HashMap::new(),
@@ -159,28 +163,37 @@ impl Session {
     }
 
     /// Applies the operations of one action as one history entry.
-    pub fn apply(&mut self, author: &str, ops: Vec<Operation>) -> Result<(), DocError> {
+    /// Returns the parts of the project that changed.
+    pub fn apply(&mut self, author: &str, ops: Vec<Operation>) -> Result<Vec<Target>, DocError> {
         let touched = self.history.apply(&mut self.project, author, ops)?;
-        self.changed(touched);
-        Ok(())
+        self.after_history(touched.clone());
+        Ok(touched)
     }
 
-    pub fn undo(&mut self) -> Result<(), DocError> {
+    pub fn undo(&mut self) -> Result<Vec<Target>, DocError> {
         let touched = self.history.undo(&mut self.project)?;
-        self.changed(touched);
-        Ok(())
+        self.after_history(touched.clone());
+        Ok(touched)
     }
 
-    pub fn redo(&mut self) -> Result<(), DocError> {
+    pub fn redo(&mut self) -> Result<Vec<Target>, DocError> {
         let touched = self.history.redo(&mut self.project)?;
-        self.changed(touched);
-        Ok(())
+        self.after_history(touched.clone());
+        Ok(touched)
     }
 
     pub fn undo_last_ai_action(&mut self) -> Result<(), DocError> {
         let touched = self.history.undo_last_ai_action(&mut self.project)?;
-        self.changed(touched);
+        self.after_history(touched);
         Ok(())
+    }
+
+    // Remembers the renames of the change that was just made, then marks what
+    // it touched as unsaved.
+    fn after_history(&mut self, touched: Vec<Target>) {
+        self.pending_moves
+            .extend(self.history.last_moves().iter().cloned());
+        self.changed(touched);
     }
 
     fn changed(&mut self, touched: Vec<Target>) {
@@ -200,6 +213,11 @@ impl Session {
             return self.status();
         }
         self.set_status(SaveStatus::Saving);
+        if let Err(error) = self.apply_moves() {
+            let status = SaveStatus::Error(error.to_string());
+            self.set_status(status.clone());
+            return status;
+        }
         for target in self.pending.clone() {
             if let Err(error) = self.save(&target) {
                 let status = SaveStatus::Error(error.to_string());
@@ -365,6 +383,64 @@ impl Session {
         Ok(true)
     }
 
+    // Moves the files of the renames and moves that are waiting. The files
+    // that were never saved are not on the disk, so there is nothing to move
+    // and the new place is written by the normal save.
+    fn apply_moves(&mut self) -> Result<(), StorageError> {
+        while let Some((from, to)) = self.pending_moves.first().cloned() {
+            self.move_on_disk(&from, &to)?;
+            self.pending_moves.remove(0);
+        }
+        Ok(())
+    }
+
+    fn move_on_disk(&mut self, from: &Target, to: &Target) -> Result<(), StorageError> {
+        let (Some(old), Some(new)) = (self.moved_path(from), self.moved_path(to)) else {
+            return Ok(());
+        };
+        let case_only = old != new && old.to_string_lossy().to_lowercase() == new.to_string_lossy().to_lowercase();
+        // On a system that ignores case, "Goblin" already exists when "goblin"
+        // is renamed to it, and that is the same file.
+        if old != new && old.exists() && (!new.exists() || case_only) {
+            if let Some(parent) = new.parent() {
+                fs::create_dir_all(parent).map_err(|e| StorageError::io(parent, &e))?;
+            }
+            fs::rename(&old, &new).map_err(|e| StorageError::io(&old, &e))?;
+            self.known = std::mem::take(&mut self.known)
+                .into_iter()
+                .map(|(path, hash)| match path.strip_prefix(&old) {
+                    Ok(rest) => (new.join(rest), hash),
+                    Err(_) => (path, hash),
+                })
+                .collect();
+        }
+        // The project has the new place now. Nothing is left at the old one,
+        // and writing it again would put a second file (or folder) next to it.
+        if case_only {
+            self.pending.remove(from);
+        }
+        if let (Target::Folder(old_path), Target::Folder(new_path)) = (from, to) {
+            self.pending = std::mem::take(&mut self.pending)
+                .into_iter()
+                .map(|target| follow_folder(target, old_path, new_path))
+                .collect();
+        }
+        Ok(())
+    }
+
+    // The place of a sprite or a folder on the disk.
+    fn moved_path(&self, target: &Target) -> Option<PathBuf> {
+        match target {
+            Target::Sprite(sprite) => Some(sprite_path(&self.root, sprite)),
+            Target::Folder(names) => {
+                let mut path = self.root.join("sprites");
+                path.extend(names);
+                Some(path)
+            }
+            Target::Palette(_) => None,
+        }
+    }
+
     // Brings the disk in line with one part of the project as it is in memory:
     // written when it exists, moved to the trash when it was deleted, and moved
     // back from the trash when a deletion was undone.
@@ -410,6 +486,26 @@ impl Session {
             }
         }
         Ok(())
+    }
+}
+
+// A part that was inside a renamed folder is inside the new folder now.
+fn follow_folder(target: Target, old: &[String], new: &[String]) -> Target {
+    let moved = |path: &[String]| -> Option<Vec<String>> {
+        let rest = path.strip_prefix(old)?;
+        Some(new.iter().chain(rest).cloned().collect())
+    };
+    match target {
+        Target::Sprite(sprite) => match moved(&sprite.folder) {
+            Some(folder) => Target::Sprite(SpriteRef { folder, ..sprite }),
+            None => Target::Sprite(sprite),
+        },
+        // The renamed folder itself stays: it is where the old folder was.
+        Target::Folder(path) if path.len() > old.len() => match moved(&path) {
+            Some(path) => Target::Folder(path),
+            None => Target::Folder(path),
+        },
+        other => other,
     }
 }
 
