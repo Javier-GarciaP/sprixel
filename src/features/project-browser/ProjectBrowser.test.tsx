@@ -370,6 +370,42 @@ describe("sprite details", () => {
   });
 });
 
+describe("the project root", () => {
+  // Checks that the root lists the sprites of every folder, and that a
+  // folder lists only its own sprites.
+  it("lists every sprite of the project, and a folder only its own", async () => {
+    renderBrowser();
+    const region = await screen.findByRole("region", { name: "Sprites" });
+    expect(await within(region).findByText("slime")).toBeTruthy();
+    for (const name of ["orc", "goblin", "hero", "merchant"]) {
+      expect(within(region).getByText(name)).toBeTruthy();
+    }
+
+    fireEvent.click(
+      within(await folderRow(/Enemigos/)).getByRole("button", {
+        name: /^Enemigos/,
+      }),
+    );
+
+    await vi.waitFor(() =>
+      expect(within(region).queryByText("orc")).toBeNull(),
+    );
+    expect(within(region).getByText("slime")).toBeTruthy();
+  });
+});
+
+describe("folder menu", () => {
+  // Checks that the "..." menu of a folder is placed on the screen, not
+  // inside the scrolling tree column, so the column cannot cut it.
+  it("opens the folder menu above the page", async () => {
+    renderBrowser();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "More actions for Enemigos" }),
+    );
+    expect(screen.getByRole("menu").className).toContain("fixed");
+  });
+});
+
 describe("empty states", () => {
   // Checks the spec scenario "New project": the empty message with one main
   // action, and no details panel.
@@ -377,7 +413,8 @@ describe("empty states", () => {
     core.projectTree.mockResolvedValue(emptyTree());
     renderBrowser();
 
-    expect(await screen.findByText("No sprites yet")).toBeTruthy();
+    expect(await screen.findByText("Your project is empty")).toBeTruthy();
+    expect(document.querySelector("img")).not.toBeNull(); // the gray ghost
     expect(screen.getByRole("button", { name: "New sprite" })).toBeTruthy();
     expect(screen.queryByRole("complementary", { name: "Details" })).toBeNull();
   });
