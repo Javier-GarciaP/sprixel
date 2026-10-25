@@ -133,6 +133,33 @@ pub enum Operation {
         /// All the tags the sprite had before the frame was deleted.
         tags: Vec<Tag>,
     },
+    /// Puts a new frame at position `at` (1 to count + 1), blank or a copy of
+    /// `copy_of`. A copy has the duration of the original.
+    InsertFrame {
+        sprite: SpriteRef,
+        at: u32,
+        copy_of: Option<u32>,
+        duration_ms: u32,
+    },
+    /// Moves a frame so that it ends at position `to`. The tags keep their
+    /// frames; with `tags` the ranges are set as given (used by the inverse).
+    MoveFrame {
+        sprite: SpriteRef,
+        from: u32,
+        to: u32,
+        tags: Option<Vec<Tag>>,
+    },
+    SetFrameDuration {
+        sprite: SpriteRef,
+        frame: u32,
+        duration_ms: u32,
+    },
+    /// Replaces the tag called `name` (it can be renamed). It keeps its place.
+    SetTag {
+        sprite: SpriteRef,
+        name: String,
+        tag: Tag,
+    },
     AddTag {
         sprite: SpriteRef,
         tag: Tag,
@@ -737,6 +764,147 @@ impl Project {
                     touched: vec![Target::Sprite(sprite_ref)],
                 })
             }
+            Operation::InsertFrame {
+                sprite,
+                at,
+                copy_of,
+                duration_ms,
+            } => {
+                if *duration_ms == 0 {
+                    return Err(DocError::new("bad_duration", "a frame lasts at least 1 ms"));
+                }
+                let (folder, index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[index];
+                if *at < 1 || *at as usize > target.frame_count() + 1 {
+                    return Err(DocError::new(
+                        "bad_frame",
+                        format!("a frame cannot go at {at}, the sprite has {} frames", target.frame_count()),
+                    ));
+                }
+                if let Some(source) = copy_of {
+                    check_frame(target, *source)?;
+                }
+                let place = *at as usize - 1;
+                for layer in &mut target.layers {
+                    let frame = match copy_of {
+                        Some(source) => layer.frames[*source as usize - 1].clone(),
+                        None => Frame::blank(target.width, target.height),
+                    };
+                    layer.frames.insert(place, frame);
+                }
+                let duration = copy_of
+                    .map(|source| target.frame_durations[source as usize - 1])
+                    .unwrap_or(*duration_ms);
+                target.frame_durations.insert(place, duration);
+                grow_tags(&mut target.tags, *at);
+                let sprite_ref = SpriteRef {
+                    folder,
+                    name: target.name.clone(),
+                };
+                Ok(Applied {
+                    // Deleting the new frame shrinks the tags back.
+                    inverse: Operation::DeleteFrame {
+                        sprite: sprite_ref.clone(),
+                        frame: *at,
+                    },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::MoveFrame {
+                sprite,
+                from,
+                to,
+                tags,
+            } => {
+                let (folder, index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[index];
+                check_frame(target, *from)?;
+                check_frame(target, *to)?;
+                let old_tags = target.tags.clone();
+                let (a, b) = (*from as usize - 1, *to as usize - 1);
+                for layer in &mut target.layers {
+                    let frame = layer.frames.remove(a);
+                    layer.frames.insert(b, frame);
+                }
+                let duration = target.frame_durations.remove(a);
+                target.frame_durations.insert(b, duration);
+                match tags {
+                    Some(given) => target.tags = given.clone(),
+                    None => follow_move(&mut target.tags, target.frame_durations.len(), *from, *to),
+                }
+                let sprite_ref = SpriteRef {
+                    folder,
+                    name: target.name.clone(),
+                };
+                Ok(Applied {
+                    inverse: Operation::MoveFrame {
+                        sprite: sprite_ref.clone(),
+                        from: *to,
+                        to: *from,
+                        tags: Some(old_tags),
+                    },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::SetFrameDuration {
+                sprite,
+                frame,
+                duration_ms,
+            } => {
+                if *duration_ms == 0 {
+                    return Err(DocError::new("bad_duration", "a frame lasts at least 1 ms"));
+                }
+                let (folder, index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[index];
+                check_frame(target, *frame)?;
+                let old = std::mem::replace(&mut target.frame_durations[*frame as usize - 1], *duration_ms);
+                let sprite_ref = SpriteRef {
+                    folder,
+                    name: target.name.clone(),
+                };
+                Ok(Applied {
+                    inverse: Operation::SetFrameDuration {
+                        sprite: sprite_ref.clone(),
+                        frame: *frame,
+                        duration_ms: old,
+                    },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::SetTag { sprite, name, tag } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                let at = target
+                    .tags
+                    .iter()
+                    .position(|t| same_name(&t.name, name))
+                    .ok_or_else(|| not_found("tag", name))?;
+                tag.validate(target.frame_count())?;
+                if target
+                    .tags
+                    .iter()
+                    .enumerate()
+                    .any(|(i, t)| i != at && same_name(&t.name, &tag.name))
+                {
+                    return Err(DocError::new(
+                        "tag_exists",
+                        format!("tag {:?} already exists", tag.name),
+                    ));
+                }
+                let old = std::mem::replace(&mut target.tags[at], tag.clone());
+                let sprite_ref = SpriteRef {
+                    folder,
+                    name: target.name.clone(),
+                };
+                Ok(Applied {
+                    inverse: Operation::SetTag {
+                        sprite: sprite_ref.clone(),
+                        name: tag.name.clone(),
+                        tag: old,
+                    },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
             Operation::AddTag { sprite, tag, index } => {
                 let (folder, sprite_index) = self.locate(sprite)?;
                 let target = &mut self.folder_mut(&folder).sprites[sprite_index];
@@ -922,6 +1090,34 @@ fn shrink_tags(tags: &mut Vec<Tag>, deleted: u32) {
         }
     }
     tags.retain(|tag| tag.to >= tag.from);
+}
+
+// A frame was inserted at `at`: tags after it move, a tag that holds frames on
+// both sides of it grows, a tag that ends right before it stays as it is.
+fn grow_tags(tags: &mut [Tag], at: u32) {
+    for tag in tags {
+        if tag.from >= at {
+            tag.from += 1;
+            tag.to += 1;
+        } else if tag.to >= at {
+            tag.to += 1;
+        }
+    }
+}
+
+// A frame moved from `from` to `to`. Every tag keeps the same frames, so its
+// new range is the smallest one that holds where they are now. If they are no
+// longer next to each other the range also holds frames of other tags.
+fn follow_move(tags: &mut [Tag], count: usize, from: u32, to: u32) {
+    let mut order: Vec<u32> = (1..=count as u32).collect();
+    let moved = order.remove(from as usize - 1);
+    order.insert(to as usize - 1, moved);
+    let place = |old: u32| order.iter().position(|f| *f == old).unwrap() as u32 + 1;
+    for tag in tags {
+        let places: Vec<u32> = (tag.from..=tag.to).map(place).collect();
+        tag.from = *places.iter().min().unwrap();
+        tag.to = *places.iter().max().unwrap();
+    }
 }
 
 fn name_exists(name: &str) -> DocError {
