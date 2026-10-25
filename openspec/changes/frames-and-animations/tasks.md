@@ -20,7 +20,7 @@
 
 ## 4. Preview
 
-- [ ] 4.1 Build the preview with play, pause, speed and the three repeat modes and verify a timing test for each mode
+- [x] 4.1 Build the preview with play, pause, speed and the three repeat modes and verify a timing test for each mode
 - [ ] 4.2 Update the preview when the drawing changes and verify the edit-while-playing scenario
 
 ## 5. Documentation

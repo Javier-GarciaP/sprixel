@@ -10,3 +10,4 @@ export type {
 } from "./types";
 export { chosenTag, rangeOf } from "./animation";
 export { useFramesInfo } from "./useFramesInfo";
+export { PreviewPanel, type Clock } from "./PreviewPanel";

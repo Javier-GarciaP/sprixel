@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Toast } from "@/shared/components";
 import {
   FramesColumn,
+  PreviewPanel,
+  chosenTag,
   coreFramesApi,
   rangeOf,
   useFramesInfo,
+  type Clock,
   type FramesApi,
 } from "@/features/frames-animations";
 import { useT } from "@/shared/lib/i18n";
@@ -41,6 +44,8 @@ type Props = {
   // Gives the app what the editor commands do (the app owns the keys).
   // The calls for frames and animations. The tests give a fake one.
   framesApi?: FramesApi;
+  // The clock of the preview. The tests give a manual one.
+  clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
 };
 
@@ -48,6 +53,7 @@ export function EditorScreen({
   sprite,
   api = coreEditorApi,
   framesApi = coreFramesApi,
+  clock,
   onCommands,
 }: Props) {
   const t = useT();
@@ -66,6 +72,7 @@ export function EditorScreen({
       sprite={sprite}
       api={api}
       framesApi={framesApi}
+      clock={clock}
       onCommands={onCommands}
     />
   );
@@ -75,11 +82,13 @@ function OpenSprite({
   sprite,
   api,
   framesApi,
+  clock,
   onCommands,
 }: {
   sprite: SpriteRef;
   api: EditorApi;
   framesApi: FramesApi;
+  clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
 }) {
   const t = useT();
@@ -116,6 +125,7 @@ function OpenSprite({
     <Ready
       api={api}
       framesApi={framesApi}
+      clock={clock}
       onFramesChanged={(select) => {
         if (select) setFrame(select);
         reload();
@@ -149,6 +159,7 @@ function OpenSprite({
 
 type ReadyProps = {
   api: EditorApi;
+  clock?: Clock;
   framesApi: FramesApi;
   onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
@@ -437,6 +448,15 @@ function Ready(props: ReadyProps) {
         />
       </section>
       <RightPanel
+        preview={
+          <PreviewPanel
+            api={props.framesApi}
+            sprite={sprite}
+            info={framesInfo}
+            tag={chosenTag(tags, animation)}
+            clock={props.clock}
+          />
+        }
         agent={writing ? agentText : null}
         palette={
           <PalettePanel

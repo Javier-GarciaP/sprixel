@@ -7,11 +7,38 @@ import {
   PreferencesProvider,
   defaultPreferences,
 } from "@/shared/lib/preferences";
-import type { FramesApi } from "@/features/frames-animations";
+import type { Clock, FramesApi } from "@/features/frames-animations";
 import { EditorScreen } from "../components/EditorScreen";
 import type { CommandHandlers } from "../hooks/useEditorCommands";
 import type { EditorApi, SpriteRef } from "../api/types";
 import { centeredView, fitZoom } from "../view/viewMath";
+
+// A clock the tests move by hand: `tick(ms)` passes that time and runs what was
+// waiting for the next frame.
+export const manualClock = (() => {
+  let time = 0;
+  let waiting: (() => void)[] = [];
+  return {
+    now: () => time,
+    frame: (callback: () => void) => {
+      waiting.push(callback);
+      return () => {
+        waiting = waiting.filter((w) => w !== callback);
+      };
+    },
+    tick(ms: number) {
+      time += ms;
+      const run = waiting;
+      waiting = [];
+      run.forEach((callback) => callback());
+    },
+    reset() {
+      time = 0;
+      waiting = [];
+    },
+  };
+})();
+const testClock: Clock = manualClock;
 
 export const goblin: SpriteRef = { folder: ["Characters"], name: "goblin" };
 
@@ -20,6 +47,7 @@ export const goblin: SpriteRef = { folder: ["Characters"], name: "goblin" };
 export const putImageData = vi.fn();
 
 export function mockLayout(width = 500, height = 300) {
+  manualClock.reset();
   areaWidth = width;
   // Many test files run at once, so a slow machine needs more than 1 second.
   configure({ asyncUtilTimeout: 5000 });
@@ -77,6 +105,7 @@ function Host({ sprite, api }: { sprite: SpriteRef | null; api: EditorApi }) {
       sprite={sprite}
       api={api}
       framesApi={api as unknown as FramesApi}
+      clock={testClock}
       onCommands={register}
     />
   );
