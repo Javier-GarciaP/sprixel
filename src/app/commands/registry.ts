@@ -120,6 +120,12 @@ commands.push(
   tool("select", "M"),
   tool("move", "V"),
   {
+    id: "colors.swap",
+    labelKey: "command.colors.swap",
+    group: "editor",
+    shortcut: "X",
+  },
+  {
     id: "edit.undo",
     labelKey: "command.edit.undo",
     group: "editor",

@@ -170,7 +170,8 @@ Project tab](#the-project-tab) to rename, duplicate, move and delete.
 
 ## Draw
 
-The tools are on the left of the editor:
+The tools are on the left of the editor. Rest the pointer on a tool to see its
+name and key.
 
 | Tool | Key |
 | --- | --- |
@@ -184,17 +185,66 @@ The tools are on the left of the editor:
 | Select | `M` |
 | Move | `V` |
 
-- Pick colors from the palette on the right. The two color boxes under the
-  tools are your main and secondary colors.
-- Zoom with `+`, `-` or `Ctrl` + mouse wheel. Move the view by holding `Space`.
-- Undo with `Ctrl+Z` and redo with `Ctrl+Shift+Z`.
+- **Pencil** and **Eraser** paint or clear the pixels you touch, with no gaps,
+  even if you move the mouse fast.
+- **Bucket** fills the connected area of one color. It does not cross other
+  colors.
+- **Eyedropper** takes the color of the pixel you click (the main color with
+  the left button, the secondary color with the right button). A transparent
+  pixel changes nothing.
+- **Line**, **Rectangle** and **Ellipse** show a preview while you drag and
+  draw when you let go. Hold `Shift` for a line in 45-degree steps, a square or
+  a circle. Rectangle and Ellipse can be **Outline** or **Filled** (the switch
+  appears above the canvas).
+- **Select** chooses a rectangle (click without dragging to clear it).
+  **Move** drags the selected pixels, or the whole frame when nothing is
+  selected. What leaves the canvas is cut off.
+
+Every stroke, fill, shape or move is one step: one undo takes it all back.
+Undo with `Ctrl+Z` and redo with `Ctrl+Shift+Z`, or use the buttons above the
+canvas.
+
+### Colors
+
+- The two color boxes under the tools are your **main** color (left mouse
+  button) and your **secondary** color (right mouse button). Press `X` or the
+  swap button to exchange them.
+- Click a color of the palette (right panel) for the main color, or right-click
+  for the secondary color. Click a color box to use the system color picker, or
+  type a hex value such as `#1F2A44` in the field of the palette box.
+- You can use **any color**. A color that is not in the palette yet is added to
+  it with the next free key, in the same undo step as the stroke. A palette has
+  up to 93 colors; after that a new color shows "The palette is full" and
+  nothing is drawn with it.
+
+### Zoom and move
+
+- Zoom with `+`, `-`, the buttons under the canvas, or `Ctrl` + mouse wheel,
+  from 100% to 3200%. The pixel under the pointer stays where it is. **Fit**
+  (`Ctrl+0`) uses the largest whole zoom that fits the area.
+- Move the view by holding `Space` and dragging, or with the middle mouse
+  button.
+- The pixel grid shows from 600% zoom if it is on in **Settings**. The bar under
+  the canvas shows the pixel under the pointer, for example `x: 3 y: 4`.
+
+Pixels are always sharp squares: there is no smoothing at any zoom. Transparent
+pixels show over a gray checkerboard, the same in the light and the dark theme.
+
+### When an AI is drawing
+
+While an agent writes to the sprite, the canvas has an amber border and a label
+such as "Claude Code is drawing frame 2" with a **Stop** button. That frame is
+busy: if you draw on it, your stroke is kept and applied when the agent
+finishes.
 
 ## Frames and animations
 
 - The column next to the tools lists the **frames**. Press **+** to add one.
 - **Onion skin** shows the previous frame in blue under your drawing, so you
-  can see how the movement flows. Turn it on and set its strength in the
-  right panel (`O` toggles it).
+  can see how the movement flows. Turn it on and set its opacity (10% to 80%,
+  40% at the start) in the right panel; `O` toggles it. There is no onion skin
+  on frame 1. The previous frame is only a guide: you cannot edit it and it is
+  never exported.
 - The **preview** plays the animation. Choose the speed in FPS.
 - An **animation** is a name plus a range of frames. In the Project tab,
   select a sprite and press **+** in the **Animations** box. For example
@@ -325,6 +375,7 @@ On macOS use `Cmd` instead of `Ctrl`. The same list is in
 | Fit to window | `Ctrl+0` |
 | Move the view | `Space` |
 | Onion skin | `O` |
+| Swap colors | `X` |
 
 The project menu (click the project name) has these commands: New project, Open, Open recent, Rename project, Save a copy as, Show
 in folder, Export and Close project. There is no Save command because the

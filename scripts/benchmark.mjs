@@ -34,6 +34,19 @@ child.stdout.on("data", (chunk) => {
     console.log(
       `\nMedian ${result.medianMs.toFixed(1)} ms, budget ${BUDGET_MS} ms: ${ok ? "OK" : "TOO SLOW"}`,
     );
+    // For information, not part of the budget.
+    console.log(
+      `Time between frames ${result.frameMs.toFixed(1)} ms, work of a pointer move ${result.workMs.toFixed(1)} ms`,
+    );
+    if (result.frameMs > 20) {
+      console.log(
+        `Warning: frames come every ${result.frameMs.toFixed(0)} ms (a 30 Hz screen, or a window that is hidden or covered). ` +
+          "The median cannot be lower than that. Show the window and run it again.",
+      );
+    }
+    console.log(
+      `Fill of the whole frame ${result.fillMs.toFixed(0)} ms, full repaint ${result.fullRepaintMs.toFixed(0)} ms`,
+    );
     stopApp();
     process.exit(ok ? 0 : 1);
   }

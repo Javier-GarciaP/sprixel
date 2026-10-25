@@ -123,7 +123,11 @@ describe("Project tab in the app", () => {
       ),
     );
 
-    expect(await screen.findByText("Editing goblin")).toBeTruthy();
+    // The editor opens that sprite. There is no core in this test, so it
+    // says that the sprite could not be read.
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "The sprite could not be opened",
+    );
     expect(
       screen
         .getByRole("button", { name: "Editor" })

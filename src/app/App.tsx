@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { EditorScreen } from "@/features/canvas-editor";
 import { ProjectBrowser, type SpriteTarget } from "@/features/project-browser";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
@@ -56,6 +57,14 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   // The sprite open in the Editor tab.
   const [activeSprite, setActiveSprite] = useState<SpriteTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // What the editor commands do, given by the editor while it is open.
+  const [editorHandlers, setEditorHandlers] = useState<
+    Record<string, () => void>
+  >({});
+  const registerEditorCommands = useCallback(
+    (next: Record<string, () => void> | null) => setEditorHandlers(next ?? {}),
+    [],
+  );
   const save = useSaveStatus(project !== null);
   useWindowTitle(project?.name ?? null);
 
@@ -118,7 +127,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     "project.open": chooseAndOpen,
     ...(project ? { "project.close": close } : {}),
   };
-  useShortcuts(handlers, platform);
+  useShortcuts({ ...handlers, ...editorHandlers }, platform);
 
   const groups = shortcutGroups(platform, t).map((group) => ({
     title: t(group.titleKey),
@@ -163,13 +172,9 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         folderExists={folderExists}
       />
     );
-  } else if (tab === "editor" && activeSprite) {
-    // The canvas editor belongs to another spec; for now the tab only says
-    // which sprite was opened.
+  } else if (tab === "editor") {
     body = (
-      <p className="p-6 text-text-muted">
-        {t("editor.opened", { name: activeSprite.name })}
-      </p>
+      <EditorScreen sprite={activeSprite} onCommands={registerEditorCommands} />
     );
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;

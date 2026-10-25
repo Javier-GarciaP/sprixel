@@ -3,6 +3,7 @@
 pub mod browser;
 pub mod preferences;
 pub mod project;
+pub mod editor;
 
 use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};
 use preferences::{Data, RecentProject, Settings};

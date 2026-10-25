@@ -1,5 +1,5 @@
 use super::error::DocError;
-use super::model::{Folder, Frame, Palette, Project, Sprite, Tag};
+use super::model::{Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, Tag};
 use super::names::{same_name, validate_name};
 
 /// Where a sprite is: the folders from the project root, then its name.
@@ -48,6 +48,18 @@ pub enum Operation {
     },
     DeletePalette {
         name: String,
+    },
+    /// Adds a color at the end of a palette (or at `index`). It fails with
+    /// `palette_full` when the palette has 93 colors.
+    AddColor {
+        palette: String,
+        color: Color,
+        index: Option<usize>,
+    },
+    /// Removes a color that no sprite uses.
+    RemoveColor {
+        palette: String,
+        key: char,
     },
     CreateFolder {
         parent: Vec<String>,
@@ -251,6 +263,78 @@ impl Project {
                         index: Some(index),
                     },
                     touched: vec![Target::Palette(palette_name)],
+                })
+            }
+            Operation::AddColor {
+                palette,
+                color,
+                index,
+            } => {
+                let at_palette = self
+                    .palettes
+                    .iter()
+                    .position(|p| same_name(&p.name, palette))
+                    .ok_or_else(|| not_found("palette", palette))?;
+                let target = &self.palettes[at_palette];
+                if target.colors.len() >= MAX_COLORS {
+                    return Err(DocError::new(
+                        "palette_full",
+                        format!("palette {:?} already has {MAX_COLORS} colors", target.name),
+                    ));
+                }
+                // Check the new color together with the others before changing.
+                let mut colors = target.colors.clone();
+                let at = index.unwrap_or(colors.len()).min(colors.len());
+                colors.insert(at, color.clone());
+                Palette {
+                    name: target.name.clone(),
+                    colors,
+                }
+                .validate()?;
+                let name = target.name.clone();
+                self.palettes[at_palette].colors.insert(at, color.clone());
+                Ok(Applied {
+                    inverse: Operation::RemoveColor {
+                        palette: name.clone(),
+                        key: color.key,
+                    },
+                    touched: vec![Target::Palette(name)],
+                })
+            }
+            Operation::RemoveColor { palette, key } => {
+                let at_palette = self
+                    .palettes
+                    .iter()
+                    .position(|p| same_name(&p.name, palette))
+                    .ok_or_else(|| not_found("palette", palette))?;
+                let name = self.palettes[at_palette].name.clone();
+                let at = self.palettes[at_palette]
+                    .colors
+                    .iter()
+                    .position(|c| c.key == *key)
+                    .ok_or_else(|| not_found("color", &key.to_string()))?;
+                let in_use = all_sprites(&self.root)
+                    .filter(|s| same_name(&s.palette, &name))
+                    .any(|s| {
+                        s.layers
+                            .iter()
+                            .flat_map(|l| l.frames.iter())
+                            .any(|f| f.pixels.contains(&(*key as u8)))
+                    });
+                if in_use {
+                    return Err(DocError::new(
+                        "color_in_use",
+                        format!("color {key:?} is used by a sprite"),
+                    ));
+                }
+                let color = self.palettes[at_palette].colors.remove(at);
+                Ok(Applied {
+                    inverse: Operation::AddColor {
+                        palette: name.clone(),
+                        color,
+                        index: Some(at),
+                    },
+                    touched: vec![Target::Palette(name)],
                 })
             }
             Operation::CreateFolder { parent, name } => {
