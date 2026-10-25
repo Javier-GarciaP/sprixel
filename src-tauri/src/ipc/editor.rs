@@ -268,20 +268,11 @@ pub fn apply_changes(
     .ok_or_else(no_project)?
 }
 
-pub fn undo(state: &ProjectState) -> Result<HistoryState, EditorError> {
-    project::edit(state, |session| {
-        session.undo()?;
-        Ok(history_of(session))
-    })
-    .ok_or_else(no_project)?
-}
-
-pub fn redo(state: &ProjectState) -> Result<HistoryState, EditorError> {
-    project::edit(state, |session| {
-        session.redo()?;
-        Ok(history_of(session))
-    })
-    .ok_or_else(no_project)?
+/// The undo and redo flags. Undo and redo themselves are the ones of the
+/// project (`project_undo` and `project_redo`), used by every tab, so there is
+/// one history path.
+pub fn history(state: &ProjectState) -> Result<HistoryState, EditorError> {
+    project::read(state, history_of).ok_or_else(no_project)
 }
 
 #[tauri::command]
@@ -317,13 +308,8 @@ pub fn editor_apply(
 }
 
 #[tauri::command]
-pub fn editor_undo(state: tauri::State<ProjectState>) -> Result<HistoryState, EditorError> {
-    undo(&state)
-}
-
-#[tauri::command]
-pub fn editor_redo(state: tauri::State<ProjectState>) -> Result<HistoryState, EditorError> {
-    redo(&state)
+pub fn editor_history(state: tauri::State<ProjectState>) -> Result<HistoryState, EditorError> {
+    history(&state)
 }
 
 /// The agent that is writing now, if any (read when the editor opens).
@@ -437,6 +423,17 @@ mod tests {
         changes: &[Change],
     ) -> Result<ApplyResult, EditorError> {
         apply_changes(state, agents, sprite, frame, changes).map(|(result, _)| result)
+    }
+
+    /// Undo and redo are the ones of the project, used by every tab.
+    fn undo(state: &ProjectState) -> Result<HistoryState, EditorError> {
+        browser::undo(state).map_err(|e| EditorError::new(&e.code, &e.message))?;
+        history(state)
+    }
+
+    fn redo(state: &ProjectState) -> Result<HistoryState, EditorError> {
+        browser::redo(state).map_err(|e| EditorError::new(&e.code, &e.message))?;
+        history(state)
     }
 
     fn frame(state: &ProjectState) -> String {
@@ -692,5 +689,19 @@ mod tests {
     fn a_refused_stroke_gives_no_event() {
         let (_dir, state, agents) = open_project(vec![]);
         assert!(apply_changes(&state, &agents, &arg("ghost"), 1, &[change(0, 0, None)]).is_err());
+    }
+
+    // Checks that undo from the editor is the project undo: it touches the
+    // sprite in the event and the history flags are read after it.
+    #[test]
+    fn undo_is_the_project_undo_and_touches_the_sprite() {
+        let (_dir, state, agents) = open_project(vec![]);
+        apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#336699"))]).unwrap();
+        let (_, event) = browser::undo(&state).unwrap();
+        assert!(event
+            .touched
+            .contains(&browser::TargetInfo { kind: "sprite", path: vec!["goblin".to_string()] }));
+        assert!(!history(&state).unwrap().can_undo);
+        assert!(history(&state).unwrap().can_redo);
     }
 }

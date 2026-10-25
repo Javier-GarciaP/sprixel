@@ -40,8 +40,16 @@ export const coreEditorApi: EditorApi = {
     call<string>("editor_frame", { sprite, frame }),
   applyChanges: (sprite: SpriteRef, frame: number, changes: PixelChange[]) =>
     call<ApplyResult>("editor_apply", { sprite, frame, changes }),
-  undo: () => call<HistoryState>("editor_undo"),
-  redo: () => call<HistoryState>("editor_redo"),
+  // Undo and redo are the ones of the project, the same for every tab. They
+  // send `project://changed`; then the editor reads the history flags.
+  undo: async () => {
+    await call<void>("project_undo");
+    return call<HistoryState>("editor_history");
+  },
+  redo: async () => {
+    await call<void>("project_redo");
+    return call<HistoryState>("editor_history");
+  },
   agentActivity: () => call<AgentActivity | null>("agent_activity"),
   stopAgent: () => call<void>("agent_stop"),
   async onAgentActivity(callback) {
