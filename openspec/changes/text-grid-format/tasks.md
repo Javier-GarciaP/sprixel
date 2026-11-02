@@ -5,7 +5,7 @@
 ## 1. Grid module
 
 - [x] 1.1 Implement the parser and writer for the format and verify tests with the documentation example and golden files
-- [ ] 1.2 Implement validation with all error codes, line, row and column, and verify one test per code
+- [x] 1.2 Implement validation with all error codes, line, row and column, and verify one test per code
 - [ ] 1.3 Implement region writing with the keep-existing option and verify the region tests
 - [ ] 1.4 Add a round trip property test for random sprites up to 512x512 and verify it passes
 - [ ] 1.5 Implement the legend colors (a legend line with a hex adds a missing color, an existing color is never changed, with the errors `palette_full` and `bad_legend`) and verify the legend scenarios

@@ -2,7 +2,7 @@
 //! This module reads it (`Grid::parse`) and writes it (`write_grid`). The
 //! format is in `docs/text-grid-format.md`. Plain Rust, no Tauri types.
 
-use super::model::{Palette, Sprite, TRANSPARENT};
+use super::model::{Color, MAX_SIZE, Palette, Sprite, TRANSPARENT};
 use serde::Serialize;
 
 /// A problem in a grid. `line` is the line of the text, `row` the row inside
@@ -57,6 +57,17 @@ pub struct Grid {
     pub palette: Option<String>,
     pub legend: Vec<LegendLine>,
     pub frames: Vec<GridFrame>,
+}
+
+/// How a grid is written into a sprite.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct GridOptions {
+    /// The place of the top left pixel of the grid. `None` means the grid
+    /// is the whole frame, so it must have the size of the sprite. With a
+    /// place, the grid can be smaller, if the whole region fits.
+    pub region: Option<(u32, u32)>,
+    /// Keep the pixels that are under a `.` of the grid, instead of erasing.
+    pub skip_transparent: bool,
 }
 
 enum Part {
@@ -136,6 +147,154 @@ impl Grid {
     }
 }
 
+impl Grid {
+    /// The colors that the legend adds to the palette: a line with a `#hex`
+    /// for a key the palette does not have. A color that exists is never
+    /// changed. A color that cannot be added gives an error.
+    pub fn legend_colors(&self, palette: &Palette) -> (Vec<Color>, Vec<GridError>) {
+        let mut growing = palette.clone();
+        let mut added = Vec::new();
+        let mut errors = Vec::new();
+        for entry in &self.legend {
+            let Some(hex) = &entry.hex else { continue };
+            if entry.key == TRANSPARENT || palette.colors.iter().any(|c| c.key == entry.key) {
+                continue;
+            }
+            let color = Color { key: entry.key, name: entry.name.clone(), hex: hex.clone() };
+            match growing.check_color(None, &color) {
+                Ok(()) => {
+                    growing.colors.push(color.clone());
+                    added.push(color);
+                }
+                Err(error) if error.code == "palette_full" => {
+                    errors.push(
+                        GridError::new(
+                            "palette_full",
+                            format!(
+                                "line {}: the legend adds the color {:?} but palette {} already has {} colors",
+                                entry.line, entry.key, palette.name, super::model::MAX_COLORS
+                            ),
+                        )
+                        .at(entry.line),
+                    );
+                    break;
+                }
+                Err(error) => errors.push(
+                    GridError::new("bad_legend", format!("line {}: {}", entry.line, error.message)).at(entry.line),
+                ),
+            }
+        }
+        (added, errors)
+    }
+
+    /// Checks the grid against a sprite and its palette and gives every
+    /// problem, not only the first one. The `palette:` line is not checked:
+    /// the keys belong to the palette of the sprite.
+    pub fn validate(&self, sprite: &Sprite, palette: &Palette, options: &GridOptions) -> Vec<GridError> {
+        let (new_colors, mut errors) = self.legend_colors(palette);
+        let known = |key: char| {
+            key == TRANSPARENT
+                || palette.colors.iter().any(|c| c.key == key)
+                || new_colors.iter().any(|c| c.key == key)
+        };
+        let (sprite_w, sprite_h) = (sprite.width as usize, sprite.height as usize);
+        let max = MAX_SIZE as usize;
+        for frame in &self.frames {
+            let number = frame.number;
+            if number as usize > sprite.frame_count() {
+                errors.push(
+                    GridError::new(
+                        "bad_frame",
+                        format!("frame {number} does not exist; the sprite has {} frames", sprite.frame_count()),
+                    )
+                    .at(frame.line),
+                );
+                continue;
+            }
+            let rows = frame.rows.len();
+            let widest = frame.rows.iter().map(|r| r.cells.len()).max().unwrap_or(0);
+            if rows > max || widest > max {
+                errors.push(
+                    GridError::new("too_big", format!("grid is {widest}x{rows}; maximum is {max}x{max}"))
+                        .at(frame.line),
+                );
+                continue;
+            }
+            // A whole frame has the size of the sprite; a region has the size
+            // of its first row and of its number of rows.
+            let width = match options.region {
+                None => sprite_w,
+                Some(_) => frame.rows.first().map_or(0, |r| r.cells.len()),
+            };
+            match options.region {
+                None if rows != sprite_h => errors.push(
+                    GridError::new("row_count", format!("frame {number} has {rows} rows, expected {sprite_h}"))
+                        .at(frame.line),
+                ),
+                Some(_) if rows == 0 => errors.push(
+                    GridError::new("row_count", format!("frame {number} has 0 rows, expected at least 1"))
+                        .at(frame.line),
+                ),
+                Some((x, y)) if x as usize + width > sprite_w || y as usize + rows > sprite_h => errors.push(
+                    GridError::new(
+                        "region_out",
+                        format!("region at ({x}, {y}) of size {width}x{rows} does not fit in {sprite_w}x{sprite_h}"),
+                    )
+                    .at(frame.line),
+                ),
+                _ => {}
+            }
+            for (index, row) in frame.rows.iter().enumerate() {
+                let row_number = index + 1;
+                if row.cells.len() != width {
+                    let mut error = GridError::new(
+                        "row_length",
+                        format!(
+                            "line {} (row {row_number} of frame {number}): {} columns, expected {width}",
+                            row.line,
+                            row.cells.len()
+                        ),
+                    )
+                    .at(row.line);
+                    error.row = Some(row_number);
+                    errors.push(error);
+                }
+                for (at, key) in row.cells.iter().enumerate() {
+                    if !known(*key) {
+                        let mut error = GridError::new(
+                            "unknown_key",
+                            format!(
+                                "line {} (row {row_number}, column {}): key \"{key}\" is not in palette {}",
+                                row.line,
+                                at + 1,
+                                palette.name
+                            ),
+                        )
+                        .at(row.line);
+                        error.row = Some(row_number);
+                        error.column = Some(at + 1);
+                        errors.push(error);
+                    }
+                }
+            }
+        }
+        errors
+    }
+
+    /// Reads a text and checks it: the errors of the text and the errors
+    /// against the sprite, all together. `Ok` has a grid that can be applied.
+    pub fn check(
+        text: &str,
+        sprite: &Sprite,
+        palette: &Palette,
+        options: &GridOptions,
+    ) -> Result<Grid, Vec<GridError>> {
+        let (grid, mut errors) = Grid::parse(text);
+        errors.extend(grid.validate(sprite, palette, options));
+        if errors.is_empty() { Ok(grid) } else { Err(errors) }
+    }
+}
+
 // A comment is a line that starts with `#`. Inside a frame, "#" is also a
 // color key, so there only "#" alone or "# " followed by text is a comment.
 // In the legend, a line that has the form of a legend line for the key "#"
@@ -177,7 +336,7 @@ fn legend_line(number: usize, line: &str) -> Result<LegendLine, GridError> {
         _ => return Err(bad(format!("{key_word:?} is not a key, a key is one printable character"))),
     };
     let mut hex = None;
-    if words.len() > 1 && words.last().is_some_and(|w| w.starts_with('#')) {
+    if words.last().is_some_and(|w| w.starts_with('#')) {
         let word = words.pop().unwrap();
         let valid = word.len() == 7 && word[1..].bytes().all(|b| b.is_ascii_hexdigit());
         if !valid {
