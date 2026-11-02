@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { EditorScreen } from "@/features/canvas-editor";
+import { ExportScreen } from "@/features/export";
 import { ProjectBrowser, type SpriteTarget } from "@/features/project-browser";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
@@ -56,6 +57,11 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const [newProjectFrom, setNewProjectFrom] = useState<string | null>(null);
   // The sprite open in the Editor tab.
   const [activeSprite, setActiveSprite] = useState<SpriteTarget | null>(null);
+  // What the Project tab shows (open folder and selection), for the Export tab.
+  const [browserView, setBrowserView] = useState<{
+    folder: string[];
+    selection: SpriteTarget[];
+  }>({ folder: [], selection: [] });
   const [notice, setNotice] = useState<string | null>(null);
   // What the editor commands do, given by the editor while it is open.
   const [editorHandlers, setEditorHandlers] = useState<
@@ -78,6 +84,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const afterOpen = (info: ProjectInfo) => {
     setProject({ name: info.name, path: info.path });
     setActiveSprite(null);
+    setBrowserView({ folder: [], selection: [] });
     setTab("project");
     setSettingsOpen(false);
     addRecentProject(info.path, info.name).then(setRecents);
@@ -117,6 +124,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     await closeProject();
     setProject(null);
     setActiveSprite(null);
+    setBrowserView({ folder: [], selection: [] });
     setTab("project");
   };
 
@@ -154,6 +162,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
             return shortcut && formatShortcut(shortcut, platform, t);
           },
         }}
+        onViewChange={setBrowserView}
         onOpenSprite={(sprite) => {
           setActiveSprite(sprite);
           setTab("editor");
@@ -180,6 +189,15 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         key={project?.path}
         sprite={activeSprite}
         onCommands={registerEditorCommands}
+        onGoToProject={() => setTab("project")}
+      />
+    );
+  } else if (tab === "export" && project) {
+    body = (
+      <ExportScreen
+        key={project.path}
+        folder={browserView.folder}
+        selection={browserView.selection}
         onGoToProject={() => setTab("project")}
       />
     );

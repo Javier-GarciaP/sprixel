@@ -53,7 +53,11 @@ pub fn run() {
             ipc::delete_folder,
             ipc::move_sprites,
             ipc::project_undo,
-            ipc::project_redo
+            ipc::project_redo,
+            ipc::export_summary,
+            ipc::export_preview,
+            ipc::export_run,
+            ipc::export_reveal
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

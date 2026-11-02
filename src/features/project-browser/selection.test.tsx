@@ -51,6 +51,29 @@ const targets = [
   { folder: ["Personajes"], name: "merchant" },
 ];
 
+describe("view for the Export tab", () => {
+  // Checks that the browser tells the app the open folder and the selection (the
+  // Export tab starts from them): first the root, then the folder, then 1 sprite.
+  it("reports the open folder and the selected sprites", async () => {
+    const onViewChange = vi.fn();
+    renderBrowser({ onViewChange });
+    await vi.waitFor(() =>
+      expect(onViewChange).toHaveBeenLastCalledWith({
+        folder: [],
+        selection: [],
+      }),
+    );
+    await openFolder(/^Personajes/);
+    fireEvent.click(await checkbox("goblin"));
+    await vi.waitFor(() =>
+      expect(onViewChange).toHaveBeenLastCalledWith({
+        folder: ["Personajes"],
+        selection: [{ folder: ["Personajes"], name: "goblin" }],
+      }),
+    );
+  });
+});
+
 describe("multiple selection", () => {
   // Checks the spec scenario "Select three sprites": the bar shows "3 selected"
   // with Move, Delete and Cancel selection, and the details list the three
