@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/shared/components";
-import type { ProjectTree, SpriteTarget } from "@/shared/lib/core";
+import {
+  asCoreFailure,
+  type ProjectTree,
+  type SpriteTarget,
+} from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { coreExportApi } from "./api";
 import { OptionsStep } from "./OptionsStep";
@@ -22,6 +26,7 @@ import type {
   Preview,
   ScopeKind,
   Summary,
+  Written,
 } from "./types";
 
 const DEFAULT_OUTPUT = "assets/sprites";
@@ -71,6 +76,7 @@ function Export({
   tree,
   folder: openFolder,
   selection: selected,
+  onGoToProject,
 }: Props & { api: ExportApi; tree: ProjectTree }) {
   const t = useT();
   const folders = useMemo(() => folderChoices(tree), [tree]);
@@ -87,6 +93,14 @@ function Export({
   const [summary, setSummary] = useState<Summary | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
+  // How the last export ended. It goes away when the request changes.
+  const [result, setResult] = useState<
+    | { kind: "ok"; written: Written }
+    | { kind: "error"; code: string; message: string }
+    | null
+  >(null);
+  const [editingOutput, setEditingOutput] = useState(false);
+  const [focusTick, setFocusTick] = useState(0);
   const outputBox = useRef<HTMLInputElement>(null);
 
   // The folder: the one chosen, else the open one, else the first.
@@ -127,14 +141,29 @@ function Export({
     };
   }, [api, request, tree.revision]);
 
+  // A result describes one request: when the scope, the format, the options
+  // or the folder change, it does not match the screen anymore.
+  useEffect(() => setResult(null), [request, output]);
+
+  // "Change" and "Change folder": the box can be typed in and has the focus.
+  useEffect(() => {
+    if (focusTick > 0) outputBox.current?.focus();
+  }, [focusTick]);
+  const editOutput = () => {
+    setEditingOutput(true);
+    setFocusTick((n) => n + 1);
+  };
+
   const chooseKind = (next: ScopeKind) => setChosenKind(next);
 
   const run = async () => {
     setBusy(true);
     try {
-      await api.run(scope, format, options, output);
-    } catch {
-      // The result states are shown by the next task.
+      const written = await api.run(scope, format, options, output);
+      setResult({ kind: "ok", written });
+    } catch (error) {
+      const { code, message } = asCoreFailure(error);
+      setResult({ kind: "error", code, message });
     } finally {
       setBusy(false);
     }
@@ -171,58 +200,68 @@ function Export({
   return (
     <div className="grid h-full grid-cols-[minmax(0,28rem)_1fr]">
       <aside className="flex flex-col gap-5 overflow-auto border-r border-border p-6">
-        <Step number={1} title={t("export.what")}>
-          <ScopeStep
-            choices={choices}
-            value={kind}
-            onChange={chooseKind}
-            folders={folders}
-            folder={folderPath}
-            onFolder={setChosenFolder}
-          />
-        </Step>
-        <Step number={2} title={t("export.format")}>
-          <div className="grid grid-cols-3 gap-2">
-            {(["sheet", "png"] as const).map((id) => (
+        <fieldset
+          disabled={total === 0}
+          className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0 disabled:opacity-50"
+        >
+          <Step number={1} title={t("export.what")}>
+            <ScopeStep
+              choices={choices}
+              value={kind}
+              onChange={chooseKind}
+              folders={folders}
+              folder={folderPath}
+              onFolder={setChosenFolder}
+            />
+          </Step>
+          <Step number={2} title={t("export.format")}>
+            <div className="grid grid-cols-3 gap-2">
+              {(["sheet", "png"] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={format === id}
+                  onClick={() => setFormat(id)}
+                  className={`rounded-md border px-3 py-3 text-left text-sm font-semibold ${format === id ? "border-amber bg-surface" : "border-border bg-surface"}`}
+                >
+                  {t(
+                    id === "sheet"
+                      ? "export.format.sheet"
+                      : "export.format.png",
+                  )}
+                </button>
+              ))}
               <button
-                key={id}
                 type="button"
-                aria-pressed={format === id}
-                onClick={() => setFormat(id)}
-                className={`rounded-md border px-3 py-3 text-left text-sm font-semibold ${format === id ? "border-amber bg-surface" : "border-border bg-surface"}`}
+                disabled
+                title={t("export.format.gifSoon")}
+                className="rounded-md border border-border bg-surface px-3 py-3 text-left text-sm font-semibold disabled:opacity-40"
               >
-                {t(
-                  id === "sheet" ? "export.format.sheet" : "export.format.png",
-                )}
+                {t("export.format.gif")}
               </button>
-            ))}
-            <button
-              type="button"
-              disabled
-              title={t("export.format.gifSoon")}
-              className="rounded-md border border-border bg-surface px-3 py-3 text-left text-sm font-semibold disabled:opacity-40"
-            >
-              {t("export.format.gif")}
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-text-muted">
-            {t(
-              format === "sheet"
-                ? "export.format.sheetHint"
-                : "export.format.pngHint",
-            )}
-          </p>
-        </Step>
-        <Step number={3} title={t("export.options")}>
-          <OptionsStep
-            options={options}
-            onOptions={setOptions}
-            output={output}
-            onOutput={setOutput}
-            noSpacing={format === "png"}
-            outputRef={outputBox}
-          />
-        </Step>
+            </div>
+            <p className="mt-2 text-xs text-text-muted">
+              {t(
+                format === "sheet"
+                  ? "export.format.sheetHint"
+                  : "export.format.pngHint",
+              )}
+            </p>
+          </Step>
+          <Step number={3} title={t("export.options")}>
+            <OptionsStep
+              options={options}
+              onOptions={setOptions}
+              output={output}
+              onOutput={setOutput}
+              noSpacing={format === "png"}
+              editing={editingOutput}
+              onEdit={editOutput}
+              invalid={result?.kind === "error"}
+              outputRef={outputBox}
+            />
+          </Step>
+        </fieldset>
         <p className="text-xs text-text-muted">
           {t("export.summary", {
             frames: framesText(t, frames),
@@ -235,7 +274,13 @@ function Export({
           disabled={busy || !summary || summary.sprites === 0}
           onClick={run}
         >
-          {busy ? t("export.exporting") : t("export.export")}
+          {busy
+            ? t("export.exporting")
+            : result?.kind === "ok"
+              ? t("export.again")
+              : result?.kind === "error"
+                ? t("export.retry")
+                : t("export.export")}
         </Button>
       </aside>
       <section className="flex flex-col gap-4 overflow-auto bg-surface-2 p-6">
@@ -253,6 +298,33 @@ function Export({
             </span>
           )}
         </div>
+        {result?.kind === "ok" && (
+          <Banner
+            tone="success"
+            title={
+              result.written.files.length === 1
+                ? t("export.saved.one")
+                : t("export.saved.other", {
+                    count: result.written.files.length,
+                  })
+            }
+            detail={result.written.output}
+            action={t("export.open")}
+            onAction={() => api.reveal(result.written.output).catch(() => {})}
+          />
+        )}
+        {result?.kind === "error" && (
+          <Banner
+            tone="error"
+            title={t("export.failed")}
+            detail={errorText(t, result.code, result.message, output)}
+            action={t("export.changeFolder")}
+            onAction={editOutput}
+          />
+        )}
+        {(summary?.sprites === 0 || total === 0) && (
+          <EmptyPreview onGoToProject={onGoToProject} />
+        )}
         {preview && summary && summary.sprites > 0 && (
           <div className="overflow-auto rounded-md border border-border bg-bg p-4">
             <SheetPreview preview={preview} />
@@ -312,6 +384,75 @@ function Step({
         {title}
       </h2>
       {children}
+    </div>
+  );
+}
+
+function errorText(
+  t: ReturnType<typeof useT>,
+  code: string,
+  message: string,
+  folder: string,
+) {
+  switch (code) {
+    case "no_permission":
+      return t("export.error.no_permission", { folder });
+    case "no_space":
+      return t("export.error.no_space", { folder });
+    case "outside_project":
+      return t("export.error.outside_project");
+    case "invalid_path":
+      return t("export.error.invalid_path", { message });
+    default:
+      return message;
+  }
+}
+
+// The green or red message above the preview (screens 26 and 27).
+function Banner({
+  tone,
+  title,
+  detail,
+  action,
+  onAction,
+}: {
+  tone: "success" | "error";
+  title: string;
+  detail: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <div
+      role={tone === "error" ? "alert" : "status"}
+      className={`flex items-center justify-between gap-4 rounded-md border px-4 py-3 ${tone === "error" ? "border-error bg-error/10" : "border-success bg-success/10"}`}
+    >
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="font-mono text-xs text-text-muted">{detail}</p>
+      </div>
+      <Button
+        variant={tone === "error" ? "secondary" : "primary"}
+        onClick={onAction}
+      >
+        {action}
+      </Button>
+    </div>
+  );
+}
+
+// Screen 25: nothing to show, and the way to fix it.
+function EmptyPreview({ onGoToProject }: { onGoToProject: () => void }) {
+  const t = useT();
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-md border border-border bg-bg p-10 text-center">
+      <h3 className="font-title text-xl font-semibold">
+        {t("export.empty.title")}
+      </h3>
+      <p className="text-sm text-text-muted">{t("export.empty.text")}</p>
+      <Button variant="primary" onClick={onGoToProject}>
+        {t("export.empty.go")}
+      </Button>
     </div>
   );
 }

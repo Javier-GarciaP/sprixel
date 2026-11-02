@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import type { Options } from "./types";
@@ -12,8 +12,12 @@ type Props = {
   onOutput: (output: string) => void;
   // True when the format has no sheet to space (PNG files).
   noSpacing: boolean;
-  // The output folder box was asked to be edited (by "Change folder").
-  outputRef?: React.RefObject<HTMLInputElement | null>;
+  // The output folder can be typed in after "Change" (or "Change folder").
+  editing: boolean;
+  onEdit: () => void;
+  // The last export failed: the box turns red.
+  invalid: boolean;
+  outputRef: React.RefObject<HTMLInputElement | null>;
 };
 
 // Step 3: scale, space between frames, the output folder and, in "More
@@ -24,13 +28,13 @@ export function OptionsStep({
   output,
   onOutput,
   noSpacing,
+  editing,
+  onEdit,
+  invalid,
   outputRef,
 }: Props) {
   const t = useT();
-  const [editing, setEditing] = useState(false);
   const [more, setMore] = useState(false);
-  const fallback = useRef<HTMLInputElement>(null);
-  const input = outputRef ?? fallback;
 
   const spacing = (text: string) => {
     const value = Math.round(Number(text));
@@ -75,20 +79,14 @@ export function OptionsStep({
         <div className="flex gap-2">
           <input
             id="export-output"
-            ref={input}
+            ref={outputRef}
             value={output}
             readOnly={!editing}
+            aria-invalid={invalid ? true : undefined}
             onChange={(event) => onOutput(event.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-2 py-1.5 text-sm"
+            className={`min-w-0 flex-1 rounded-md border bg-surface-2 px-2 py-1.5 text-sm ${invalid ? "border-error" : "border-border"}`}
           />
-          <Button
-            onClick={() => {
-              setEditing(true);
-              input.current?.focus();
-            }}
-          >
-            {t("export.change")}
-          </Button>
+          <Button onClick={onEdit}>{t("export.change")}</Button>
         </div>
       </div>
       <button

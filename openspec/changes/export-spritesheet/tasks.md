@@ -21,7 +21,7 @@
 ### 4. Export tab
 
 - [x] 4.1 Build the three steps with the scope counts, formats and options, and verify against screen 24
-- [ ] 4.2 Build the success, error and empty states and verify against screens 25, 26 and 27
+- [x] 4.2 Build the success, error and empty states and verify against screens 25, 26 and 27
 
 ### 5. Documentation
 

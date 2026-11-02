@@ -287,5 +287,19 @@
   "export.filesSheet": "Sheet with {frames}",
   "export.filesJson": "Animations and duration of each frame",
   "export.filesFrame": "One frame",
-  "export.filesMore": "and {count} more"
+  "export.filesMore": "and {count} more",
+  "export.again": "Export again",
+  "export.retry": "Retry",
+  "export.saved.one": "1 file saved",
+  "export.saved.other": "{count} files saved",
+  "export.open": "Open folder",
+  "export.failed": "Could not export",
+  "export.changeFolder": "Change folder",
+  "export.error.no_permission": "There is no permission to write in {folder}",
+  "export.error.no_space": "There is no space left to write in {folder}",
+  "export.error.outside_project": "The folder must be inside the project",
+  "export.error.invalid_path": "This folder cannot be used: {message}",
+  "export.empty.title": "Nothing to export yet",
+  "export.empty.text": "Create a sprite and come back.",
+  "export.empty.go": "Go to project"
 }

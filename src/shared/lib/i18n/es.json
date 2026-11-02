@@ -287,5 +287,19 @@
   "export.filesSheet": "Hoja con {frames}",
   "export.filesJson": "Animaciones y duración de cada frame",
   "export.filesFrame": "Un frame",
-  "export.filesMore": "y {count} más"
+  "export.filesMore": "y {count} más",
+  "export.again": "Exportar de nuevo",
+  "export.retry": "Reintentar",
+  "export.saved.one": "1 archivo guardado",
+  "export.saved.other": "{count} archivos guardados",
+  "export.open": "Abrir carpeta",
+  "export.failed": "No se pudo exportar",
+  "export.changeFolder": "Cambiar carpeta",
+  "export.error.no_permission": "No hay permisos para escribir en {folder}",
+  "export.error.no_space": "No queda espacio para escribir en {folder}",
+  "export.error.outside_project": "La carpeta debe estar dentro del proyecto",
+  "export.error.invalid_path": "No se puede usar esta carpeta: {message}",
+  "export.empty.title": "Nada que exportar todavía",
+  "export.empty.text": "Crea un sprite y vuelve aquí.",
+  "export.empty.go": "Ir al proyecto"
 }

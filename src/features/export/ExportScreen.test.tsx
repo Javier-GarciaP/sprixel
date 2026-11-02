@@ -11,6 +11,15 @@ import { fakeApi, renderExport, tree } from "./test-utils";
 
 afterEach(cleanup);
 
+// The button is off until the core has said what would be exported.
+async function clickExport() {
+  const button = (await screen.findByRole("button", {
+    name: "Export",
+  })) as HTMLButtonElement;
+  await waitFor(() => expect(button.disabled).toBe(false));
+  fireEvent.click(button);
+}
+
 const card = (name: RegExp) => screen.findByRole("button", { name });
 
 describe("Export tab: what to export", () => {
@@ -93,7 +102,7 @@ describe("Export tab: format and options", () => {
     fireEvent.change(screen.getByLabelText("Save inside the project in"), {
       target: { value: "out" },
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    await clickExport();
     await waitFor(() => expect(api.run).toHaveBeenCalled());
     expect(api.run).toHaveBeenCalledWith(
       { kind: "folder", path: ["Personajes"] },
@@ -137,7 +146,7 @@ describe("Export tab: format and options", () => {
     fireEvent.change(screen.getByLabelText("Naming pattern"), {
       target: { value: "{sprite}-{frame}" },
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    await clickExport();
     await waitFor(() => expect(api.run).toHaveBeenCalled());
     expect(api.run.mock.calls[0][2].naming).toBe("{sprite}-{frame}");
   });
