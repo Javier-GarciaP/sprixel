@@ -2,10 +2,10 @@
 //! check a text grid and apply it to a sprite. The functions do not need a
 //! window; the commands at the end add the `project://changed` event.
 
-use super::browser::{ChangedEvent, CoreError, TargetInfo};
+use super::browser::{self, ChangedEvent, CoreError, TargetInfo};
 use super::editor::{EditorState, SpriteArg};
 use super::project::{self, ProjectState};
-use crate::document::{DocError, GridError, GridOptions, Operation, SpriteRef};
+use crate::document::{DocError, Grid, GridError, GridOptions, Operation, SpriteRef, write_grid};
 use serde::{Deserialize, Serialize};
 
 /// Where the grid goes and how: the `x` and `y` of a region (both or none)
@@ -102,6 +102,133 @@ pub fn apply_grid(
         })
     })
     .unwrap_or_else(|| Err(CoreError::no_project().into()))
+}
+
+/// One color of a preview: a key and its `#RRGGBB` value.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PreviewColor {
+    pub key: String,
+    pub hex: String,
+}
+
+/// The first frame of a valid grid, ready to be drawn by the UI: the rows
+/// of keys and the colors they need (the palette and the legend colors).
+#[derive(Debug, Serialize, PartialEq)]
+pub struct GridPreview {
+    pub width: usize,
+    pub height: usize,
+    pub rows: Vec<String>,
+    pub colors: Vec<PreviewColor>,
+}
+
+/// What the status line says about a valid grid: the size of its first frame
+/// and how many different keys (not counting `.`) it uses.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct GridSummary {
+    pub width: usize,
+    pub height: usize,
+    pub keys: usize,
+}
+
+/// The result of checking a text. A valid grid has no errors, a summary and a
+/// preview; an invalid one has the errors and nothing else.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct GridCheck {
+    pub errors: Vec<GridError>,
+    pub summary: Option<GridSummary>,
+    pub preview: Option<GridPreview>,
+}
+
+/// The sprite as a text grid: the palette, the legend and one frame (from 1),
+/// exactly what the AI tools read and write.
+pub fn grid_text(state: &ProjectState, sprite: &SpriteArg, frame: u32) -> Result<String, CoreError> {
+    project::read(state, |session| {
+        let found = session.project.find_sprite(&sprite_ref(sprite)).ok_or_else(|| {
+            CoreError::from(DocError::new("not_found", format!("sprite {:?} does not exist", sprite.name)))
+        })?;
+        if frame < 1 || frame as usize > found.frame_count() {
+            return Err(DocError::new("bad_frame", format!("frame {frame} does not exist")).into());
+        }
+        let palette = session.project.palette(&found.palette).ok_or_else(|| {
+            CoreError::from(DocError::new("not_found", format!("palette {:?} does not exist", found.palette)))
+        })?;
+        Ok(write_grid(found, palette, Some(frame)))
+    })
+    .ok_or_else(CoreError::no_project)?
+}
+
+/// Checks a text against a sprite without changing anything. The problems of
+/// the text are in the result; an `Err` is only for a missing project or sprite.
+pub fn check_grid(
+    state: &ProjectState,
+    sprite: &SpriteArg,
+    text: &str,
+    args: &GridArgs,
+) -> Result<GridCheck, CoreError> {
+    project::read(state, |session| {
+        let found = session.project.find_sprite(&sprite_ref(sprite)).ok_or_else(|| {
+            CoreError::from(DocError::new("not_found", format!("sprite {:?} does not exist", sprite.name)))
+        })?;
+        let palette = session.project.palette(&found.palette).ok_or_else(|| {
+            CoreError::from(DocError::new("not_found", format!("palette {:?} does not exist", found.palette)))
+        })?;
+        let grid = match Grid::check(text, found, palette, &args.options()) {
+            Ok(grid) => grid,
+            Err(errors) => return Ok(GridCheck { errors, summary: None, preview: None }),
+        };
+        let first = &grid.frames[0];
+        let rows: Vec<String> = first.rows.iter().map(|r| r.cells.iter().collect()).collect();
+        let width = first.rows.first().map_or(0, |r| r.cells.len());
+        let mut keys: Vec<char> = first.rows.iter().flat_map(|r| r.cells.iter().copied()).filter(|c| *c != '.').collect();
+        keys.sort_unstable();
+        keys.dedup();
+        let (added, _) = grid.legend_colors(palette);
+        let colors = palette
+            .colors
+            .iter()
+            .chain(added.iter())
+            .map(|c| PreviewColor { key: c.key.to_string(), hex: c.hex.clone() })
+            .collect();
+        Ok(GridCheck {
+            errors: Vec::new(),
+            summary: Some(GridSummary { width, height: rows.len(), keys: keys.len() }),
+            preview: Some(GridPreview { width, height: rows.len(), rows, colors }),
+        })
+    })
+    .ok_or_else(CoreError::no_project)?
+}
+
+#[tauri::command]
+pub fn grid_text_of(
+    state: tauri::State<ProjectState>,
+    sprite: SpriteArg,
+    frame: u32,
+) -> Result<String, CoreError> {
+    grid_text(&state, &sprite, frame)
+}
+
+#[tauri::command]
+pub fn grid_check(
+    state: tauri::State<ProjectState>,
+    sprite: SpriteArg,
+    text: String,
+    args: Option<GridArgs>,
+) -> Result<GridCheck, CoreError> {
+    check_grid(&state, &sprite, &text, &args.unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn grid_apply(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    agents: tauri::State<EditorState>,
+    sprite: SpriteArg,
+    text: String,
+    args: Option<GridArgs>,
+) -> Result<(), GridFailure> {
+    let event = apply_grid(&state, &agents, crate::history::USER, &sprite, &text, &args.unwrap_or_default())?;
+    let _ = tauri::Emitter::emit(&app, browser::CHANGED_EVENT, event);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -258,5 +385,51 @@ mod tests {
         let nobody = SpriteArg { folder: vec![], name: "nobody".to_string() };
         let failure = apply_grid(&state, &agents, USER, &nobody, "frame 1\n.\n", &GridArgs::default()).unwrap_err();
         assert_eq!(failure.code, "not_found");
+    }
+
+    // Checks that the text of a frame is what the writer gives, so the Text
+    // view shows exactly what an AI reads, and that it checks as valid and
+    // applies as a grid that changes nothing (the AI can write it back).
+    #[test]
+    fn the_text_of_a_frame_is_valid_and_applies_unchanged() {
+        let (_dir, state, agents) = open();
+        apply(&state, &agents, "frame 1\nRB\nBR\n").unwrap();
+        let text = grid_text(&state, &sprite(), 1).unwrap();
+        assert!(text.starts_with("palette: main\n\nlegend\n  . transparent\n  R red"), "{text}");
+        assert!(text.ends_with("frame 1\nRB\nBR\n"), "{text}");
+        assert!(check_grid(&state, &sprite(), &text, &GridArgs::default()).unwrap().errors.is_empty());
+        let before = look(&state);
+        apply(&state, &agents, &text).unwrap();
+        assert_eq!(look(&state), before);
+        assert_eq!(grid_text(&state, &sprite(), 2).unwrap_err().code, "bad_frame");
+    }
+
+    // Checks the check of a valid text: no errors, the size and the number
+    // of keys used for the status line, and the rows and colors for the
+    // preview (with the color that the legend adds).
+    #[test]
+    fn a_valid_text_gives_a_summary_and_a_preview() {
+        let (_dir, state, _agents) = open();
+        let check = check_grid(&state, &sprite(), "legend\n  Q teal #1FB5A8\nframe 1\nRQ\n.R\n", &GridArgs::default()).unwrap();
+        assert!(check.errors.is_empty());
+        assert_eq!(check.summary, Some(GridSummary { width: 2, height: 2, keys: 2 }));
+        let preview = check.preview.unwrap();
+        assert_eq!(preview.rows, vec!["RQ", ".R"]);
+        let keys: Vec<&str> = preview.colors.iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(keys, vec!["R", "B", "Q"]);
+    }
+
+    // Checks that checking never changes the project, and that an invalid
+    // text gives its errors and no preview.
+    #[test]
+    fn checking_an_invalid_text_gives_errors_and_changes_nothing() {
+        let (_dir, state, _agents) = open();
+        let before = look(&state);
+        let check = check_grid(&state, &sprite(), "frame 1\nR\nXX\n", &GridArgs::default()).unwrap();
+        // A short row, and two keys that the palette does not have.
+        let codes: Vec<&str> = check.errors.iter().map(|e| e.code).collect();
+        assert_eq!(codes, vec!["row_length", "unknown_key", "unknown_key"]);
+        assert!(check.summary.is_none() && check.preview.is_none());
+        assert_eq!(look(&state), before);
     }
 }
