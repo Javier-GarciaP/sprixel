@@ -35,6 +35,15 @@ pub struct PixelChange {
     pub key: char,
 }
 
+/// The pixels of one frame of one layer of a sprite that change.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PixelBatch {
+    pub sprite: SpriteRef,
+    pub layer: usize,
+    pub frame: u32,
+    pub pixels: Vec<PixelChange>,
+}
+
 /// One change to the project. Frames are numbered from 1, layers from 0.
 ///
 /// The `Restore*` operations and the `index` fields exist so that the
@@ -60,6 +69,14 @@ pub enum Operation {
     RemoveColor {
         palette: String,
         key: char,
+    },
+    /// Replaces all the colors of a palette and, in the same step, rewrites
+    /// the pixels that the new colors need (a changed key, a removed color).
+    /// It is what the palette editor applies on Done, and its own inverse.
+    SetPalette {
+        palette: String,
+        colors: Vec<Color>,
+        pixels: Vec<PixelBatch>,
     },
     CreateFolder {
         parent: Vec<String>,
@@ -364,6 +381,11 @@ impl Project {
                     touched: vec![Target::Palette(name)],
                 })
             }
+            Operation::SetPalette {
+                palette,
+                colors,
+                pixels,
+            } => self.set_palette(palette, colors, pixels),
             Operation::CreateFolder { parent, name } => {
                 validate_name(name)?;
                 let parent = self.canonical_folder(parent)?;

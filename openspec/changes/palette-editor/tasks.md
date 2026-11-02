@@ -5,7 +5,7 @@
 ## 1. Palette model and operations
 
 - [x] 1.1 Implement color validation (key rules, limit 93, uniqueness) and verify unit tests for each rule
-- [ ] 1.2 Implement color edit, add, remove-with-replacement and key rewrite as grouped operations and verify the key change keeps every sprite looking the same
+- [x] 1.2 Implement color edit, add, remove-with-replacement and key rewrite as grouped operations and verify the key change keeps every sprite looking the same
 - [ ] 1.3 Add the presets "Pocket RPG 16" and "Farm 32" as data, with generic names and no trademarks, and verify each has 16 and 32 valid colors with unique keys
 
 ## 2. Panel and editor
