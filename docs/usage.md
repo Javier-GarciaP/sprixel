@@ -51,9 +51,9 @@ If a folder with that name already exists, the dialog says so and creates
 nothing. A name that cannot be a folder name (for example with `/`) is refused
 too.
 
-**Starting palette:** the list only offers **No palette (empty)** for now. The
-project is created with no palette. Ready-made palettes arrive with the palette
-editor spec.
+**Starting palette:** the list only offers **No palette (empty)**. The project
+is created with no palette. To start from a ready-made palette, press **+** in
+the palettes list of the Project tab (see [Palette](#palette)).
 
 Open a project you already have with **Open project** (or `Ctrl+O`) and pick
 its folder. If the folder has no `sprixel.json`, a message says "This folder is
@@ -293,15 +293,51 @@ the next time it reaches that frame.
 ## Palette
 
 The palette lists your colors. Each color has a **name** and a **one-letter
-key** (the key is what the text view and the AI use).
+key** (the key is what the text view and the AI use). The key is one printable
+ASCII character that is not a space and not `.` (`.` always means transparent).
+Keys are case sensitive (`G` and `g` are different), and names are unique in a
+palette ignoring case. A palette has up to 93 colors.
 
-- Press **Edit** on the palette box to open the palette editor.
-- Change a color, its name or its key, or **add a color**. Changes apply to
-  every sprite that uses the palette.
-- Turn **Show keys** on to see the letters on the colors.
+### The palette panel
 
-Careful: changing a key breaks text grids that still use the old one. The editor
-warns you.
+- Click a color for the main color, right-click for the secondary color.
+- Turn **Show keys** on to see the letter on each color.
+- Press **Edit** to open the palette editor.
+
+### Edit a palette
+
+You can also open the editor from the palettes list of the Project tab by
+clicking a palette. The editor works on a copy, so nothing changes until you
+press **Done**.
+
+- Pick a color in the list and change its **name**, **key** or **color** (hex or
+  the R, G and B sliders). A key that is not allowed (`.`, a space or a key that
+  another color uses) shows the reason, and the change is not applied.
+- **Add color** gives the new color the next free key (`A` to `Z`, `a` to `z`,
+  `0` to `9`, then the symbols).
+- **Remove color** takes a color out. If sprites use it, you choose a
+  replacement (another color or transparent) for their pixels.
+- **Done** applies everything as one undo step (`Ctrl+Z` takes it all back).
+  **Cancel** (or `Esc`) throws all the changes away.
+- A new color value changes every sprite that uses the key at once.
+
+Careful: changing a key rewrites the pixels of every sprite that uses the
+palette, so they look the same, but **text grids that still use the old key stop
+being valid**. The editor warns you. While an AI agent is writing to a sprite
+that uses the palette, key changes and removals of used colors wait: finish or
+stop the agent first. Color values can still change.
+
+### New palettes and import
+
+Press **+** in the palettes list of the Project tab. Choose a name and start
+with:
+
+- an **empty palette**,
+- a ready-made preset: **Pocket RPG 16** (16 colors) or **Farm 32** (32 colors),
+- a file: **Import a .gpl or .hex file** (a GIMP palette, or one hex color such
+  as `1a1c2c` per line). Every color gets the next free key and a name (the
+  name in the file, or its hex value), and you can edit them afterwards. A file
+  with more than 93 colors is refused.
 
 ## Text view
 

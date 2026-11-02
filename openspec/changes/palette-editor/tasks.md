@@ -21,4 +21,4 @@
 
 ## 4. Documentation
 
-- [ ] 4.1 Update `docs/usage.md` and `docs/text-grid-format.md` and verify they match the key rules
+- [x] 4.1 Update `docs/usage.md` and `docs/text-grid-format.md` and verify they match the key rules
