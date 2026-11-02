@@ -2,7 +2,7 @@
 // these functions only ask and show. Outside the app (`npm run dev`) there is
 // no core, so every call fails.
 
-import type { PaletteApi, PaletteFailure, PaletteInfo } from "./types";
+import type { PaletteApi, PaletteFailure, PaletteInfo, Preset } from "./types";
 
 const insideApp = () => "__TAURI_INTERNALS__" in window;
 
@@ -28,4 +28,7 @@ export const corePaletteApi: PaletteApi = {
   loadPalette: (name) => call<PaletteInfo>("palette_info_of", { name }),
   applyEdit: (name, colors, replacements) =>
     call<void>("palette_apply", { name, colors, replacements }),
+  listPresets: () => call<Preset[]>("palette_presets"),
+  createPalette: (name, preset) =>
+    call<string>("palette_create", { name, preset }),
 };

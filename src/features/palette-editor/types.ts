@@ -20,6 +20,9 @@ export type ColorEdit = {
 // or "." for transparent.
 export type Replacement = { key: string; with: string };
 
+// A built-in palette to start from.
+export type Preset = { id: string; name: string; colors: PaletteColor[] };
+
 // The codes of the errors the core sends for palettes.
 export type PaletteFailure = { code: string; message?: string };
 
@@ -33,4 +36,7 @@ export interface PaletteApi {
     colors: ColorEdit[],
     replacements: Replacement[],
   ): Promise<void>;
+  listPresets(): Promise<Preset[]>;
+  // Makes a palette, empty or with the colors of a preset. Gives its name.
+  createPalette(name: string, preset: string | null): Promise<string>;
 }

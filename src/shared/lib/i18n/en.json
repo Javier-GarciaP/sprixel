@@ -278,5 +278,14 @@
   "palette.errorBadHex": "Use a color like #F04545.",
   "palette.errorFull": "The palette is full.",
   "palette.errorReplacement": "Choose a replacement for the removed colors that sprites use.",
-  "palette.agentBusy": "An agent is writing to this sprite. Wait for it to finish or stop it first to change keys."
+  "palette.agentBusy": "An agent is writing to this sprite. Wait for it to finish or stop it first to change keys.",
+  "palette.new": "New palette",
+  "palette.newName": "Name",
+  "palette.newStart": "Start with",
+  "palette.newEmpty": "Empty palette",
+  "palette.newColors": "{count} colors",
+  "palette.newCreate": "Create",
+  "palette.defaultName": "Palette",
+  "palette.errorNameTaken": "A palette with this name already exists.",
+  "palette.errorInvalidName": "This name cannot be used as a file name."
 }

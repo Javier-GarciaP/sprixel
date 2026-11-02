@@ -3,6 +3,7 @@ import type {
   PaletteApi,
   PaletteEntry,
   PaletteInfo,
+  Preset,
   Replacement,
 } from "./types";
 
@@ -16,6 +17,28 @@ export class FakePaletteApi implements PaletteApi {
   }[] = [];
   // When set, `applyEdit` fails with this error.
   failWith: { code: string; message?: string } | null = null;
+
+  presets: Preset[] = [
+    {
+      id: "pocket-rpg-16",
+      name: "Pocket RPG 16",
+      colors: Array.from({ length: 16 }, (_, i) => ({
+        key: String.fromCharCode(65 + i),
+        hex: `#${(i * 16).toString(16).padStart(2, "0")}0000`,
+      })),
+    },
+    {
+      id: "farm-32",
+      name: "Farm 32",
+      colors: Array.from({ length: 32 }, (_, i) => ({
+        key: String.fromCharCode(33 + i),
+        hex: `#00${(i * 8).toString(16).padStart(2, "0")}00`,
+      })),
+    },
+  ];
+  created: { name: string; preset: string | null }[] = [];
+  // When set, `createPalette` fails with this error.
+  createFailWith: { code: string; message?: string } | null = null;
 
   constructor(
     public colors: PaletteEntry[],
@@ -33,6 +56,16 @@ export class FakePaletteApi implements PaletteApi {
   ): Promise<void> {
     if (this.failWith) throw this.failWith;
     this.applied.push({ name, colors, replacements });
+  }
+
+  async listPresets(): Promise<Preset[]> {
+    return this.presets;
+  }
+
+  async createPalette(name: string, preset: string | null): Promise<string> {
+    if (this.createFailWith) throw this.createFailWith;
+    this.created.push({ name, preset });
+    return name;
   }
 }
 

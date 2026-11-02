@@ -6,7 +6,7 @@
 use super::browser::{self, CHANGED_EVENT, ChangedEvent, CoreError};
 use super::editor::EditorState;
 use super::project::{self, ProjectState};
-use crate::document::{Color, ColorEdit, DocError, Operation, SpriteRef};
+use crate::document::{Color, ColorEdit, DocError, Operation, PRESETS, Palette, Preset, SpriteRef};
 use serde::{Deserialize, Serialize};
 
 const USER: &str = crate::history::USER;
@@ -125,6 +125,72 @@ pub fn apply_edit(
         Ok(((), touched))
     })
     .map(|(_, event)| event)
+}
+
+/// A built-in palette a person can start from.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PresetInfo {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub colors: Vec<PresetColor>,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PresetColor {
+    pub key: String,
+    pub hex: String,
+}
+
+pub fn presets() -> Vec<PresetInfo> {
+    PRESETS
+        .iter()
+        .map(|p| PresetInfo {
+            id: p.id,
+            name: p.name,
+            colors: p
+                .colors()
+                .into_iter()
+                .map(|c| PresetColor { key: c.key.to_string(), hex: c.hex })
+                .collect(),
+        })
+        .collect()
+}
+
+/// Makes a new palette: empty, or with the colors of a preset. It is one
+/// history entry by the user. Returns the name of the new palette.
+pub fn create_palette(
+    state: &ProjectState,
+    name: &str,
+    preset: Option<&str>,
+) -> Result<(String, ChangedEvent), CoreError> {
+    browser::change(state, |session| {
+        let name = name.trim();
+        let palette = match preset {
+            None => Palette { name: name.to_string(), colors: Vec::new() },
+            Some(id) => Preset::find(id)
+                .ok_or_else(|| DocError::new("not_found", format!("preset {id:?} does not exist")))?
+                .palette(name),
+        };
+        let touched = session.apply(USER, vec![Operation::CreatePalette { palette, index: None }])?;
+        Ok((name.to_string(), touched))
+    })
+}
+
+#[tauri::command]
+pub fn palette_presets() -> Vec<PresetInfo> {
+    presets()
+}
+
+#[tauri::command]
+pub fn palette_create(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    name: String,
+    preset: Option<String>,
+) -> Result<String, CoreError> {
+    let (name, event) = create_palette(&state, &name, preset.as_deref())?;
+    let _ = tauri::Emitter::emit(&app, CHANGED_EVENT, event);
+    Ok(name)
 }
 
 #[tauri::command]
@@ -375,6 +441,54 @@ mod tests {
         let mut renamed = vec![colors[0].clone(), colors[1].clone(), colors[2].clone(), colors[3].clone()];
         renamed[0].key = "H".to_string();
         apply_edit(&state, &elsewhere, "main", &renamed, &[]).unwrap();
+    }
+
+    // Checks the "Create from a preset" scenario in the core: a palette with
+    // 16 or 32 colors, each with a unique key and a name, in one undo step.
+    #[test]
+    fn a_palette_is_created_from_a_preset() {
+        let (_dir, state) = open();
+        let (name, event) = create_palette(&state, "Hero 16", Some("pocket-rpg-16")).unwrap();
+        assert_eq!(name, "Hero 16");
+        assert!(touches(&event, "palette", &["Hero 16"]));
+        let info = palette_info(&state, "Hero 16").unwrap();
+        assert_eq!(info.colors.len(), 16);
+        let mut keys: Vec<&str> = info.colors.iter().map(|c| c.key.as_str()).collect();
+        keys.sort();
+        keys.dedup();
+        assert_eq!(keys.len(), 16);
+        assert!(info.colors.iter().all(|c| !c.name.is_empty()));
+        assert_eq!(create_palette(&state, "Farm", Some("farm-32")).map(|_| ()), Ok(()));
+        assert_eq!(palette_info(&state, "Farm").unwrap().colors.len(), 32);
+        browser::undo(&state).unwrap();
+        assert_eq!(palette_info(&state, "Farm").unwrap_err().code, "not_found");
+    }
+
+    // Checks that an empty palette can be created, that the name rules are
+    // the ones of every name (taken, empty, not allowed) and that an unknown
+    // preset is `not_found`.
+    #[test]
+    fn an_empty_palette_and_the_name_rules() {
+        let (_dir, state) = open();
+        create_palette(&state, " Blank ", None).unwrap();
+        assert!(palette_info(&state, "Blank").unwrap().colors.is_empty());
+        assert_eq!(create_palette(&state, "MAIN", None).unwrap_err().code, "name_exists");
+        assert_eq!(create_palette(&state, "  ", None).unwrap_err().code, "invalid_name");
+        assert_eq!(create_palette(&state, "a/b", None).unwrap_err().code, "invalid_name");
+        assert_eq!(create_palette(&state, "X", Some("nope")).unwrap_err().code, "not_found");
+        assert_eq!(create_palette(&ProjectState::default(), "X", None).unwrap_err().code, "no_project");
+    }
+
+    // Checks that the list of presets the UI shows has both presets with the
+    // right number of colors, and its wire format.
+    #[test]
+    fn the_presets_are_listed() {
+        let list = presets();
+        let counts: Vec<(&str, usize)> = list.iter().map(|p| (p.name, p.colors.len())).collect();
+        assert_eq!(counts, vec![("Pocket RPG 16", 16), ("Farm 32", 32)]);
+        let json = serde_json::to_value(&list[0]).unwrap();
+        assert_eq!(json["id"], "pocket-rpg-16");
+        assert!(json["colors"][0]["hex"].as_str().unwrap().starts_with('#'));
     }
 
     // Checks the wire format the UI reads.

@@ -3,6 +3,7 @@ import type {
   ColorEdit,
   PaletteApi,
   PaletteInfo,
+  Preset,
   Replacement,
 } from "@/features/palette-editor";
 import type { ChangedEvent, FrameData } from "@/shared/lib/core";
@@ -210,6 +211,15 @@ export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
     replacements: Replacement[],
   ): Promise<void> {
     this.paletteEdits.push({ name, colors, replacements });
+  }
+
+  // The editor does not make palettes; these only complete the interface.
+  async listPresets(): Promise<Preset[]> {
+    return [];
+  }
+
+  async createPalette(name: string): Promise<string> {
+    return name;
   }
 
   // The frames and animations calls (see `FramesApi`).

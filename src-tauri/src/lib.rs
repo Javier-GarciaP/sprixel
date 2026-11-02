@@ -23,6 +23,8 @@ pub fn run() {
             ipc::frames::tag_remove,
             ipc::palettes::palette_info_of,
             ipc::palettes::palette_apply,
+            ipc::palettes::palette_presets,
+            ipc::palettes::palette_create,
             ipc::editor::editor_sprite,
             ipc::editor::editor_frame,
             ipc::editor::editor_apply,
