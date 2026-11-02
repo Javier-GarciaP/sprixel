@@ -8,13 +8,17 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/shared/lib/i18n";
 import { TextView } from "./TextView";
 import { FakeTextApi, GOBLIN_ROWS, goblinText } from "./testing";
 
 const goblin = { folder: ["Characters"], name: "goblin" };
 
+// jsdom has no canvas: the picture is checked from its `data-rows`.
+beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+});
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -121,5 +125,130 @@ describe("Show the sprite as text", () => {
       "no project",
     );
     expect(screen.queryByRole("textbox")).toBeNull();
+  });
+});
+
+const preview = () => screen.getByRole("img", { name: "Preview of the text" });
+const status = () => screen.getByRole("status");
+
+// A row of the goblin changed: `rows[index]` becomes `row`.
+function typeRow(index: number, row: string) {
+  const rows = [...GOBLIN_ROWS];
+  rows[index] = row;
+  fireEvent.change(box(), { target: { value: goblinText(rows) } });
+  return rows;
+}
+
+describe("Live validation and preview", () => {
+  // Checks the first part of screen 21: a text that is valid shows "Valid"
+  // with the size and the number of keys used, and the live preview with the
+  // rows of the text, and Apply is not marked as an error.
+  it("shows Valid with the size and the keys, and the preview", async () => {
+    render(<Host api={new FakeTextApi()} />);
+    await waitFor(() =>
+      expect(status().textContent).toBe(
+        "Valid: 8 × 8 · 4 keys used · 0 errors",
+      ),
+    );
+    expect(status().getAttribute("data-tone")).toBe("ok");
+    expect(preview().getAttribute("data-rows")).toBe(GOBLIN_ROWS.join("|"));
+    expect(screen.getByText("Live view")).toBeTruthy();
+  });
+
+  // Checks the "Type a valid change" scenario: one character becomes another
+  // valid key, the preview updates and the status stays Valid.
+  it("updates the preview when a valid key is typed", async () => {
+    render(<Host api={new FakeTextApi()} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    const rows = typeRow(0, "....NRRR");
+    await waitFor(() =>
+      expect(preview().getAttribute("data-rows")).toBe(rows.join("|")),
+    );
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    expect(screen.getByText("Live view")).toBeTruthy();
+  });
+
+  // Checks that typing does not call the core for every key: several quick
+  // changes make one check of the last text.
+  it("waits for a pause before it checks what was typed", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    const before = api.checked.length;
+    typeRow(0, "....NRRR");
+    typeRow(0, "....NNRR");
+    const rows = typeRow(0, "....NNNR");
+    await waitFor(() =>
+      expect(preview().getAttribute("data-rows")).toBe(rows.join("|")),
+    );
+    expect(api.checked.length - before).toBe(1);
+  });
+});
+
+describe("Errors in the text", () => {
+  // Checks the "A short row" scenario (screen 22): the line with the problem
+  // is marked and says "7 columns", the status shows the error with its line,
+  // and the preview keeps the last valid state with its own title.
+  it("marks the line, shows the error and keeps the last valid preview", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    typeRow(6, ".NAAAAN");
+    // Row 7 of the frame is line 17 of this text (10 lines come before).
+    const marked = await waitFor(() => {
+      const line = document.querySelector("[data-error-line]");
+      expect(line).not.toBeNull();
+      return line as HTMLElement;
+    });
+    expect(marked.getAttribute("data-error-line")).toBe("17");
+    expect(marked.textContent).toContain("7 columns, expected 8");
+    expect(status().textContent).toBe(
+      "line 17 (row 7 of frame 1): 7 columns, expected 8",
+    );
+    expect(status().getAttribute("data-tone")).toBe("error");
+    expect(screen.getByText("Last valid state")).toBeTruthy();
+    // The picture is still the goblin before the mistake.
+    expect(preview().getAttribute("data-rows")).toBe(GOBLIN_ROWS.join("|"));
+  });
+
+  // Checks that when there are several errors, the status shows the first one
+  // and how many more there are, and every line is marked.
+  it("counts the other errors", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    typeRow(1, "...RRRR");
+    const rows = [...GOBLIN_ROWS];
+    rows[1] = "...RRRR";
+    rows[4] = "..NPXPPN";
+    fireEvent.change(box(), { target: { value: goblinText(rows) } });
+    await waitFor(() => expect(status().textContent).toContain("(and 1 more)"));
+    expect(document.querySelectorAll("[data-error-line]")).toHaveLength(2);
+  });
+
+  // Checks that when the text is fixed the marks go, the status is Valid and
+  // the picture is the new one again.
+  it("goes back to Valid when the text is fixed", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    typeRow(6, ".NAAAAN");
+    await waitFor(() =>
+      expect(status().getAttribute("data-tone")).toBe("error"),
+    );
+    const rows = typeRow(6, ".NAAAAR.");
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    expect(document.querySelector("[data-error-line]")).toBeNull();
+    expect(preview().getAttribute("data-rows")).toBe(rows.join("|"));
+  });
+
+  // Checks that a failure of the check itself (the core is not there) is
+  // shown as an error, not as a Valid text.
+  it("shows an error when the check fails", async () => {
+    const api = new FakeTextApi();
+    api.check = () => Promise.reject({ code: "no_core", message: "no core" });
+    render(<Host api={api} />);
+    expect((await screen.findByRole("alert")).textContent).toContain("no core");
+    expect(screen.queryByText(/^Valid/)).toBeNull();
   });
 });

@@ -296,5 +296,12 @@
   "text.frame": "Frame {n}",
   "text.frames": "Frames",
   "text.editor": "Matriz de texto",
-  "text.loadError": "No se pudo leer el texto: {message}"
+  "text.loadError": "No se pudo leer el texto: {message}",
+  "text.valid": "Válida: {width} × {height} · {keys} claves usadas · 0 errores",
+  "text.moreErrors": "{message} (y {count} más)",
+  "text.checking": "Comprobando…",
+  "text.checkError": "No se pudo comprobar el texto: {message}",
+  "text.liveView": "Vista en vivo",
+  "text.lastValid": "Último estado válido",
+  "text.preview": "Vista previa del texto"
 }

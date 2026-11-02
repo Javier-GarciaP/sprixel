@@ -296,5 +296,12 @@
   "text.frame": "Frame {n}",
   "text.frames": "Frames",
   "text.editor": "Text grid",
-  "text.loadError": "The text could not be read: {message}"
+  "text.loadError": "The text could not be read: {message}",
+  "text.valid": "Valid: {width} × {height} · {keys} keys used · 0 errors",
+  "text.moreErrors": "{message} (and {count} more)",
+  "text.checking": "Checking…",
+  "text.checkError": "The text could not be checked: {message}",
+  "text.liveView": "Live view",
+  "text.lastValid": "Last valid state",
+  "text.preview": "Preview of the text"
 }
