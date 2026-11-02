@@ -11,6 +11,7 @@ import {
   type Clock,
   type FramesApi,
 } from "@/features/frames-animations";
+import { PalettePanel } from "@/features/palette-editor";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
@@ -32,7 +33,6 @@ import type { PixelCanvasHandle } from "./PixelCanvas";
 import { CanvasBar } from "./CanvasBar";
 import { CanvasStatusBar } from "./CanvasStatusBar";
 import { DEFAULT_OPACITY, OnionPanel } from "./OnionPanel";
-import { PalettePanel } from "./PalettePanel";
 import { RightPanel } from "./RightPanel";
 import { ToolsColumn } from "./ToolsColumn";
 import type { PixelChange, SpriteInfo } from "../api/types";

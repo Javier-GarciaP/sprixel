@@ -249,5 +249,7 @@
   "error.folderExists": "A folder with this name already exists here.",
   "error.invalidName": "This name cannot be used as a folder name.",
   "error.io": "Something went wrong: {message}",
-  "open.notAProject": "This folder is not a Sprixel project"
+  "open.notAProject": "This folder is not a Sprixel project",
+  "palette.showKeys": "Show keys",
+  "palette.edit": "Edit"
 }

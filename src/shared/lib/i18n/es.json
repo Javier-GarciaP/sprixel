@@ -249,5 +249,7 @@
   "error.folderExists": "Ya existe una carpeta con este nombre aquí.",
   "error.invalidName": "Este nombre no se puede usar como nombre de carpeta.",
   "error.io": "Algo salió mal: {message}",
-  "open.notAProject": "Esta carpeta no es un proyecto de Sprixel"
+  "open.notAProject": "Esta carpeta no es un proyecto de Sprixel",
+  "palette.showKeys": "Mostrar claves",
+  "palette.edit": "Editar"
 }
