@@ -11,7 +11,12 @@ import {
   type Clock,
   type FramesApi,
 } from "@/features/frames-animations";
-import { PalettePanel } from "@/features/palette-editor";
+import {
+  PaletteEditorDialog,
+  PalettePanel,
+  corePaletteApi,
+  type PaletteApi,
+} from "@/features/palette-editor";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
@@ -45,6 +50,8 @@ type Props = {
   // Gives the app what the editor commands do (the app owns the keys).
   // The calls for frames and animations. The tests give a fake one.
   framesApi?: FramesApi;
+  // The calls of the palette editor. The tests give a fake one.
+  paletteApi?: PaletteApi;
   // The clock of the preview. The tests give a manual one.
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
@@ -56,6 +63,7 @@ export function EditorScreen({
   sprite,
   api = coreEditorApi,
   framesApi = coreFramesApi,
+  paletteApi = corePaletteApi,
   clock,
   onCommands,
   onGoToProject,
@@ -85,6 +93,7 @@ export function EditorScreen({
       sprite={sprite}
       api={api}
       framesApi={framesApi}
+      paletteApi={paletteApi}
       clock={clock}
       onCommands={onCommands}
     />
@@ -95,12 +104,14 @@ function OpenSprite({
   sprite,
   api,
   framesApi,
+  paletteApi,
   clock,
   onCommands,
 }: {
   sprite: SpriteRef;
   api: EditorApi;
   framesApi: FramesApi;
+  paletteApi: PaletteApi;
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
 }) {
@@ -138,6 +149,7 @@ function OpenSprite({
     <Ready
       api={api}
       framesApi={framesApi}
+      paletteApi={paletteApi}
       clock={clock}
       onFramesChanged={(select) => {
         if (select) setFrame(select);
@@ -174,6 +186,7 @@ type ReadyProps = {
   api: EditorApi;
   clock?: Clock;
   framesApi: FramesApi;
+  paletteApi: PaletteApi;
   onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
   // Reads the sprite from the core again.
@@ -246,6 +259,7 @@ function Ready(props: ReadyProps) {
     canRedo: info.canRedo,
   });
   const [notice, setNotice] = useState<string | null>(null);
+  const [editingPalette, setEditingPalette] = useState(false);
   useEffect(() => {
     setPalette(info.palette);
     setHistory({ canUndo: info.canUndo, canRedo: info.canRedo });
@@ -478,6 +492,7 @@ function Ready(props: ReadyProps) {
             secondary={props.secondary}
             onMain={props.onMain}
             onSecondary={props.onSecondary}
+            onEdit={() => setEditingPalette(true)}
           />
         }
         onion={
@@ -489,6 +504,14 @@ function Ready(props: ReadyProps) {
           />
         }
       />
+      {editingPalette && (
+        <PaletteEditorDialog
+          api={props.paletteApi}
+          name={info.paletteName}
+          onClose={() => setEditingPalette(false)}
+          onApplied={props.reload}
+        />
+      )}
       {notice && <Toast tone="error" message={notice} />}
     </div>
   );

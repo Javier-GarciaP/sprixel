@@ -11,7 +11,7 @@
 ## 2. Panel and editor
 
 - [x] 2.1 Build the palette panel with main and secondary selection, transparent entry and "Show keys", and verify against the design
-- [ ] 2.2 Build the palette editor dialog with the list, fields, RGB sliders, key warning, Cancel and Done, and verify the cancel and apply scenarios
+- [x] 2.2 Build the palette editor dialog with the list, fields, RGB sliders, key warning, Cancel and Done, and verify the cancel and apply scenarios
 - [ ] 2.3 Block key changes while an agent writes and verify with a simulated agent
 
 ## 3. Creating and importing

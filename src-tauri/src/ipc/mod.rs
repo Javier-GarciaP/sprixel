@@ -5,6 +5,7 @@ pub mod preferences;
 pub mod project;
 pub mod editor;
 pub mod frames;
+pub mod palettes;
 
 use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};
 use preferences::{Data, RecentProject, Settings};

@@ -1,2 +1,11 @@
+export { PaletteEditorDialog } from "./PaletteEditorDialog";
 export { PalettePanel } from "./PalettePanel";
-export type { PaletteColor } from "./types";
+export { corePaletteApi } from "./api";
+export type {
+  ColorEdit,
+  PaletteApi,
+  PaletteColor,
+  PaletteEntry,
+  PaletteInfo,
+  Replacement,
+} from "./types";

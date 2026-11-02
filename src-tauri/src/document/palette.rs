@@ -180,6 +180,14 @@ impl Project {
         }])
     }
 
+    /// The keys that sprites using the palette have in their pixels.
+    pub fn used_keys(&self, palette: &str) -> std::collections::HashSet<char> {
+        self.sprites_of(palette)
+            .flat_map(|(_, s)| s.layers.iter().flat_map(|l| l.frames.iter()))
+            .flat_map(|f| f.pixels.iter().map(|k| *k as char))
+            .collect()
+    }
+
     /// Every sprite that uses the palette, with where it is.
     fn sprites_of<'a>(&'a self, palette: &'a str) -> impl Iterator<Item = (SpriteRef, &'a Sprite)> {
         let mut found = Vec::new();
