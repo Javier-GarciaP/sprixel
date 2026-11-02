@@ -6,7 +6,11 @@
 use super::browser::{self, CHANGED_EVENT, ChangedEvent, CoreError};
 use super::editor::EditorState;
 use super::project::{self, ProjectState};
-use crate::document::{Color, ColorEdit, DocError, Operation, PRESETS, Palette, Preset, SpriteRef};
+use crate::document::{
+    Color, ColorEdit, DocError, ImportFormat, Operation, PRESETS, Palette, Preset, SpriteRef,
+    palette_from_file,
+};
+use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 const USER: &str = crate::history::USER;
@@ -174,6 +178,51 @@ pub fn create_palette(
         let touched = session.apply(USER, vec![Operation::CreatePalette { palette, index: None }])?;
         Ok((name.to_string(), touched))
     })
+}
+
+/// A palette file is small text; a bigger file is not a palette.
+const MAX_IMPORT_BYTES: u64 = 1_000_000;
+
+/// Makes a new palette from a `.gpl` or `.hex` file, with a generated key
+/// and name for every color. It is one history entry by the user. Returns the
+/// name of the new palette.
+pub fn import_palette(
+    state: &ProjectState,
+    name: &str,
+    file: &Path,
+) -> Result<(String, ChangedEvent), CoreError> {
+    let file_name = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let format = ImportFormat::of_file(file_name).ok_or_else(|| {
+        DocError::new("bad_format", "a palette file is a .gpl or a .hex file")
+    })?;
+    let io = |e: std::io::Error| DocError::new("io", format!("the file could not be read: {e}"));
+    if file.metadata().map_err(io)?.len() > MAX_IMPORT_BYTES {
+        return Err(DocError::new("too_big", "this file is too big to be a palette").into());
+    }
+    let text = std::fs::read_to_string(file).map_err(|e| match e.kind() {
+        std::io::ErrorKind::InvalidData => {
+            DocError::new("bad_import", "the file is not text")
+        }
+        _ => io(e),
+    })?;
+    let name = name.trim();
+    let palette = palette_from_file(name, format, &text)?;
+    browser::change(state, |session| {
+        let touched = session.apply(USER, vec![Operation::CreatePalette { palette, index: None }])?;
+        Ok((name.to_string(), touched))
+    })
+}
+
+#[tauri::command]
+pub fn palette_import(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    name: String,
+    path: String,
+) -> Result<String, CoreError> {
+    let (name, event) = import_palette(&state, &name, Path::new(&path))?;
+    let _ = tauri::Emitter::emit(&app, CHANGED_EVENT, event);
+    Ok(name)
 }
 
 #[tauri::command]
@@ -489,6 +538,63 @@ mod tests {
         let json = serde_json::to_value(&list[0]).unwrap();
         assert_eq!(json["id"], "pocket-rpg-16");
         assert!(json["colors"][0]["hex"].as_str().unwrap().starts_with('#'));
+    }
+
+    fn fixture(name: &str) -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/document/testdata").join(name)
+    }
+
+    // Checks the "Import a hex file" scenario through the core: the 16-line
+    // fixture becomes a new palette with 16 colors and unique keys, as one
+    // undo step.
+    #[test]
+    fn a_hex_file_is_imported_as_a_new_palette() {
+        let (_dir, state) = open();
+        let (name, event) = import_palette(&state, "Sixteen", &fixture("sixteen.hex")).unwrap();
+        assert_eq!(name, "Sixteen");
+        assert!(touches(&event, "palette", &["Sixteen"]));
+        let info = palette_info(&state, "Sixteen").unwrap();
+        assert_eq!(info.colors.len(), 16);
+        let mut keys: Vec<&str> = info.colors.iter().map(|c| c.key.as_str()).collect();
+        keys.sort();
+        keys.dedup();
+        assert_eq!(keys.len(), 16);
+        browser::undo(&state).unwrap();
+        assert_eq!(palette_info(&state, "Sixteen").unwrap_err().code, "not_found");
+    }
+
+    // Checks that a GIMP file is imported with the names of its colors.
+    #[test]
+    fn a_gpl_file_is_imported_with_its_names() {
+        let (_dir, state) = open();
+        import_palette(&state, "Sample", &fixture("sample.gpl")).unwrap();
+        let names: Vec<String> = palette_info(&state, "Sample")
+            .unwrap()
+            .colors
+            .into_iter()
+            .map(|c| c.name)
+            .collect();
+        assert_eq!(names, vec!["Night", "Red", "Green", "000000"]);
+    }
+
+    // Checks the errors: a name already used, a file that is not a palette
+    // file, a file that does not exist and a bad file; none makes a palette.
+    #[test]
+    fn a_bad_import_makes_nothing() {
+        let (dir, state) = open();
+        let code = |name: &str, file: &Path| import_palette(&state, name, file).unwrap_err().code;
+        assert_eq!(code("main", &fixture("sixteen.hex")), "name_exists");
+        assert_eq!(code("x", &fixture("missing.hex")), "io");
+        let png = dir.path().join("colors.png");
+        std::fs::write(&png, "x").unwrap();
+        assert_eq!(code("x", &png), "bad_format");
+        let bad = dir.path().join("bad.hex");
+        std::fs::write(&bad, "not a color\n").unwrap();
+        assert_eq!(code("x", &bad), "bad_import");
+        let binary = dir.path().join("binary.gpl");
+        std::fs::write(&binary, [0xff, 0xfe, 0x00, 0x80]).unwrap();
+        assert_eq!(code("x", &binary), "bad_import");
+        assert_eq!(project::read(&state, |s| s.project.palettes.len()).unwrap(), 1);
     }
 
     // Checks the wire format the UI reads.

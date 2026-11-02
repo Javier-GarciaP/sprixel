@@ -31,4 +31,13 @@ export const corePaletteApi: PaletteApi = {
   listPresets: () => call<Preset[]>("palette_presets"),
   createPalette: (name, preset) =>
     call<string>("palette_create", { name, preset }),
+  async pickPaletteFile() {
+    if (!insideApp()) return null;
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const chosen = await open({
+      filters: [{ name: "Palette", extensions: ["gpl", "hex"] }],
+    });
+    return typeof chosen === "string" ? chosen : null;
+  },
+  importPalette: (name, path) => call<string>("palette_import", { name, path }),
 };

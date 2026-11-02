@@ -1,0 +1,9 @@
+GIMP Palette
+Name: Sample
+Columns: 4
+# A small palette used by the tests
+ 26  28  44	Night
+240  69  69	Red
+ 74 222 128	Green
+240  69  69	Red again
+  0   0   0

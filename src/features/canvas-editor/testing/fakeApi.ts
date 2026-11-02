@@ -222,6 +222,14 @@ export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
     return name;
   }
 
+  async pickPaletteFile(): Promise<string | null> {
+    return null;
+  }
+
+  async importPalette(name: string): Promise<string> {
+    return name;
+  }
+
   // The frames and animations calls (see `FramesApi`).
   private notify(sprite: SpriteRef) {
     const event: ChangedEvent = {

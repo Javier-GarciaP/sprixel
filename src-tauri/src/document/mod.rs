@@ -6,6 +6,7 @@
 
 mod error;
 mod external;
+mod import;
 mod model;
 mod names;
 mod operation;
@@ -16,6 +17,7 @@ mod stroke;
 pub use error::DocError;
 pub use names::{copy_name, same_name, validate_name};
 pub use operation::{Applied, AppliedGroup, Operation, PixelBatch, PixelChange, SpriteRef, Target};
+pub use import::{ImportFormat, palette_from_file};
 pub use presets::{PRESETS, Preset};
 pub use palette::{ColorEdit, check_colors};
 pub use stroke::ColorChange;
@@ -47,3 +49,6 @@ mod palette_ops_tests;
 
 #[cfg(test)]
 mod presets_tests;
+
+#[cfg(test)]
+mod import_tests;

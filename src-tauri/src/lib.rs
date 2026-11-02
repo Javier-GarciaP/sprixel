@@ -25,6 +25,7 @@ pub fn run() {
             ipc::palettes::palette_apply,
             ipc::palettes::palette_presets,
             ipc::palettes::palette_create,
+            ipc::palettes::palette_import,
             ipc::editor::editor_sprite,
             ipc::editor::editor_frame,
             ipc::editor::editor_apply,

@@ -62,6 +62,20 @@ export class FakePaletteApi implements PaletteApi {
     return this.presets;
   }
 
+  // The path the file picker gives (null is a cancelled picker).
+  pickedFile: string | null = "/colors/sixteen.hex";
+  imported: { name: string; path: string }[] = [];
+
+  async pickPaletteFile(): Promise<string | null> {
+    return this.pickedFile;
+  }
+
+  async importPalette(name: string, path: string): Promise<string> {
+    if (this.createFailWith) throw this.createFailWith;
+    this.imported.push({ name, path });
+    return name;
+  }
+
   async createPalette(name: string, preset: string | null): Promise<string> {
     if (this.createFailWith) throw this.createFailWith;
     this.created.push({ name, preset });

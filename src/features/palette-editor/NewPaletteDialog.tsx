@@ -16,7 +16,14 @@ type Props = {
 const failures: Record<string, TranslationKey> = {
   name_exists: "palette.errorNameTaken",
   invalid_name: "palette.errorInvalidName",
+  palette_full: "palette.errorFull",
+  bad_format: "palette.errorFormat",
 };
+
+// The name of a file from its path (Windows paths use "\\"), and the name
+// without its extension.
+const fileName = (path: string) => path.split(/[\\/]/).pop() ?? path;
+const stem = (name: string) => name.replace(/\.[^.]*$/, "");
 
 // The dialog to make a palette: empty, or from a built-in preset.
 export function NewPaletteDialog({ api, presets, onCreated, onClose }: Props) {
@@ -25,21 +32,40 @@ export function NewPaletteDialog({ api, presets, onCreated, onClose }: Props) {
   const [preset, setPreset] = useState<string | null>(null);
   // The name follows the choice until the user types one.
   const [typed, setTyped] = useState<string | null>(null);
+  // A `.gpl` or `.hex` file to import, instead of an empty palette or a preset.
+  const [file, setFile] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const chosen = presets.find((p) => p.id === preset);
-  const name = typed ?? chosen?.name ?? t("palette.defaultName");
+  const name =
+    typed ??
+    (file ? stem(fileName(file)) : chosen?.name) ??
+    t("palette.defaultName");
+
+  const pickFile = async () => {
+    const path = await api.pickPaletteFile().catch(() => null);
+    if (path) {
+      setFile(path);
+      setPreset(null);
+    }
+  };
 
   const submit = async () => {
     setBusy(true);
     setFailure(null);
     try {
-      const created = await api.createPalette(name.trim(), preset);
+      const created = file
+        ? await api.importPalette(name.trim(), file)
+        : await api.createPalette(name.trim(), preset);
       onCreated?.(created);
       onClose();
     } catch (error) {
       const { code, message } = asPaletteFailure(error);
-      setFailure(failures[code] ? t(failures[code]) : (message ?? code));
+      setFailure(
+        failures[code]
+          ? t(failures[code])
+          : t("palette.errorImport", { message: message ?? code }),
+      );
       setBusy(false);
     }
   };
@@ -69,8 +95,11 @@ export function NewPaletteDialog({ api, presets, onCreated, onClose }: Props) {
           </legend>
           <Option
             label={t("palette.newEmpty")}
-            checked={preset === null}
-            onSelect={() => setPreset(null)}
+            checked={preset === null && file === null}
+            onSelect={() => {
+              setPreset(null);
+              setFile(null);
+            }}
           />
           {presets.map((p) => (
             <Option
@@ -79,9 +108,17 @@ export function NewPaletteDialog({ api, presets, onCreated, onClose }: Props) {
               detail={t("palette.newColors", { count: p.colors.length })}
               colors={p.colors.map((c) => c.hex)}
               checked={preset === p.id}
-              onSelect={() => setPreset(p.id)}
+              onSelect={() => {
+                setPreset(p.id);
+                setFile(null);
+              }}
             />
           ))}
+          <Button onClick={pickFile}>
+            {file
+              ? t("palette.importChosen", { name: fileName(file) })
+              : t("palette.importFile")}
+          </Button>
         </fieldset>
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>{t("dialog.cancel")}</Button>

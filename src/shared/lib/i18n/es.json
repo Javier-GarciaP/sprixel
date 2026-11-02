@@ -287,5 +287,9 @@
   "palette.newCreate": "Crear",
   "palette.defaultName": "Paleta",
   "palette.errorNameTaken": "Ya existe una paleta con este nombre.",
-  "palette.errorInvalidName": "Este nombre no se puede usar como nombre de archivo."
+  "palette.errorInvalidName": "Este nombre no se puede usar como nombre de archivo.",
+  "palette.importFile": "Importar un archivo .gpl o .hex…",
+  "palette.importChosen": "Archivo: {name} (cambiar)",
+  "palette.errorFormat": "Elige un archivo .gpl o .hex.",
+  "palette.errorImport": "No se pudo crear la paleta: {message}"
 }

@@ -98,4 +98,68 @@ describe("New palette dialog", () => {
     expect(api.created).toEqual([]);
     expect(screen.getByText("Paleta vacía")).toBeTruthy();
   });
+
+  // Checks the "Import a hex file" scenario on the screen: the file the user
+  // picks is imported with a name that follows the file name, and the preset
+  // choice is left.
+  it("imports a file chosen with the file picker", async () => {
+    const { api, onClose, onCreated } = open();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Import a .gpl or .hex/ }),
+    );
+    expect(
+      await screen.findByRole("button", { name: /File: sixteen.hex/ }),
+    ).toBeTruthy();
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
+      "sixteen",
+    );
+    create();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(api.imported).toEqual([
+      { name: "sixteen", path: "/colors/sixteen.hex" },
+    ]);
+    expect(api.created).toEqual([]);
+    expect(onCreated).toHaveBeenCalledWith("sixteen");
+  });
+
+  // Checks that a cancelled picker changes nothing, and that choosing a
+  // preset after a file goes back to creating, not importing.
+  it("goes back to a preset after a file, and ignores a cancelled picker", async () => {
+    const { api, onClose } = open();
+    api.pickedFile = null;
+    fireEvent.click(
+      screen.getByRole("button", { name: /Import a .gpl or .hex/ }),
+    );
+    expect(screen.getByRole("radio", { name: "Empty palette" })).toHaveProperty(
+      "checked",
+      true,
+    );
+    api.pickedFile = "C:\\colors\\mine.gpl";
+    fireEvent.click(
+      screen.getByRole("button", { name: /Import a .gpl or .hex/ }),
+    );
+    await screen.findByRole("button", { name: /File: mine.gpl/ });
+    fireEvent.click(screen.getByRole("radio", { name: /Farm 32/ }));
+    create();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(api.imported).toEqual([]);
+    expect(api.created).toEqual([{ name: "Farm 32", preset: "farm-32" }]);
+  });
+
+  // Checks that the error of a bad file is shown in the dialog (with the
+  // line the core names) and that nothing closes.
+  it("shows why a file could not be imported", async () => {
+    const { api, onClose } = open();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Import a .gpl or .hex/ }),
+    );
+    await screen.findByRole("button", { name: /File: sixteen.hex/ });
+    api.createFailWith = {
+      code: "bad_import",
+      message: "line 2: expected one color",
+    };
+    create();
+    expect(await screen.findByText(/line 2: expected one color/)).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

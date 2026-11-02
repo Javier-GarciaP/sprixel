@@ -39,4 +39,8 @@ export interface PaletteApi {
   listPresets(): Promise<Preset[]>;
   // Makes a palette, empty or with the colors of a preset. Gives its name.
   createPalette(name: string, preset: string | null): Promise<string>;
+  // The native file picker for a `.gpl` or `.hex` file. Null when cancelled.
+  pickPaletteFile(): Promise<string | null>;
+  // Makes a palette from the colors of a file. Gives its name.
+  importPalette(name: string, path: string): Promise<string>;
 }

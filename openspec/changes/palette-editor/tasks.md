@@ -17,7 +17,7 @@
 ## 3. Creating and importing
 
 - [x] 3.1 Implement create from presets and the "+" in the folders panel and verify the new palette appears
-- [ ] 3.2 Implement `.gpl` and `.hex` import with generated keys and verify with fixture files
+- [x] 3.2 Implement `.gpl` and `.hex` import with generated keys and verify with fixture files
 
 ## 4. Documentation
 
