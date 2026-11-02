@@ -311,3 +311,73 @@ fn all_the_errors_are_reported_together() {
     let codes: Vec<&str> = errors.iter().map(|e| e.code).collect();
     assert_eq!(codes, vec!["row_length", "unknown_key"]);
 }
+
+// ---- Region writing (task 1.3) ----
+
+fn at(x: u32, y: u32, skip_transparent: bool) -> GridOptions {
+    GridOptions { region: Some((x, y)), skip_transparent }
+}
+
+// A 4x3 sprite whose pixels are all "R".
+fn red_sprite() -> Sprite {
+    let mut sprite = Sprite::new("s", 4, 3, "dungeon16").unwrap();
+    sprite.layers[0].frames[0].pixels = b"RRRRRRRRRRRR".to_vec();
+    sprite
+}
+
+fn changes(grid: &Grid, sprite: &Sprite, options: GridOptions) -> Vec<(u32, u32, char)> {
+    grid.pixel_changes(sprite, &options)
+        .into_iter()
+        .flat_map(|(_, list)| list)
+        .map(|c| (c.x, c.y, c.key))
+        .collect()
+}
+
+// Checks that a grid written at (x, y) changes only the pixels of the
+// region, at the right place, and leaves the rest alone.
+#[test]
+fn a_region_changes_only_its_own_pixels() {
+    let sprite = red_sprite();
+    let grid = Grid::check("frame 1\nNP\nAN\n", &sprite, &dungeon16(), &at(1, 1, false)).unwrap();
+    assert_eq!(
+        changes(&grid, &sprite, at(1, 1, false)),
+        vec![(1, 1, 'N'), (2, 1, 'P'), (1, 2, 'A'), (2, 2, 'N')]
+    );
+}
+
+// Checks that a pixel that already has the key is not a change, so writing
+// the same grid again changes nothing.
+#[test]
+fn the_same_pixels_are_not_a_change() {
+    let sprite = red_sprite();
+    let grid = Grid::check("frame 1\nRR\n", &sprite, &dungeon16(), &at(0, 0, false)).unwrap();
+    assert!(grid.pixel_changes(&sprite, &at(0, 0, false)).is_empty());
+}
+
+// Checks "Keep existing pixels": with the option, "." leaves the pixel; and
+// without it "." erases the pixel (it becomes transparent).
+#[test]
+fn skip_transparent_keeps_the_pixels_under_a_dot() {
+    let sprite = red_sprite();
+    let text = "frame 1\n.N\nN.\n";
+    let grid = Grid::check(text, &sprite, &dungeon16(), &at(0, 0, true)).unwrap();
+    assert_eq!(changes(&grid, &sprite, at(0, 0, true)), vec![(1, 0, 'N'), (0, 1, 'N')]);
+    assert_eq!(
+        changes(&grid, &sprite, at(0, 0, false)),
+        vec![(0, 0, '.'), (1, 0, 'N'), (0, 1, 'N'), (1, 1, '.')]
+    );
+}
+
+// Checks that a whole frame (no region) starts at (0, 0) and that the frames
+// the grid does not mention are not touched.
+#[test]
+fn a_whole_frame_starts_at_the_corner_and_other_frames_stay() {
+    let mut sprite = Sprite::new("s", 2, 1, "dungeon16").unwrap();
+    sprite.frame_durations.push(100);
+    sprite.layers[0].frames.push(Frame { pixels: b"NN".to_vec() });
+    let grid = Grid::check("frame 1\nRP\n", &sprite, &dungeon16(), &whole()).unwrap();
+    let list = grid.pixel_changes(&sprite, &whole());
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].0, 1);
+    assert_eq!(list[0].1.len(), 2);
+}

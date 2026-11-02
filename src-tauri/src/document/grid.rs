@@ -3,6 +3,7 @@
 //! format is in `docs/text-grid-format.md`. Plain Rust, no Tauri types.
 
 use super::model::{Color, MAX_SIZE, Palette, Sprite, TRANSPARENT};
+use super::operation::PixelChange;
 use serde::Serialize;
 
 /// A problem in a grid. `line` is the line of the text, `row` the row inside
@@ -279,6 +280,35 @@ impl Grid {
             }
         }
         errors
+    }
+
+    /// The pixels that a valid grid changes in the first layer, frame by
+    /// frame (frames that change nothing are left out). A pixel that already
+    /// has the key is not a change. With `skip_transparent`, a `.` of the
+    /// grid leaves the existing pixel; without it, `.` erases.
+    pub fn pixel_changes(&self, sprite: &Sprite, options: &GridOptions) -> Vec<(u32, Vec<PixelChange>)> {
+        let (left, top) = options.region.unwrap_or((0, 0));
+        let width = sprite.width as usize;
+        let mut result = Vec::new();
+        for frame in &self.frames {
+            let Some(current) = sprite.layers[0].frames.get(frame.number as usize - 1) else { continue };
+            let mut changes = Vec::new();
+            for (row, line) in frame.rows.iter().enumerate() {
+                for (column, key) in line.cells.iter().enumerate() {
+                    if *key == TRANSPARENT && options.skip_transparent {
+                        continue;
+                    }
+                    let (x, y) = (left + column as u32, top + row as u32);
+                    if current.pixels[y as usize * width + x as usize] != *key as u8 {
+                        changes.push(PixelChange { x, y, key: *key });
+                    }
+                }
+            }
+            if !changes.is_empty() {
+                result.push((frame.number, changes));
+            }
+        }
+        result
     }
 
     /// Reads a text and checks it: the errors of the text and the errors
