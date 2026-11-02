@@ -30,3 +30,6 @@ mod write_tests;
 
 #[cfg(test)]
 mod summary_tests;
+
+#[cfg(test)]
+mod docs_tests;

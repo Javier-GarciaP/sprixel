@@ -25,7 +25,7 @@ fn walk(from: u32, to: u32) -> Tag {
     Tag { name: "walk".to_string(), from, to, fps: 12, mode: TagMode::Loop }
 }
 
-fn sheet_project() -> Project {
+pub(super) fn sheet_project() -> Project {
     let mut p = project();
     let mut hero = sprite("hero", 3);
     hero.tags.push(walk(1, 2));

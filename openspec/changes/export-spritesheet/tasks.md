@@ -25,7 +25,7 @@
 
 ### 5. Documentation
 
-- [ ] 5.1 Document the JSON format in `docs/` and verify a sample export matches it
+- [x] 5.1 Document the JSON format in `docs/` and verify a sample export matches it
 
 ## After the demo
 

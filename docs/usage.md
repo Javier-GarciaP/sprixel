@@ -342,11 +342,13 @@ Open the **Export** tab and follow the three steps:
    - **Sheet + JSON:** one PNG with all frames, plus a JSON file with the
      frames, durations and animations.
    - **Single PNG files:** one image per frame.
-   - **GIF:** an animated GIF per animation.
+   - **GIF:** an animated GIF per animation (planned: it comes after the
+     first demo).
 3. **Options:** scale (1x to 8x), spacing between frames, and the folder to
    save in (inside the project, `assets/sprites` by default).
 
-Press **Export**. When it finishes, press **Open folder**.
+Press **Export**. When it finishes, press **Open folder**. The files are
+described in the [export format](export-format.md).
 
 ## Settings
 

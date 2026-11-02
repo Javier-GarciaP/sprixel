@@ -99,6 +99,7 @@ sprixel doctor              # check that everything works
 | [Usage guide](docs/usage.md) | How to use the app and the `sprixel` command |
 | [AI and MCP](docs/ai-and-mcp.md) | Connecting an AI, available tools and security |
 | [Text grid format](docs/text-grid-format.md) | The text format an AI uses to draw sprites |
+| [Export format](docs/export-format.md) | The sprite sheet, the JSON and the PNG files |
 | [Architecture](docs/architecture.md) | How the app, the CLI and the project files fit together |
 | [Design](docs/design/README.md) | The idea behind Sprixel and all the screens (light and dark) |
 | [Roadmap](docs/roadmap.md) | The plan for version 1 and the specs behind it |
