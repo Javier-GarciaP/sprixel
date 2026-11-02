@@ -23,6 +23,9 @@ type Props = {
   api: PaletteApi;
   // The palette to edit.
   name: string;
+  // True while an agent writes to the sprite that is open. Changing a key (or
+  // removing a used color) rewrites sprites, so it has to wait.
+  agentBusy?: boolean;
   onClose: () => void;
   // Called after Done applied the changes, so the screen reads them again.
   onApplied: () => void;
@@ -38,6 +41,7 @@ const failures: Record<string, TranslationKey> = {
   bad_color: "palette.errorBadHex",
   palette_full: "palette.errorFull",
   replacement_needed: "palette.errorReplacement",
+  agent_writing: "palette.agentBusy",
   bad_replacement: "palette.errorReplacement",
 };
 
@@ -90,7 +94,13 @@ function DraftField({
 
 // The dialog to edit a palette. It works on a copy: nothing reaches the
 // project until Done, and then it all goes in as one undoable action.
-export function PaletteEditorDialog({ api, name, onClose, onApplied }: Props) {
+export function PaletteEditorDialog({
+  api,
+  name,
+  agentBusy,
+  onClose,
+  onApplied,
+}: Props) {
   const t = useT();
   const [draft, setDraft] = useState<DraftColor[] | null>(null);
   const [selected, setSelected] = useState(0);
@@ -143,6 +153,10 @@ export function PaletteEditorDialog({ api, name, onClose, onApplied }: Props) {
   };
 
   const remove = (color: DraftColor) => {
+    if (agentBusy && color.from !== null && color.used) {
+      setFailure(t("palette.agentBusy"));
+      return;
+    }
     // A color that sprites use needs a replacement for its pixels.
     if (color.from !== null && color.used) setReplacing(color);
     else drop(color, null);
@@ -252,7 +266,19 @@ export function PaletteEditorDialog({ api, name, onClose, onApplied }: Props) {
                             ? t("palette.errorBadKey")
                             : null;
                     }}
-                    onValid={(text) => change(current.id, { key: text })}
+                    onValid={(text) => {
+                      // A key that changes rewrites the sprites: it waits.
+                      if (
+                        agentBusy &&
+                        current.from !== null &&
+                        text !== current.from
+                      ) {
+                        setFailure(t("palette.agentBusy"));
+                        return;
+                      }
+                      setFailure(null);
+                      change(current.id, { key: text });
+                    }}
                   />
                 </div>
               </div>

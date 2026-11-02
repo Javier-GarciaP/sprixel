@@ -17,6 +17,7 @@ afterEach(cleanup);
 async function open(
   colors: PaletteEntry[] = sampleColors,
   language: "en" | "es" = "en",
+  agentBusy = false,
 ) {
   const api = new FakePaletteApi(colors);
   const onClose = vi.fn();
@@ -26,6 +27,7 @@ async function open(
       <PaletteEditorDialog
         api={api}
         name="dungeon16"
+        agentBusy={agentBusy}
         onClose={onClose}
         onApplied={onApplied}
       />
@@ -286,5 +288,53 @@ describe("Palette editor dialog", () => {
     await open(sampleColors, "es");
     expect(screen.getByRole("button", { name: "Hecho" })).toBeTruthy();
     expect(screen.getByLabelText("Clave (1 letra)")).toBeTruthy();
+  });
+
+  // Checks the "Agent is drawing" scenario: while an agent writes, changing a
+  // key shows the message (wait or stop the agent) and the key does not
+  // change, but the color value can still be changed.
+  it("blocks key changes while an agent writes", async () => {
+    const { api } = await open(sampleColors, "en", true);
+    fireEvent.click(row("red"));
+    type("Key (1 letter)", "H");
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Wait for it to finish or stop it first",
+    );
+    expect(screen.queryByText(/text grids/)).toBeNull();
+    type("Color (hex)", "#D03030");
+    done();
+    await waitFor(() => expect(api.applied).toHaveLength(1));
+    expect(api.applied[0].colors[1]).toMatchObject({
+      from: "R",
+      key: "R",
+      hex: "#D03030",
+    });
+  });
+
+  // Checks that a used color cannot be removed while an agent writes (its
+  // pixels would be rewritten), but an unused one can.
+  it("blocks removing a used color while an agent writes", async () => {
+    await open(sampleColors, "en", true);
+    fireEvent.click(row("red"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove color" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Wait for it",
+    );
+    expect(screen.queryByLabelText("Replace with")).toBeNull();
+    fireEvent.click(row("green"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove color" }));
+    expect(screen.queryByRole("button", { name: /^green / })).toBeNull();
+  });
+
+  // Checks that the message of the core is shown too (the agent can start
+  // after the dialog opened).
+  it("shows the agent message when the core refuses the edit", async () => {
+    const { api, onClose } = await open();
+    api.failWith = { code: "agent_writing" };
+    done();
+    expect((await screen.findAllByRole("alert"))[0].textContent).toContain(
+      "Wait for it to finish",
+    );
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -277,5 +277,6 @@
   "palette.errorEmptyName": "The color needs a name.",
   "palette.errorBadHex": "Use a color like #F04545.",
   "palette.errorFull": "The palette is full.",
-  "palette.errorReplacement": "Choose a replacement for the removed colors that sprites use."
+  "palette.errorReplacement": "Choose a replacement for the removed colors that sprites use.",
+  "palette.agentBusy": "An agent is writing to this sprite. Wait for it to finish or stop it first to change keys."
 }

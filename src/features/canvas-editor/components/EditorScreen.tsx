@@ -508,6 +508,7 @@ function Ready(props: ReadyProps) {
         <PaletteEditorDialog
           api={props.paletteApi}
           name={info.paletteName}
+          agentBusy={writing !== null}
           onClose={() => setEditingPalette(false)}
           onApplied={props.reload}
         />

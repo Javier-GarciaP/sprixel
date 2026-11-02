@@ -4,8 +4,9 @@
 //! commands at the end add the `project://changed` event.
 
 use super::browser::{self, CHANGED_EVENT, ChangedEvent, CoreError};
+use super::editor::EditorState;
 use super::project::{self, ProjectState};
-use crate::document::{ColorEdit, DocError, Color};
+use crate::document::{Color, ColorEdit, DocError, Operation, SpriteRef};
 use serde::{Deserialize, Serialize};
 
 const USER: &str = crate::history::USER;
@@ -75,9 +76,13 @@ pub fn palette_info(state: &ProjectState, name: &str) -> Result<PaletteInfo, Cor
     .ok_or_else(CoreError::no_project)?
 }
 
-/// Applies the editor session as one history entry by the user.
+/// Applies the editor session as one history entry by the user. While an
+/// agent writes to a sprite that uses the palette, an edit that rewrites
+/// pixels (a new key, a removed color) is refused with `agent_writing`; a new
+/// color value or name is applied.
 pub fn apply_edit(
     state: &ProjectState,
+    agents: &EditorState,
     name: &str,
     colors: &[ColorArg],
     replacements: &[Replacement],
@@ -101,6 +106,21 @@ pub fn apply_edit(
         .collect::<Result<Vec<_>, DocError>>()?;
     browser::change(state, |session| {
         let ops = session.project.palette_edit_operations(name, &edits, &replacements)?;
+        let rewrites = ops
+            .iter()
+            .any(|op| matches!(op, Operation::SetPalette { pixels, .. } if !pixels.is_empty()));
+        if rewrites {
+            let writing = agents.writing().and_then(|w| {
+                let sprite = SpriteRef { folder: w.sprite.folder, name: w.sprite.name };
+                session.project.find_sprite(&sprite).map(|s| s.palette.clone())
+            });
+            if writing.is_some_and(|palette| palette.eq_ignore_ascii_case(name)) {
+                return Err(DocError::new(
+                    "agent_writing",
+                    "an agent is writing to a sprite that uses this palette, wait or stop it first",
+                ));
+            }
+        }
         let touched = session.apply(USER, ops)?;
         Ok(((), touched))
     })
@@ -119,11 +139,12 @@ pub fn palette_info_of(
 pub fn palette_apply(
     app: tauri::AppHandle,
     state: tauri::State<ProjectState>,
+    agents: tauri::State<EditorState>,
     name: String,
     colors: Vec<ColorArg>,
     replacements: Vec<Replacement>,
 ) -> Result<(), CoreError> {
-    let event = apply_edit(&state, &name, &colors, &replacements)?;
+    let event = apply_edit(&state, &agents, &name, &colors, &replacements)?;
     let _ = tauri::Emitter::emit(&app, CHANGED_EVENT, event);
     Ok(())
 }
@@ -233,7 +254,7 @@ mod tests {
         let (_dir, state) = open();
         let mut colors = same();
         colors[0].hex = "#d03030".to_string();
-        let event = apply_edit(&state, "main", &colors, &[]).unwrap();
+        let event = apply_edit(&state, &EditorState::default(), "main", &colors, &[]).unwrap();
         assert!(touches(&event, "palette", &["main"]));
         assert!(!touches(&event, "sprite", &["goblin"]));
         assert_eq!(palette_info(&state, "main").unwrap().colors[0].hex, "#D03030");
@@ -248,7 +269,7 @@ mod tests {
         let (_dir, state) = open();
         let mut colors = same();
         colors[0].key = "H".to_string();
-        let event = apply_edit(&state, "main", &colors, &[]).unwrap();
+        let event = apply_edit(&state, &EditorState::default(), "main", &colors, &[]).unwrap();
         assert!(touches(&event, "sprite", &["goblin"]));
         assert_eq!(goblin_pixels(&state), "HB..");
         browser::undo(&state).unwrap();
@@ -262,11 +283,11 @@ mod tests {
     fn a_used_color_needs_a_replacement() {
         let (_dir, state) = open();
         let without_blue = vec![same()[0].clone(), same()[2].clone()];
-        let error = apply_edit(&state, "main", &without_blue, &[]).unwrap_err();
+        let error = apply_edit(&state, &EditorState::default(), "main", &without_blue, &[]).unwrap_err();
         assert_eq!(error.code, "replacement_needed");
         assert_eq!(goblin_pixels(&state), "RB..");
         let replacement = Replacement { key: "B".to_string(), with: "G".to_string() };
-        apply_edit(&state, "main", &without_blue, &[replacement]).unwrap();
+        apply_edit(&state, &EditorState::default(), "main", &without_blue, &[replacement]).unwrap();
         assert_eq!(goblin_pixels(&state), "RG..");
         assert_eq!(palette_info(&state, "main").unwrap().colors.len(), 2);
     }
@@ -279,7 +300,7 @@ mod tests {
         let code = |key: &str| {
             let mut colors = same();
             colors[0].key = key.to_string();
-            apply_edit(&state, "main", &colors, &[]).unwrap_err().code
+            apply_edit(&state, &EditorState::default(), "main", &colors, &[]).unwrap_err().code
         };
         assert_eq!(code("."), "reserved_key");
         assert_eq!(code(" "), "reserved_key");
@@ -295,8 +316,65 @@ mod tests {
         let (_dir, state) = open();
         let mut colors = same();
         colors.push(arg(None, "Y", "yellow", "#F5C542"));
-        apply_edit(&state, "main", &colors, &[]).unwrap();
+        apply_edit(&state, &EditorState::default(), "main", &colors, &[]).unwrap();
         assert_eq!(palette_info(&state, "main").unwrap().colors.len(), 4);
+    }
+
+    fn writing(frame: u32, sprite: &str) -> EditorState {
+        let agents = EditorState::default();
+        agents.begin(crate::ipc::editor::AgentWrite {
+            agent: "Claude Code".to_string(),
+            sprite: crate::ipc::editor::SpriteArg { folder: vec![], name: sprite.to_string() },
+            frame,
+        });
+        agents
+    }
+
+    // Checks the "Agent is drawing" scenario: while an agent writes to a
+    // sprite that uses the palette, a key change and a removal that rewrites
+    // pixels are refused with `agent_writing` and nothing changes; when the
+    // agent ends, the same edit is applied.
+    #[test]
+    fn key_changes_wait_for_the_agent() {
+        let (_dir, state) = open();
+        let agents = writing(1, "goblin");
+        let mut renamed = same();
+        renamed[0].key = "H".to_string();
+        let error = apply_edit(&state, &agents, "main", &renamed, &[]).unwrap_err();
+        assert_eq!(error.code, "agent_writing");
+        assert_eq!(goblin_pixels(&state), "RB..");
+        assert_eq!(palette_info(&state, "main").unwrap().colors[0].key, "R");
+
+        let without_blue = vec![same()[0].clone(), same()[2].clone()];
+        let replacement = Replacement { key: "B".to_string(), with: "G".to_string() };
+        let error = apply_edit(&state, &agents, "main", &without_blue, &[replacement]).unwrap_err();
+        assert_eq!(error.code, "agent_writing");
+
+        agents.end();
+        apply_edit(&state, &agents, "main", &renamed, &[]).unwrap();
+        assert_eq!(goblin_pixels(&state), "HB..");
+    }
+
+    // Checks that color values, names and new colors are still applied while
+    // an agent writes, and that an agent on a sprite of another palette does
+    // not block key changes of this one.
+    #[test]
+    fn values_do_not_wait_and_other_palettes_do_not_block() {
+        let (_dir, state) = open();
+        let agents = writing(1, "goblin");
+        let mut colors = same();
+        colors[0].hex = "#D03030".to_string();
+        colors[1].name = "sky".to_string();
+        colors.push(arg(None, "Y", "yellow", "#F5C542"));
+        apply_edit(&state, &agents, "main", &colors, &[]).unwrap();
+        assert_eq!(palette_info(&state, "main").unwrap().colors.len(), 4);
+
+        // An agent writing to a sprite that is not in the project does not
+        // block this palette.
+        let elsewhere = writing(1, "other");
+        let mut renamed = vec![colors[0].clone(), colors[1].clone(), colors[2].clone(), colors[3].clone()];
+        renamed[0].key = "H".to_string();
+        apply_edit(&state, &elsewhere, "main", &renamed, &[]).unwrap();
     }
 
     // Checks the wire format the UI reads.

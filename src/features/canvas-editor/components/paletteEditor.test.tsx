@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
-import { mockLayout, renderEditor } from "../testing/renderEditor";
+import { goblin, mockLayout, renderEditor } from "../testing/renderEditor";
 
 beforeEach(() => mockLayout(500, 300));
 afterEach(() => {
@@ -57,5 +63,22 @@ describe("Palette editor in the editor", () => {
     expect(api.paletteEdits).toHaveLength(1);
     expect(api.paletteEdits[0].colors[0].hex).toBe("#D03030");
     await waitFor(() => expect(load).toHaveBeenCalled());
+  });
+
+  // Checks task 2.3 on the screen: an agent that writes to the open sprite
+  // blocks key changes in the palette editor (a simulated agent).
+  it("blocks key changes while an agent writes to the sprite", async () => {
+    const api = await openEditor();
+    act(() => api.emit({ agent: "Claude Code", sprite: goblin, frame: 1 }));
+    await screen.findByTestId("agent-border");
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(await screen.findByRole("button", { name: /^R R$/ }));
+    fireEvent.change(screen.getByLabelText("Key (1 letter)"), {
+      target: { value: "H" },
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Wait for it to finish",
+    );
   });
 });
