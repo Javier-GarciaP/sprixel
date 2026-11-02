@@ -381,3 +381,97 @@ fn a_whole_frame_starts_at_the_corner_and_other_frames_stay() {
     assert_eq!(list[0].0, 1);
     assert_eq!(list[0].1.len(), 2);
 }
+
+// ---- Round trip (task 1.4) ----
+
+// A small random number generator (xorshift), so the test has no dependency
+// and always runs the same cases.
+struct Random(u64);
+
+impl Random {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
+    fn below(&mut self, limit: usize) -> usize {
+        (self.next() % limit as u64) as usize
+    }
+}
+
+// A palette with every key that exists: the 93 printable characters but ".".
+fn full_palette() -> Palette {
+    Palette {
+        name: "all".to_string(),
+        colors: ('!'..='~')
+            .filter(|key| *key != '.')
+            .map(|key| Color { key, name: format!("color {}", key as u32), hex: "#336699".to_string() })
+            .collect(),
+    }
+}
+
+// Writes a sprite with random pixels to text, reads it back, writes it on a
+// blank sprite of the same size, and checks every pixel.
+fn round_trip(random: &mut Random, width: u32, height: u32, frames: usize) {
+    let palette = full_palette();
+    let keys: Vec<u8> = std::iter::once(b'.').chain(palette.colors.iter().map(|c| c.key as u8)).collect();
+    let mut sprite = Sprite::new("random", width, height, "all").unwrap();
+    for number in 0..frames {
+        if number > 0 {
+            sprite.frame_durations.push(100);
+            sprite.layers[0].frames.push(Frame::blank(width, height));
+        }
+        // Few random pixels in big sprites would hide nothing, so all of them
+        // are random; rows of keys that look like keywords come out by chance
+        // in the small ones.
+        for pixel in sprite.layers[0].frames[number].pixels.iter_mut() {
+            *pixel = keys[random.below(keys.len())];
+        }
+    }
+    let text = write_grid(&sprite, &palette, None);
+    let mut copy = Sprite::new("random", width, height, "all").unwrap();
+    for _ in 1..frames {
+        copy.frame_durations.push(100);
+        copy.layers[0].frames.push(Frame::blank(width, height));
+    }
+    let grid = Grid::check(&text, &copy, &palette, &whole())
+        .unwrap_or_else(|errors| panic!("{width}x{height}: {:?}", &errors[..errors.len().min(3)]));
+    for (number, changes) in grid.pixel_changes(&copy, &whole()) {
+        for change in changes {
+            copy.layers[0].frames[number as usize - 1].pixels[change.y as usize * width as usize + change.x as usize] =
+                change.key as u8;
+        }
+    }
+    assert_eq!(copy, sprite, "{width}x{height} with {frames} frames");
+}
+
+// Checks "Round trip": for random sprites, from 1x1 to 512x512, writing the
+// sprite as text and reading it back gives the same pixels and size. The
+// sprites use all 93 keys, including "#", ":" and letters that spell words.
+#[test]
+fn random_sprites_survive_a_round_trip() {
+    let mut random = Random(0x9E37_79B9_7F4A_7C15);
+    for _ in 0..300 {
+        let (width, height) = (1 + random.below(24) as u32, 1 + random.below(24) as u32);
+        let frames = 1 + random.below(3);
+        round_trip(&mut random, width, height, frames);
+    }
+    for (width, height) in [(1, 512), (512, 1), (512, 512), (300, 200)] {
+        round_trip(&mut random, width, height, 1);
+    }
+}
+
+// Checks the corner case that the random test can miss: a sprite one pixel
+// wide whose row is the key "#" must not be read as a comment.
+#[test]
+fn a_one_pixel_wide_row_of_hash_is_a_row() {
+    let mut random = Random(7);
+    for _ in 0..20 {
+        round_trip(&mut random, 1, 3, 1);
+    }
+    let (grid, errors) = Grid::parse("frame 1\n#\n");
+    assert!(errors.is_empty(), "{errors:?}");
+    assert_eq!(grid.frames[0].rows.len(), 1);
+}

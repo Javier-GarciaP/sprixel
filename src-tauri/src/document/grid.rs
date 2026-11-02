@@ -326,7 +326,8 @@ impl Grid {
 }
 
 // A comment is a line that starts with `#`. Inside a frame, "#" is also a
-// color key, so there only "#" alone or "# " followed by text is a comment.
+// color key, so there only "# " followed by text is a comment (a row of one
+// pixel can be "#" alone).
 // In the legend, a line that has the form of a legend line for the key "#"
 // (`# name #RRGGBB`) is a legend line.
 fn is_comment(line: &str, part: &Part) -> bool {
@@ -335,7 +336,7 @@ fn is_comment(line: &str, part: &Part) -> bool {
     }
     let spaced = line.len() == 1 || line.as_bytes()[1] == b' ' || line.as_bytes()[1] == b'\t';
     match part {
-        Part::Frame => spaced,
+        Part::Frame => line.len() > 1 && spaced,
         Part::Legend => !(spaced && matches!(legend_line(0, line), Ok(LegendLine { hex: Some(_), .. }))),
         Part::Header => true,
     }
