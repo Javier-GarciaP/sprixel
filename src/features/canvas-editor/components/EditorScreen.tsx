@@ -460,6 +460,7 @@ function Ready(props: ReadyProps) {
             frameCount={info.frameCount}
             revision={info.revision}
             onFrame={props.onFrame}
+            onApplied={props.reload}
           />
         )}
         <div

@@ -303,5 +303,12 @@
   "text.checkError": "No se pudo comprobar el texto: {message}",
   "text.liveView": "Vista en vivo",
   "text.lastValid": "Último estado válido",
-  "text.preview": "Vista previa del texto"
+  "text.preview": "Vista previa del texto",
+  "text.copy": "Copiar",
+  "text.paste": "Pegar",
+  "text.apply": "Aplicar",
+  "text.copied": "Matriz copiada",
+  "text.copyError": "No se pudo copiar la matriz: {message}",
+  "text.pasteError": "No se pudo leer el portapapeles: {message}",
+  "text.applyError": "No se aplicó la matriz: {message}"
 }

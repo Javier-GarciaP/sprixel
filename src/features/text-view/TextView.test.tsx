@@ -30,11 +30,13 @@ function Host({
   frame = 1,
   frameCount = 2,
   onFrame,
+  onApplied,
 }: {
   api: FakeTextApi;
   frame?: number;
   frameCount?: number;
   onFrame?: (frame: number) => void;
+  onApplied?: () => void;
 }) {
   const [current, setCurrent] = useState(frame);
   return (
@@ -49,6 +51,7 @@ function Host({
           setCurrent(next);
           onFrame?.(next);
         }}
+        onApplied={() => onApplied?.()}
       />
     </I18nProvider>
   );
@@ -250,5 +253,106 @@ describe("Errors in the text", () => {
     render(<Host api={api} />);
     expect((await screen.findByRole("alert")).textContent).toContain("no core");
     expect(screen.queryByText(/^Valid/)).toBeNull();
+  });
+});
+
+const button = (name: string) =>
+  screen.getByRole("button", { name }) as HTMLButtonElement;
+
+describe("Apply, copy and paste", () => {
+  // Checks that Copy puts the whole text on the clipboard, exactly as it is
+  // (the format the AI tools read), and says so.
+  it("copies the whole grid", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    fireEvent.click(button("Copy"));
+    await screen.findByText("Grid copied");
+    expect(api.clipboard).toBe(goblinText());
+  });
+
+  // Checks the "Paste a grid from an AI" scenario: a valid grid from the
+  // clipboard replaces the text, is checked, and Apply sends exactly that
+  // text to the core and tells the editor to read the sprite again.
+  it("pastes a valid grid and applies it", async () => {
+    const api = new FakeTextApi();
+    const onApplied = vi.fn();
+    render(<Host api={api} onApplied={onApplied} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    const rows = GOBLIN_ROWS.map((row) => row.replace(/R/g, "A"));
+    api.clipboard = goblinText(rows);
+    fireEvent.click(button("Paste"));
+    await waitFor(() => expect(box().value).toBe(goblinText(rows)));
+    await waitFor(() =>
+      expect(preview().getAttribute("data-rows")).toBe(rows.join("|")),
+    );
+    await waitFor(() => expect(button("Apply").disabled).toBe(false));
+    fireEvent.click(button("Apply"));
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+    expect(api.applied).toEqual([goblinText(rows)]);
+  });
+
+  // Checks the end of an apply: the text of the draft is dropped and the text
+  // is read again from the core, so the view shows what the core has.
+  it("reads the text again after Apply", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    typeRow(0, "....NRRR");
+    await waitFor(() => expect(button("Apply").disabled).toBe(false));
+    const reads = api.loaded.length;
+    api.texts[1] = goblinText(GOBLIN_ROWS, 1) + "# saved\n";
+    fireEvent.click(button("Apply"));
+    await waitFor(() => expect(box().value).toContain("# saved"));
+    expect(api.loaded.length).toBeGreaterThan(reads);
+  });
+
+  // Checks that Apply is off while there is an error, and while the text
+  // waits to be checked, so a grid that was not checked is never sent.
+  it("disables Apply when the text has an error", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(button("Apply").disabled).toBe(false));
+    typeRow(6, ".NAAAAN");
+    expect(button("Apply").disabled).toBe(true);
+    await waitFor(() =>
+      expect(status().getAttribute("data-tone")).toBe("error"),
+    );
+    expect(button("Apply").disabled).toBe(true);
+    fireEvent.click(button("Apply"));
+    expect(api.applied).toEqual([]);
+  });
+
+  // Checks that a grid the core refuses (an agent is drawing on the frame)
+  // shows why, keeps the text the person wrote and does not tell the editor.
+  it("shows why the core did not apply the grid", async () => {
+    const api = new FakeTextApi();
+    api.failApply = {
+      code: "frame_busy",
+      message: "an agent is drawing on this frame",
+    };
+    const onApplied = vi.fn();
+    render(<Host api={api} onApplied={onApplied} />);
+    await waitFor(() => expect(button("Apply").disabled).toBe(false));
+    typeRow(0, "....NRRR");
+    await waitFor(() => expect(button("Apply").disabled).toBe(false));
+    fireEvent.click(button("Apply"));
+    await screen.findByText(
+      "The grid was not applied: an agent is drawing on this frame",
+    );
+    expect(onApplied).not.toHaveBeenCalled();
+    expect(box().value).toContain("....NRRR");
+  });
+
+  // Checks that a clipboard that cannot be read shows an error and keeps the
+  // text as it was.
+  it("keeps the text when the clipboard cannot be read", async () => {
+    const api = new FakeTextApi();
+    api.clipboardBlocked = true;
+    render(<Host api={api} />);
+    await waitFor(() => expect(box().value).toBe(goblinText()));
+    fireEvent.click(button("Paste"));
+    await screen.findByText(/The clipboard could not be read/);
+    expect(box().value).toBe(goblinText());
   });
 });

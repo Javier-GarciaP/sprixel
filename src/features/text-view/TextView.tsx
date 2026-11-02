@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button, Toast } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import { asGridFailure, coreTextApi } from "./api";
 import { GridPreview } from "./GridPreview";
@@ -29,6 +30,8 @@ type Props = {
   // Changes when the sprite changes, so the text is read again.
   revision: number;
   onFrame: (frame: number) => void;
+  // Called after a grid was applied, so the editor reads the sprite again.
+  onApplied: () => void;
 };
 
 // The sprite as a text grid: the palette, the legend and the rows of one
@@ -40,6 +43,7 @@ export function TextView({
   frameCount,
   revision,
   onFrame,
+  onApplied,
 }: Props) {
   const t = useT();
   // The text of the frame as the core has it.
@@ -55,6 +59,14 @@ export function TextView({
     text: string;
     check: GridCheck;
   } | null>(null);
+  // Something to tell the person for a few seconds.
+  const [notice, setNotice] = useState<{
+    tone: "neutral" | "error";
+    message: string;
+  } | null>(null);
+  const [applying, setApplying] = useState(false);
+  // Grows after an apply, so the text is read again from the core.
+  const [reads, setReads] = useState(0);
   const [lastValid, setLastValid] = useState<Preview | null>(null);
   const path = JSON.stringify([...sprite.folder, sprite.name]);
 
@@ -75,7 +87,7 @@ export function TextView({
     return () => {
       stopped = true;
     };
-  }, [api, path, frame, revision, t]);
+  }, [api, path, frame, revision, reads, t]);
 
   const core = loaded?.frame === frame ? loaded.text : null;
   const text = drafts[frame] ?? core;
@@ -114,6 +126,66 @@ export function TextView({
       clearTimeout(timer);
     };
   }, [api, path, text, core, t]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const why = (failure: unknown) => {
+    const { message, code } = asGridFailure(failure);
+    return message ?? code;
+  };
+
+  // Writes the text into the sprite as one undoable action.
+  const apply = () => {
+    if (text === null) return;
+    setApplying(true);
+    api
+      .apply(sprite, text)
+      .then(() => {
+        // The core writes the text again (new legend colors, for example).
+        setDrafts((all) => {
+          const others = { ...all };
+          delete others[frame];
+          return others;
+        });
+        setReads((n) => n + 1);
+        onApplied();
+      })
+      .catch((failure) =>
+        setNotice({
+          tone: "error",
+          message: t("text.applyError", { message: why(failure) }),
+        }),
+      )
+      .finally(() => setApplying(false));
+  };
+
+  const copy = () => {
+    if (text === null) return;
+    api.writeClipboard(text).then(
+      () => setNotice({ tone: "neutral", message: t("text.copied") }),
+      (failure) =>
+        setNotice({
+          tone: "error",
+          message: t("text.copyError", { message: why(failure) }),
+        }),
+    );
+  };
+
+  // Replaces the text with the clipboard. The text is checked as any typing.
+  const paste = () => {
+    api.readClipboard().then(
+      (pasted) => setDrafts((all) => ({ ...all, [frame]: pasted })),
+      (failure) =>
+        setNotice({
+          tone: "error",
+          message: t("text.pasteError", { message: why(failure) }),
+        }),
+    );
+  };
 
   // The answer is about the text on the screen only when they match.
   const current = result && result.text === text ? result.check : null;
@@ -270,7 +342,28 @@ export function TextView({
           {invalid ? t("text.lastValid") : t("text.liveView")}
         </p>
         <GridPreview preview={lastValid} dimmed={invalid} />
+        <div className="flex w-full gap-2">
+          <Button
+            className="flex-1 justify-center"
+            onClick={copy}
+            disabled={text === null}
+          >
+            {t("text.copy")}
+          </Button>
+          <Button className="flex-1 justify-center" onClick={paste}>
+            {t("text.paste")}
+          </Button>
+          <Button
+            variant="primary"
+            className="flex-1 justify-center"
+            onClick={apply}
+            disabled={!current || invalid || applying}
+          >
+            {t("text.apply")}
+          </Button>
+        </div>
       </aside>
+      {notice && <Toast tone={notice.tone} message={notice.message} />}
     </div>
   );
 }

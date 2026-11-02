@@ -303,5 +303,12 @@
   "text.checkError": "The text could not be checked: {message}",
   "text.liveView": "Live view",
   "text.lastValid": "Last valid state",
-  "text.preview": "Preview of the text"
+  "text.preview": "Preview of the text",
+  "text.copy": "Copy",
+  "text.paste": "Paste",
+  "text.apply": "Apply",
+  "text.copied": "Grid copied",
+  "text.copyError": "The grid could not be copied: {message}",
+  "text.pasteError": "The clipboard could not be read: {message}",
+  "text.applyError": "The grid was not applied: {message}"
 }

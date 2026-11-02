@@ -19,7 +19,7 @@
 
 - [x] 3.1 Build the Canvas and Text switch and the text area with line numbers and the legend, and verify against screen 21
 - [x] 3.2 Build live validation, the status line and error line highlighting with the last valid preview, and verify against screen 22
-- [ ] 3.3 Build Apply, Copy and Paste and verify the paste-and-apply scenario
+- [x] 3.3 Build Apply, Copy and Paste and verify the paste-and-apply scenario
 
 ## 4. Documentation
 

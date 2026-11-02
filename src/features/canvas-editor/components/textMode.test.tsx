@@ -3,7 +3,11 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeTextApi } from "@/features/text-view";
 import { FakeEditorApi } from "../testing/fakeApi";
-import { mockLayout, renderEditor } from "../testing/renderEditor";
+import {
+  colorOfPixel,
+  mockLayout,
+  renderEditor,
+} from "../testing/renderEditor";
 
 beforeEach(() => mockLayout(500, 300));
 afterEach(() => {
@@ -51,5 +55,37 @@ describe("Canvas and Text switch", () => {
         .find((b) => b.getAttribute("aria-current") === "true")
         ?.getAttribute("aria-label"),
     ).toBe("Frame 3");
+  });
+
+  // Checks the "Paste a grid from an AI" scenario on the whole editor: a grid
+  // is pasted and applied, the canvas reads the sprite again, and after going
+  // back to Canvas it shows the new pixels.
+  it("shows the applied grid on the canvas", async () => {
+    const editor = new FakeEditorApi(2, 2, 1, [{ key: "R", hex: "#F04545" }]);
+    const text = new FakeTextApi();
+    text.size = { width: 2, height: 2 };
+    text.texts[1] = "frame 1\n..\n..\n";
+    // What the core does when the grid is applied: the pixels change.
+    text.apply = async (_sprite, grid) => {
+      text.applied.push(grid);
+      editor.setFrame(1, ["R.", ".R"]);
+      editor.revision++;
+    };
+    renderEditor(editor, { textApi: text });
+    fireEvent.click(await screen.findByRole("button", { name: "Text" }));
+    await screen.findByRole("textbox", { name: "Text grid" });
+    text.clipboard = "frame 1\nR.\n.R\n";
+    fireEvent.click(screen.getByRole("button", { name: "Paste" }));
+    const apply = screen.getByRole("button", { name: "Apply" });
+    await waitFor(() =>
+      expect((apply as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(apply);
+    await waitFor(() => expect(text.applied).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "Canvas" }));
+    await waitFor(() =>
+      expect(colorOfPixel(2, 2, 0, 0).slice(0, 3)).toEqual([240, 69, 69]),
+    );
+    expect(colorOfPixel(2, 2, 1, 0)[0]).not.toBe(240);
   });
 });
