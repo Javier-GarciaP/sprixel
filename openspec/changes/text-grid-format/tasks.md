@@ -23,4 +23,4 @@
 
 ## 4. Documentation
 
-- [ ] 4.1 Update `docs/text-grid-format.md` with any change and verify every example parses
+- [x] 4.1 Update `docs/text-grid-format.md` with any change and verify every example parses

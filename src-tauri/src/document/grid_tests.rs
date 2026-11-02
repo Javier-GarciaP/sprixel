@@ -570,3 +570,54 @@ fn a_grid_with_no_change_gives_no_operations() {
     let errors = project.grid_operations(&nobody, "frame 1\n..\n", &GridOptions::default()).unwrap_err();
     assert_eq!(errors[0].code, "not_found");
 }
+
+// ---- The documentation (task 4.1) ----
+
+// Every grid in docs/text-grid-format.md, in the order they are written: the
+// fenced blocks that start with `palette:`, `legend` or `frame `.
+fn grids_in_the_doc() -> Vec<String> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../docs/text-grid-format.md");
+    // Git may turn line endings into CRLF on Windows; the format uses LF.
+    let doc = std::fs::read_to_string(path).unwrap().replace("\r\n", "\n");
+    doc.split("```")
+        .skip(1)
+        .step_by(2)
+        .map(|block| block.trim_start_matches('\n').to_string())
+        .filter(|block| ["palette:", "legend", "frame "].iter().any(|start| block.starts_with(start)))
+        .collect()
+}
+
+// Checks that every example grid of the documentation is a valid grid: a grid
+// with the size of the goblin is a whole frame, a smaller one is written as a
+// region. The example that adds the color `Q` also adds it to the palette.
+#[test]
+fn every_grid_in_the_format_doc_is_valid() {
+    let grids = grids_in_the_doc();
+    // The goblin, the legend color and the region: if one disappears from
+    // the page this test must be changed on purpose.
+    assert_eq!(grids.len(), 3, "{grids:?}");
+    let sprite = Sprite::new("goblin", 8, 8, "dungeon16").unwrap();
+    for text in &grids {
+        let (grid, errors) = Grid::parse(text);
+        assert!(errors.is_empty(), "{text}\n{errors:?}");
+        let whole = grid.frames[0].rows.len() == 8;
+        let options = GridOptions { region: if whole { None } else { Some((3, 5)) }, skip_transparent: false };
+        let errors = grid.validate(&sprite, &dungeon16(), &options);
+        assert!(errors.is_empty(), "{text}\n{errors:?}");
+    }
+    let (legend_example, _) = Grid::parse(&grids[1]);
+    let (added, _) = legend_example.legend_colors(&dungeon16());
+    assert_eq!(added.len(), 1);
+    assert_eq!((added[0].key, added[0].hex.as_str()), ('Q', "#1FB5A8"));
+}
+
+// Checks that the first example of the documentation is what the writer
+// gives for the same sprite, apart from the spaces of the legend columns.
+#[test]
+fn the_first_doc_example_is_what_the_writer_writes() {
+    let squeeze = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(
+        squeeze(&grids_in_the_doc()[0]),
+        squeeze(&write_grid(&goblin(), &dungeon16(), Some(1)))
+    );
+}
