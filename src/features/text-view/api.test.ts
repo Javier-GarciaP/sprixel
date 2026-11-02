@@ -50,17 +50,21 @@ describe("core text api", () => {
       ],
     };
     invoke.mockRejectedValue(failure);
-    const error = await coreTextApi.apply(sprite, "x").catch(asGridFailure);
-    expect(error.errors).toHaveLength(1);
-    expect(error.code).toBe("row_length");
+    const error = await coreTextApi
+      .apply(sprite, "x")
+      .then(() => null, asGridFailure);
+    expect(error?.errors).toHaveLength(1);
+    expect(error?.code).toBe("row_length");
   });
 
   // Checks that outside the app (no core) a call fails with a clear code,
   // and that anything that is not an error object becomes an `io` failure.
   it("fails with no_core outside the app", async () => {
     delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
-    const error = await coreTextApi.check(sprite, "x").catch(asGridFailure);
-    expect(error.code).toBe("no_core");
+    const error = await coreTextApi
+      .check(sprite, "x")
+      .then(() => null, asGridFailure);
+    expect(error?.code).toBe("no_core");
     expect(invoke).not.toHaveBeenCalled();
     expect(asGridFailure("boom")).toEqual({ code: "io", message: "boom" });
   });

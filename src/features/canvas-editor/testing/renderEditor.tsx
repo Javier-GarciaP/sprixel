@@ -9,6 +9,7 @@ import {
 } from "@/shared/lib/preferences";
 import type { Clock, FramesApi } from "@/features/frames-animations";
 import type { PaletteApi } from "@/features/palette-editor";
+import type { TextApi } from "@/features/text-view";
 import { EditorScreen } from "../components/EditorScreen";
 import type { CommandHandlers } from "../hooks/useEditorCommands";
 import type { EditorApi, SpriteRef } from "../api/types";
@@ -96,10 +97,12 @@ export function pictureAt(x: number, y: number): number[] {
 function Host({
   sprite,
   api,
+  textApi,
   onGoToProject,
 }: {
   sprite: SpriteRef | null;
   api: EditorApi;
+  textApi?: TextApi;
   onGoToProject?: () => void;
 }) {
   const [handlers, setHandlers] = useState<CommandHandlers>({});
@@ -115,6 +118,7 @@ function Host({
       api={api}
       framesApi={api as unknown as FramesApi}
       paletteApi={api as unknown as PaletteApi}
+      textApi={textApi}
       clock={testClock}
       onCommands={register}
       onGoToProject={onGoToProject}
@@ -129,6 +133,8 @@ export function renderEditor(
     language?: "en" | "es";
     pixelGrid?: boolean;
     onGoToProject?: () => void;
+    // The fake core of the Text view, when the test opens it.
+    textApi?: TextApi;
   } = {},
 ) {
   const language = options.language ?? "en";
@@ -143,6 +149,7 @@ export function renderEditor(
         <Host
           sprite={sprite}
           api={current}
+          textApi={options.textApi}
           onGoToProject={options.onGoToProject}
         />
       </I18nProvider>

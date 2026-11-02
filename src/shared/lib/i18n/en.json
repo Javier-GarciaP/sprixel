@@ -154,7 +154,7 @@
   "editor.activeTool": "{name} · 1 px",
   "editor.canvasMode": "Canvas",
   "editor.textMode": "Text",
-  "editor.textSoon": "The Text view arrives with the text grid spec",
+  "editor.viewMode": "View",
   "editor.preview": "Preview",
   "editor.previewEmpty": "Draw something to see it here",
   "editor.palette": "Palette",
@@ -291,5 +291,10 @@
   "palette.importFile": "Import a .gpl or .hex file…",
   "palette.importChosen": "File: {name} (change)",
   "palette.errorFormat": "Choose a .gpl or a .hex file.",
-  "palette.errorImport": "The palette could not be made: {message}"
+  "palette.errorImport": "The palette could not be made: {message}",
+  "text.fileName": "{name}.txt",
+  "text.frame": "Frame {n}",
+  "text.frames": "Frames",
+  "text.editor": "Text grid",
+  "text.loadError": "The text could not be read: {message}"
 }

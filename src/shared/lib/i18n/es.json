@@ -154,7 +154,7 @@
   "editor.activeTool": "{name} · 1 px",
   "editor.canvasMode": "Lienzo",
   "editor.textMode": "Texto",
-  "editor.textSoon": "La vista de texto llega con la spec del formato de texto",
+  "editor.viewMode": "Vista",
   "editor.preview": "Vista previa",
   "editor.previewEmpty": "Dibuja algo para verlo aquí",
   "editor.palette": "Paleta",
@@ -291,5 +291,10 @@
   "palette.importFile": "Importar un archivo .gpl o .hex…",
   "palette.importChosen": "Archivo: {name} (cambiar)",
   "palette.errorFormat": "Elige un archivo .gpl o .hex.",
-  "palette.errorImport": "No se pudo crear la paleta: {message}"
+  "palette.errorImport": "No se pudo crear la paleta: {message}",
+  "text.fileName": "{name}.txt",
+  "text.frame": "Frame {n}",
+  "text.frames": "Frames",
+  "text.editor": "Matriz de texto",
+  "text.loadError": "No se pudo leer el texto: {message}"
 }

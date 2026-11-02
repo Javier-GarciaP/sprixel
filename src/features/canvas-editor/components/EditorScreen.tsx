@@ -17,6 +17,7 @@ import {
   corePaletteApi,
   type PaletteApi,
 } from "@/features/palette-editor";
+import { TextView, coreTextApi, type TextApi } from "@/features/text-view";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
@@ -52,6 +53,8 @@ type Props = {
   framesApi?: FramesApi;
   // The calls of the palette editor. The tests give a fake one.
   paletteApi?: PaletteApi;
+  // The calls of the Text view. The tests give a fake one.
+  textApi?: TextApi;
   // The clock of the preview. The tests give a manual one.
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
@@ -64,6 +67,7 @@ export function EditorScreen({
   api = coreEditorApi,
   framesApi = coreFramesApi,
   paletteApi = corePaletteApi,
+  textApi = coreTextApi,
   clock,
   onCommands,
   onGoToProject,
@@ -94,6 +98,7 @@ export function EditorScreen({
       api={api}
       framesApi={framesApi}
       paletteApi={paletteApi}
+      textApi={textApi}
       clock={clock}
       onCommands={onCommands}
     />
@@ -105,6 +110,7 @@ function OpenSprite({
   api,
   framesApi,
   paletteApi,
+  textApi,
   clock,
   onCommands,
 }: {
@@ -112,6 +118,7 @@ function OpenSprite({
   api: EditorApi;
   framesApi: FramesApi;
   paletteApi: PaletteApi;
+  textApi: TextApi;
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
 }) {
@@ -150,6 +157,7 @@ function OpenSprite({
       api={api}
       framesApi={framesApi}
       paletteApi={paletteApi}
+      textApi={textApi}
       clock={clock}
       onFramesChanged={(select) => {
         if (select) setFrame(select);
@@ -187,6 +195,7 @@ type ReadyProps = {
   clock?: Clock;
   framesApi: FramesApi;
   paletteApi: PaletteApi;
+  textApi: TextApi;
   onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
   // Reads the sprite from the core again.
@@ -260,6 +269,9 @@ function Ready(props: ReadyProps) {
   });
   const [notice, setNotice] = useState<string | null>(null);
   const [editingPalette, setEditingPalette] = useState(false);
+  // The editor shows the sprite as a canvas or as text. The sprite and the
+  // frame are the same in both.
+  const [mode, setMode] = useState<"canvas" | "text">("canvas");
   useEffect(() => {
     setPalette(info.palette);
     setHistory({ canUndo: info.canUndo, canRedo: info.canRedo });
@@ -437,10 +449,22 @@ function Ready(props: ReadyProps) {
               onStop: () => void props.api.stopAgent(),
             }
           }
+          mode={mode}
+          onMode={setMode}
         />
+        {mode === "text" && (
+          <TextView
+            api={props.textApi}
+            sprite={sprite}
+            frame={props.frame}
+            frameCount={info.frameCount}
+            revision={info.revision}
+            onFrame={props.onFrame}
+          />
+        )}
         <div
           data-testid={writing ? "agent-border" : undefined}
-          className={`flex min-h-0 flex-1 ${writing ? "outline-2 -outline-offset-2 outline-amber" : ""}`}
+          className={`min-h-0 flex-1 ${mode === "text" ? "hidden" : "flex"} ${writing ? "outline-2 -outline-offset-2 outline-amber" : ""}`}
         >
           <CanvasArea
             scene={scene}
@@ -461,18 +485,20 @@ function Ready(props: ReadyProps) {
             onStrokeEnd={() => controller.pointerUp()}
           />
         </div>
-        {isBlank(pixels) && (
+        {mode === "canvas" && isBlank(pixels) && (
           <p className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
             {t("editor.hint")}
           </p>
         )}
-        <CanvasStatusBar
-          position={position}
-          zoom={canvas.view.zoom}
-          onZoomIn={() => canvas.zoomIn()}
-          onZoomOut={() => canvas.zoomOut()}
-          onFit={canvas.fit}
-        />
+        {mode === "canvas" && (
+          <CanvasStatusBar
+            position={position}
+            zoom={canvas.view.zoom}
+            onZoomIn={() => canvas.zoomIn()}
+            onZoomOut={() => canvas.zoomOut()}
+            onFit={canvas.fit}
+          />
+        )}
       </section>
       <RightPanel
         preview={
