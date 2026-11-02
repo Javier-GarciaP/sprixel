@@ -16,7 +16,7 @@
 
 ### 3. Safety
 
-- [ ] 3.1 Implement output folder checks (inside the project only), temporary folder writing and replace on success, and verify the outside path and failed write tests
+- [x] 3.1 Implement output folder checks (inside the project only), temporary folder writing and replace on success, and verify the outside path and failed write tests
 
 ### 4. Export tab
 
