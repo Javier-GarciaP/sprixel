@@ -1,5 +1,6 @@
 mod document;
 mod history;
+mod render;
 mod storage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
