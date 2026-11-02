@@ -7,7 +7,7 @@
 ### 1. Rendering
 
 - [x] 1.1 Implement frame rendering with nearest-neighbor scale and verify against fixture images
-- [ ] 1.2 Implement the row packer with spacing and verify the 71x17 example and determinism
+- [x] 1.2 Implement the row packer with spacing and verify the 71x17 example and determinism
 
 ### 2. Formats
 
