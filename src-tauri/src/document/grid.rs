@@ -3,7 +3,8 @@
 //! format is in `docs/text-grid-format.md`. Plain Rust, no Tauri types.
 
 use super::model::{Color, MAX_SIZE, Palette, Sprite, TRANSPARENT};
-use super::operation::PixelChange;
+use super::model::Project;
+use super::operation::{Operation, PixelChange, SpriteRef};
 use serde::Serialize;
 
 /// A problem in a grid. `line` is the line of the text, `row` the row inside
@@ -408,4 +409,34 @@ pub fn write_grid(sprite: &Sprite, palette: &Palette, frame: Option<u32>) -> Str
         }
     }
     out
+}
+
+impl Project {
+    /// Checks a text grid for a sprite and gives the operations that apply
+    /// it: first the colors that the legend adds, then the pixels of each
+    /// frame. Nothing is applied here. If anything is wrong the result is
+    /// all the errors and there are no operations, so a grid is applied as a
+    /// whole or not at all. A grid that changes nothing gives no operations.
+    pub fn grid_operations(
+        &self,
+        sprite: &SpriteRef,
+        text: &str,
+        options: &GridOptions,
+    ) -> Result<Vec<Operation>, Vec<GridError>> {
+        let missing = |what: &str, name: &str| {
+            vec![GridError::new("not_found", format!("{what} {name:?} does not exist"))]
+        };
+        let target = self.find_sprite(sprite).ok_or_else(|| missing("sprite", &sprite.name))?;
+        let palette = self.palette(&target.palette).ok_or_else(|| missing("palette", &target.palette))?;
+        let grid = Grid::check(text, target, palette, options)?;
+        let (new_colors, _) = grid.legend_colors(palette);
+        let mut ops: Vec<Operation> = new_colors
+            .into_iter()
+            .map(|color| Operation::AddColor { palette: palette.name.clone(), color, index: None })
+            .collect();
+        for (frame, pixels) in grid.pixel_changes(target, options) {
+            ops.push(Operation::SetPixels { sprite: sprite.clone(), layer: 0, frame, pixels });
+        }
+        Ok(ops)
+    }
 }

@@ -475,3 +475,98 @@ fn a_one_pixel_wide_row_of_hash_is_a_row() {
     assert!(errors.is_empty(), "{errors:?}");
     assert_eq!(grid.frames[0].rows.len(), 1);
 }
+
+// ---- Legend colors (task 1.5) ----
+
+fn project_with_goblin() -> (Project, SpriteRef) {
+    let mut project = Project::new("Kit");
+    project.apply(&Operation::CreatePalette { palette: dungeon16(), index: None }).unwrap();
+    project
+        .apply(&Operation::CreateSprite {
+            folder: vec![],
+            name: "goblin".to_string(),
+            width: 2,
+            height: 2,
+            palette: "dungeon16".to_string(),
+        })
+        .unwrap();
+    (project, SpriteRef::new(&[], "goblin"))
+}
+
+fn pixels_of(project: &Project, sprite: &SpriteRef) -> Vec<u8> {
+    project.find_sprite(sprite).unwrap().layers[0].frames[0].pixels.clone()
+}
+
+// Checks "The legend adds a color": a grid that uses "Q" and says
+// `Q teal #1FB5A8` adds the color to the palette and draws the pixels, and
+// the operations are one group that one undo takes back completely.
+#[test]
+fn the_legend_adds_a_color_and_the_pixels() {
+    let (mut project, sprite) = project_with_goblin();
+    let text = "legend\n  Q teal #1fb5a8\nframe 1\nQ.\n.Q\n";
+    let ops = project.grid_operations(&sprite, text, &GridOptions::default()).unwrap();
+    let applied = project.apply_group(&ops).unwrap();
+    let palette = project.palette("dungeon16").unwrap();
+    let teal = palette.colors.last().unwrap();
+    assert_eq!((teal.key, teal.name.as_str(), teal.hex.as_str()), ('Q', "teal", "#1FB5A8"));
+    assert_eq!(pixels_of(&project, &sprite), b"Q..Q");
+    // One group, one revision: the colors and the pixels are one step.
+    assert_eq!(project.revision, 3);
+    project.apply_group(&applied.inverses).unwrap();
+    assert_eq!(project.palette("dungeon16").unwrap().colors.len(), 4);
+    assert_eq!(pixels_of(&project, &sprite), b"....");
+}
+
+// Checks "The legend never changes a color": a legend line for a key that
+// exists, with another value or name, changes nothing in the palette.
+#[test]
+fn the_legend_never_changes_an_existing_color() {
+    let (mut project, sprite) = project_with_goblin();
+    let before = project.palette("dungeon16").unwrap().clone();
+    let text = "legend\n  R crimson #00FF00\nframe 1\nR.\n.R\n";
+    let ops = project.grid_operations(&sprite, text, &GridOptions::default()).unwrap();
+    assert!(ops.iter().all(|op| matches!(op, Operation::SetPixels { .. })));
+    project.apply_group(&ops).unwrap();
+    assert_eq!(project.palette("dungeon16").unwrap(), &before);
+    assert_eq!(pixels_of(&project, &sprite), b"R..R");
+}
+
+// Checks "Legend color and a full palette": the errors come back and no
+// operation exists, so nothing can be applied.
+#[test]
+fn a_legend_color_in_a_full_palette_applies_nothing() {
+    let (mut project, sprite) = project_with_goblin();
+    // A palette with 93 colors where "Q" is free is not possible with real
+    // keys, so the palette is filled with 92 keys plus a placeholder.
+    let mut full = full_palette();
+    full.name = "dungeon16".to_string();
+    full.colors.retain(|c| c.key != 'Q');
+    full.colors.push(Color { key: ' ', name: "x".to_string(), hex: "#000000".to_string() });
+    project.palettes[0] = full;
+    let text = "legend\n  Q teal #1FB5A8\nframe 1\nQ.\n.Q\n";
+    let errors = project.grid_operations(&sprite, text, &GridOptions::default()).unwrap_err();
+    assert_eq!(errors[0].code, "palette_full");
+    assert_eq!(pixels_of(&project, &sprite), b"....");
+}
+
+// Checks that a key defined by a legend name only (no #hex) is still unknown,
+// because there is no color to add.
+#[test]
+fn a_legend_line_without_a_color_does_not_define_a_key() {
+    let (project, sprite) = project_with_goblin();
+    let text = "legend\n  Q teal\nframe 1\nQ.\n.Q\n";
+    let errors = project.grid_operations(&sprite, text, &GridOptions::default()).unwrap_err();
+    assert_eq!(errors[0].code, "unknown_key");
+}
+
+// Checks that a grid that changes nothing gives no operations (so no empty
+// history entry is made) and that a missing sprite is an error.
+#[test]
+fn a_grid_with_no_change_gives_no_operations() {
+    let (project, sprite) = project_with_goblin();
+    let ops = project.grid_operations(&sprite, "frame 1\n..\n..\n", &GridOptions::default()).unwrap();
+    assert!(ops.is_empty());
+    let nobody = SpriteRef::new(&[], "nobody");
+    let errors = project.grid_operations(&nobody, "frame 1\n..\n", &GridOptions::default()).unwrap_err();
+    assert_eq!(errors[0].code, "not_found");
+}
