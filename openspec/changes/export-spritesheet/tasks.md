@@ -12,7 +12,7 @@
 ### 2. Formats
 
 - [x] 2.1 Implement the sheet PNG and the JSON writer (frames, durations, animations, pivot, meta) and verify against a golden JSON
-- [ ] 2.2 Implement single PNG files with the naming pattern and verify the names
+- [x] 2.2 Implement single PNG files with the naming pattern and verify the names
 
 ### 3. Safety
 

@@ -7,11 +7,16 @@
 
 mod error;
 mod plan;
+mod png_files;
 mod sheet;
 
 pub use error::ExportError;
-pub use plan::{ExportFile, Format, Options, Scope};
+pub use plan::{DEFAULT_NAMING, ExportFile, Format, Options, Scope};
+pub use png_files::build_png_files;
 pub use sheet::build;
 
 #[cfg(test)]
 mod sheet_tests;
+
+#[cfg(test)]
+mod png_files_tests;
