@@ -9,11 +9,13 @@ mod external;
 mod model;
 mod names;
 mod operation;
+mod palette;
 mod stroke;
 
 pub use error::DocError;
 pub use names::{copy_name, same_name, validate_name};
 pub use operation::{Applied, AppliedGroup, Operation, PixelChange, SpriteRef, Target};
+pub use palette::check_colors;
 pub use stroke::ColorChange;
 pub use model::{
     Color, DEFAULT_FRAME_MS, Folder, Frame, Layer, MAX_COLORS, frame_duration_ms, MAX_SIZE, Palette, Project, Sprite, TRANSPARENT, Tag,
@@ -34,3 +36,6 @@ mod frame_tests;
 
 #[cfg(test)]
 mod stroke_tests;
+
+#[cfg(test)]
+mod palette_tests;
