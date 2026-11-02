@@ -12,7 +12,7 @@
 
 ## 2. Applying
 
-- [ ] 2.1 Implement applying a grid as one undoable operation with no partial results and verify the all-or-nothing test
+- [x] 2.1 Implement applying a grid as one undoable operation with no partial results and verify the all-or-nothing test
 - [ ] 2.2 Expose validate and apply as core commands and verify them from the UI layer
 
 ## 3. Text view
