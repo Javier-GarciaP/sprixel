@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { act, cleanup, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentOps } from "../api/types";
 import { FakeEditorApi } from "../testing/fakeApi";
@@ -223,5 +229,55 @@ describe("Busy during the replay", () => {
 
     await waitFor(() => expect(colorOfPixel(16, 16, 9, 0)).toEqual(RED));
     await waitFor(() => expect(api.calls).toHaveLength(1));
+  });
+});
+
+describe("Stop and reduced motion", () => {
+  // Checks the "Stop" scenario: Stop during a replay shows the final state at
+  // once (no more time needed), removes the cursor and frees the frame.
+  it("jumps to the final state when the person presses Stop", async () => {
+    const api = await open(new FakeEditorApi(4, 4, 1, palette));
+    agentWrites(
+      api,
+      ops(
+        1,
+        Array.from({ length: 12 }, (_, i) => [i % 4, Math.floor(i / 4), "R"]),
+      ),
+    );
+    tick(100);
+    expect(colorOfPixel(4, 4, 3, 2)).not.toEqual(RED);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Stop" }));
+
+    await waitFor(() => expect(colorOfPixel(4, 4, 3, 2)).toEqual(RED));
+    expect(api.stopped).toBe(1);
+    expect(screen.queryByTestId("agent-cursor")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+    // The replay does not go on after Stop: no time is needed.
+    expect(api.playbackDones).toEqual([1]);
+  });
+
+  // Checks the "Reduced motion" scenario: with the system asking for less
+  // motion the final state appears without any time passing and the cursor is
+  // never drawn.
+  it("skips the replay with reduced motion", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query.includes("reduce"),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const api = await open(new FakeEditorApi(4, 4, 1, palette));
+
+    agentWrites(
+      api,
+      ops(1, [
+        [0, 0, "R"],
+        [1, 0, "R"],
+      ]),
+    );
+
+    await waitFor(() => expect(api.playbackDones).toEqual([1]));
+    await waitFor(() => expect(colorOfPixel(4, 4, 1, 0)).toEqual(RED));
+    expect(screen.queryByTestId("agent-cursor")).toBeNull();
   });
 });
