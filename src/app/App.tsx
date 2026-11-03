@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  AgentsIndicator,
+  AgentsScreen,
+  ApprovalDialog,
+  coreAgentsApi,
+  notifyApproval,
+  useAgents,
+} from "@/features/agents";
 import { EditorScreen } from "@/features/canvas-editor";
 import { ExportScreen } from "@/features/export";
 import {
@@ -81,6 +89,22 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     (next: Record<string, () => void> | null) => setEditorHandlers(next ?? {}),
     [],
   );
+  // What the core says about the agents, for the Agents tab.
+  // A new agent that waits while the window is in the background is also
+  // told with a system notification. An agent that asks to open a sprite
+  // (`open_sprite`) makes the Editor show it, so the person sees its work.
+  const agents = useAgents(coreAgentsApi, (event) => {
+    if (event.type === "open-sprite") {
+      setActiveSprite(event.sprite);
+      setTab("editor");
+      setSettingsOpen(false);
+    } else if (event.type === "pending") {
+      notifyApproval(
+        t("agents.notify.title", { agent: event.name }),
+        t("agents.notify.body"),
+      );
+    }
+  });
   const save = useSaveStatus(project !== null);
   useWindowTitle(project?.name ?? null);
 
@@ -214,6 +238,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         onGoToProject={() => setTab("project")}
       />
     );
+  } else if (tab === "agents" && project) {
+    body = <AgentsScreen api={coreAgentsApi} state={agents} />;
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;
   }
@@ -236,6 +262,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
           <SaveStatus state={save.state} onRetry={save.retry} />
         ) : null,
         hasProject: project !== null,
+        agents: <AgentsIndicator clients={agents.clients} />,
         activeTab: settingsOpen ? null : tab,
         onTab: (next) => {
           setSettingsOpen(false);
@@ -274,6 +301,11 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
           onClose={() => setNewProjectFrom(null)}
         />
       )}
+      <ApprovalDialog
+        api={coreAgentsApi}
+        clients={agents.clients}
+        permissions={agents.permissions}
+      />
       {notice && <Toast tone="error" message={notice} />}
     </Shell>
   );

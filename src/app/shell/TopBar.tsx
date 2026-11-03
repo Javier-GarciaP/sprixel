@@ -21,6 +21,8 @@ type Props = {
   // The tab that is shown, or null when another screen (Settings) is open.
   activeTab: Tab | null;
   onTab: (tab: Tab) => void;
+  // The state of the agents (the Agents feature draws it).
+  agents?: ReactNode;
 };
 
 export function TopBar({
@@ -29,6 +31,7 @@ export function TopBar({
   hasProject,
   activeTab,
   onTab,
+  agents,
 }: Props) {
   const t = useT();
   return (
@@ -58,7 +61,7 @@ export function TopBar({
           </button>
         ))}
       </nav>
-      <Chip>{t("agents.none")}</Chip>
+      {agents ?? <Chip>{t("agents.none")}</Chip>}
     </header>
   );
 }
