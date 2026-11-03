@@ -3,6 +3,7 @@ import { act, cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentOps } from "../api/types";
 import { FakeEditorApi } from "../testing/fakeApi";
+import { centeredView, fitZoom } from "../view/viewMath";
 import {
   colorOfPixel,
   goblin,
@@ -134,5 +135,53 @@ describe("Replay of agent writes", () => {
     }
 
     await waitFor(() => expect(api.playbackDones).toEqual([1, 2, 3, 4, 5]));
+  });
+});
+
+describe("Agent cursor", () => {
+  // Checks that the cursor carries the agent name and sits on the pixel being
+  // drawn, using the zoom and offset of the view (the sprite is fitted and
+  // centered in the 500x300 area, so a 4x4 sprite has zoom 75).
+  it("shows the agent name on the pixel being drawn", async () => {
+    const api = await open(new FakeEditorApi(4, 4, 1, palette));
+    agentWrites(
+      api,
+      ops(1, [
+        [0, 0, "R"],
+        [1, 1, "R"],
+        [3, 2, "R"],
+        [3, 3, "R"],
+      ]),
+    );
+
+    // 4 pixels last 250 ms: at 200 ms three are drawn, the last one is (3, 2).
+    tick(200);
+
+    const cursor = await screen.findByTestId("agent-cursor");
+    expect(cursor.textContent).toBe("Claude Code");
+    const view = centeredView(4, 4, fitZoom(4, 4, 500, 300), 500, 300);
+    expect(cursor.style.left).toBe(`${view.x + 3 * view.zoom}px`);
+    expect(cursor.style.top).toBe(`${view.y + 2 * view.zoom}px`);
+    expect(cursor.style.width).toBe(`${view.zoom}px`);
+  });
+
+  // Checks that the cursor goes away when the replay ends.
+  it("goes away at the end", async () => {
+    const api = await open(new FakeEditorApi(4, 4, 1, palette));
+    agentWrites(
+      api,
+      ops(1, [
+        [0, 0, "R"],
+        [1, 0, "R"],
+      ]),
+    );
+    tick(200);
+    expect(await screen.findByTestId("agent-cursor")).toBeTruthy();
+
+    tick(100);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("agent-cursor")).toBeNull(),
+    );
   });
 });

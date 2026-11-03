@@ -36,6 +36,7 @@ import { DrawingController } from "../controller/DrawingController";
 import type { Scene } from "../render/renderer";
 import type { ToolId } from "../tools/tools";
 import { useCanvasView } from "../view/useCanvasView";
+import { AgentCursor } from "./AgentCursor";
 import { CanvasArea } from "./CanvasArea";
 import type { PixelCanvasHandle } from "./PixelCanvas";
 import { CanvasBar } from "./CanvasBar";
@@ -314,7 +315,6 @@ function Ready(props: ReadyProps) {
     onFrame: props.onFrame,
     endCount,
   });
-  void cursor;
   const held = useRef<{ frame: number; changes: PixelChange[] }[]>([]);
   const failed = (error: { code?: string; message?: string }) => {
     // The core is the truth: read the frame again so the screen shows what
@@ -491,7 +491,7 @@ function Ready(props: ReadyProps) {
         )}
         <div
           data-testid={writing ? "agent-border" : undefined}
-          className={`min-h-0 flex-1 ${mode === "text" ? "hidden" : "flex"} ${writing ? "outline-2 -outline-offset-2 outline-amber" : ""}`}
+          className={`relative min-h-0 flex-1 ${mode === "text" ? "hidden" : "flex"} ${writing ? "outline-2 -outline-offset-2 outline-amber" : ""}`}
         >
           <CanvasArea
             scene={scene}
@@ -515,6 +515,7 @@ function Ready(props: ReadyProps) {
               controller.pointerUp();
             }}
           />
+          {cursor && <AgentCursor view={canvas.view} {...cursor} />}
         </div>
         {mode === "canvas" && isBlank(pixels) && (
           <p className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
