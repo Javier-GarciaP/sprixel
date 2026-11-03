@@ -36,6 +36,17 @@ After the person answers an approval request, the app SHALL close the dialog and
 - **WHEN** the person answers a request that no longer exists
 - **THEN** the client list is refreshed and the dialog closes
 
+### Requirement: Images are saved to files
+When `sprixel tool` receives an image in the result (for example from `render_preview`), it SHALL save the PNG to a file in the folder `previews` of the Sprixel data folder, written atomically and readable only by the user, and SHALL print the path so an AI that only uses the shell can open the file and see the result. It MUST keep only the 20 newest preview files. With `--json` each image keeps its `data` and also has a `path`.
+
+#### Scenario: Preview from the shell
+- **WHEN** `sprixel tool render_preview name=goblin` runs
+- **THEN** the output says `image saved:` with the path of a PNG file that holds the image
+
+#### Scenario: Many previews
+- **WHEN** more than 20 previews were saved
+- **THEN** only the 20 newest files stay in the folder
+
 ### Requirement: Start tells which build
 `sprixel start` SHALL print the path and the version of the app it starts, SHALL warn when that version differs from the version of the command, and the variable `SPRIXEL_APP` SHALL choose the app to start.
 

@@ -281,6 +281,19 @@ func (c *invocation) printToolResult(result appclient.Result) int {
 		}
 	}
 	joined := strings.Join(texts, "\n")
+	// Images become files, so an AI that only has a shell can open them. The
+	// text of the same result (the info of the preview) names the file.
+	var saveErrors []string
+	for _, image := range images {
+		if image["mime_type"] != "image/png" {
+			continue
+		}
+		if path, err := c.savePreview(image["data"].(string), joined); err != nil {
+			saveErrors = append(saveErrors, err.Error())
+		} else {
+			image["path"] = path
+		}
+	}
 	var value any = joined
 	var decoded any
 	if json.Unmarshal([]byte(joined), &decoded) == nil {
@@ -312,7 +325,14 @@ func (c *invocation) printToolResult(result appclient.Result) int {
 		fmt.Fprintln(out, pretty)
 	}
 	for _, image := range images {
+		if path, ok := image["path"]; ok {
+			fmt.Fprintf(out, "image saved: %s\n", path)
+			continue
+		}
 		fmt.Fprintf(out, "[image %s, %d base64 characters: use --json to get it]\n", image["mime_type"], len(image["data"].(string)))
+	}
+	for _, problem := range saveErrors {
+		fmt.Fprintln(c.env.Stderr, "warning: could not save the image: "+problem)
 	}
 	return code
 }

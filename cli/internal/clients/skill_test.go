@@ -15,7 +15,8 @@ func TestSkillTextHasTheLessons(t *testing.T) {
 		t.Errorf("the header is wrong: %q", text[:40])
 	}
 	for _, want := range []string{"get_project", "get_palette", "create_sprite", "open_project",
-		"apply_grid", "set_pixels", "draw_shape", "render_preview", "permission_denied", "stale_revision"} {
+		"apply_grid", "set_pixels", "draw_shape", "render_preview", "permission_denied", "stale_revision",
+		"image saved:", "OPEN that file"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the skill does not mention %s", want)
 		}

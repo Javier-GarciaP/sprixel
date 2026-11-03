@@ -24,6 +24,8 @@
 - [x] 5.1 Print path and version in `sprixel start`, warn on a different version and document `SPRIXEL_APP`; verify with the test app
 - [x] 5.2 Check if the app reads a project path argument and make the command honest about it; verify
 
+- [x] 5.3 Save the PNG that `sprixel tool` receives (`render_preview`) in `~/.sprixel/previews/`, print its path, keep the 20 newest, and tell the skill to open it; verify path, permissions, pruning and `--json`
+
 ## 6. Docs
 
 - [ ] 6.1 Update `docs/ai-and-mcp.md` and `docs/roadmap.md` and run `openspec validate --all --strict`

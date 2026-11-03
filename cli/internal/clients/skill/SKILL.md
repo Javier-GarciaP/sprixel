@@ -32,6 +32,12 @@ canvas through the `sprixel` MCP tools, and they watch while you work.
 5. `render_preview`: look at the result. If something is wrong, fix it and look
    again. Do not say you are done before you have seen the preview.
 
+If you only have a shell (no MCP tools), use `sprixel tool <name> key=value ...`
+for every step. `sprixel tool render_preview name=goblin` saves the image as a
+PNG file and prints `image saved: <path>`. After drawing, call `render_preview`,
+OPEN that file with your Read tool, look at it, and fix what looks wrong before
+you say you are done.
+
 Small sprites (up to about 32x32) are drawn most reliably.
 
 ## Rules
