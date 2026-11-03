@@ -132,3 +132,43 @@ fn own_palette_conflicts_change_nothing() {
     let project = call(&core, &session, "get_project", json!({})).unwrap();
     assert_eq!(project["palettes"].as_array().unwrap().len(), 1);
 }
+
+// Checks "Clean": a palette with 3 colors where sprites use one keeps that
+// one, the other keys are returned in order, a second call removes nothing
+// (and adds no history entry), and undo brings the colors back.
+#[test]
+fn remove_unused_colors_keeps_the_used_ones() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    // The goblin uses R and G; B is added and used by nobody.
+    call(&core, &session, "set_palette_color", json!({ "key": "B", "hex": "#0000FF" })).unwrap();
+    call(&core, &session, "set_palette_color", json!({ "key": "Y", "hex": "#FFFF00" })).unwrap();
+    let before = entries(&host);
+
+    let done = call(&core, &session, "remove_unused_colors", json!({ "palette": "MAIN" })).unwrap();
+
+    assert_eq!(done["removed"], json!(["B", "Y"]));
+    let keys = |core: &_, session: &str| {
+        let palette = call(core, session, "get_palette", json!({ "palette": "main" })).unwrap();
+        palette["colors"].as_array().unwrap().iter().map(|c| c["key"].as_str().unwrap().to_string()).collect::<Vec<_>>()
+    };
+    assert_eq!(keys(&core, &session), ["R", "G"]);
+    assert_eq!(entries(&host), before + 1);
+
+    let again = call(&core, &session, "remove_unused_colors", json!({ "palette": "main" })).unwrap();
+    assert_eq!((again["removed"].clone(), again["changed"].clone()), (json!([]), json!(false)));
+    assert_eq!(entries(&host), before + 1);
+    browser::undo(&host.project).unwrap();
+    assert_eq!(keys(&core, &session), ["R", "G", "B", "Y"]);
+}
+
+// Checks an unknown palette is `not_found` and the permission is needed.
+#[test]
+fn remove_unused_colors_errors() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    assert_eq!(call(&core, &session, "remove_unused_colors", json!({ "palette": "ghost" })).unwrap_err()["code"], "not_found");
+    assert_eq!(call(&core, &session, "remove_unused_colors", json!({})).unwrap_err()["code"], "bad_argument");
+    core.set_permissions(crate::mcp::Permissions { edit: false, ..core.permissions() }).unwrap();
+    assert_eq!(call(&core, &session, "remove_unused_colors", json!({ "palette": "main" })).unwrap_err()["code"], "permission_denied");
+}

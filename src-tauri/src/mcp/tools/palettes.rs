@@ -4,7 +4,7 @@
 use super::args;
 use super::create::base_revision;
 use super::write::{Plan, write};
-use crate::document::{Color, Operation, Palette, check_colors};
+use crate::document::{Color, ColorEdit, Operation, Palette, check_colors};
 use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
@@ -36,6 +36,16 @@ pub fn tools() -> Vec<Tool> {
             }}),
             need: Need::Edit,
             run: set_sprite_palette,
+        },
+        Tool {
+            name: "remove_unused_colors",
+            description: concat!("Removes from one palette the colors that no sprite uses, and returns their keys (`removed`). Colors in use stay. `.` is transparent, not a color, and is never touched.", write_note!()),
+            schema: json!({ "type": "object", "required": ["palette"], "properties": {
+                "palette": { "type": "string", "description": "The name of an existing palette." },
+                "base_revision": base_revision(),
+            }}),
+            need: Need::Edit,
+            run: remove_unused_colors,
         },
     ]
 }
@@ -114,5 +124,22 @@ fn set_sprite_palette(ctx: &Ctx, input: &Value) -> ToolResult {
             .ok_or_else(|| ToolError::new("not_found", format!("there is no palette {palette:?}")).with("name", palette.clone()))?;
         let ops = vec![Operation::SetSpritePalette { sprite: target.clone(), palette: real.clone() }];
         Ok(Plan::new(ops, json!({ "palette": real })).about(&target))
+    })
+}
+
+fn remove_unused_colors(ctx: &Ctx, input: &Value) -> ToolResult {
+    let name = args::required_str(input, "palette")?.to_string();
+    write(ctx, input, |session| {
+        let project = &session.project;
+        let palette = project
+            .palette(&name)
+            .ok_or_else(|| ToolError::new("not_found", format!("there is no palette {name:?}")).with("name", name.clone()))?;
+        let used = project.used_keys(&palette.name);
+        let (keep, drop): (Vec<&Color>, Vec<&Color>) = palette.colors.iter().partition(|c| used.contains(&c.key));
+        let edits: Vec<ColorEdit> =
+            keep.iter().map(|c| ColorEdit { from: Some(c.key), color: (*c).clone() }).collect();
+        let ops = project.palette_edit_operations(&palette.name, &edits, &[])?;
+        let removed: Vec<String> = drop.iter().map(|c| c.key.to_string()).collect();
+        Ok(Plan::new(ops, json!({ "palette": palette.name, "removed": removed })))
     })
 }

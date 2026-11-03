@@ -139,6 +139,7 @@ description tells the AI the rules, so it does not need this page.
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
 | `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
 | `set_sprite_palette` | Makes a sprite use another palette; fails with `keys_missing` if the sprite uses a key the palette lacks |
+| `remove_unused_colors` | Removes the colors of a palette that no sprite uses, and returns their keys |
 | `undo_last_ai_action` | Takes back the last action of this agent, if nothing happened after it |
 
 **Delete and export**
