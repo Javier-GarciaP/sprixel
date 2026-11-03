@@ -16,7 +16,7 @@
 
 ## 4. Reference images
 
-- [ ] 4.1 Add `import_reference` with the path checks; verify import, nearest color, `max_colors`, scale down, alpha, `..`, absolute, symlink, not PNG, big file and big image
+- [x] 4.1 Add `import_reference` with the path checks; verify import, nearest color, `max_colors`, scale down, alpha, `..`, absolute, symlink, not PNG, big file and big image
 
 ## 5. Docs
 

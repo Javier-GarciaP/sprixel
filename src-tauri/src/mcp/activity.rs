@@ -134,6 +134,7 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "draw_shape" => format!("Drew a {} on {name}", text(args, "shape")),
         "transform_region" => format!("Applied {} to a region of {name}", text(args, "operation")),
         "copy_region" => format!("Copied a region of {name}"),
+        "import_reference" => format!("Imported a reference picture into {name}"),
         "delete_frame" => format!("Deleted frame {} of {name}", answer["deleted_frame"]),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
         "set_palette_color" => format!(
