@@ -1,0 +1,18 @@
+palette: dungeon16
+
+legend
+  . transparent
+  N black  #000000
+  P skin   #FFCC99
+  A blue   #2F6BFF
+  R red    #F04545
+
+frame 1
+....RRRR
+...RRRRR
+...NNNN.
+..NPNPPN
+..NPPPPN
+..NNNNNN
+.NAAAAN.
+.NA..AN.

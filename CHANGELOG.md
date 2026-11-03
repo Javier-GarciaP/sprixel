@@ -59,6 +59,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - New palette: empty, from the presets "Pocket RPG 16" and "Farm 32", or
   imported from a `.gpl` (GIMP) or `.hex` file, from the "+" of the palettes
   list. A palette of the list opens in the palette editor.
+- Text grid format: a parser, a writer and a validator in the core, with
+  precise errors (code, line, row and column) that are all reported together,
+  grids written as a region at `x`, `y` with an option to keep existing pixels,
+  and legend lines that add new colors to the palette. Applying a grid is one
+  undo step, and a grid with any error changes nothing.
+- Text view: the Canvas and Text switch shows the sprite as a text grid with
+  line numbers, a live preview that keeps the last valid state, a status line,
+  marked lines with errors, and Apply, Copy and Paste.
 
 ### Fixed
 

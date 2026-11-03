@@ -152,7 +152,7 @@ impl EditorState {
         self.0.lock().unwrap().writing.clone()
     }
 
-    fn blocks(&self, sprite: &SpriteArg, frame: u32) -> bool {
+    pub fn blocks(&self, sprite: &SpriteArg, frame: u32) -> bool {
         self.writing()
             .is_some_and(|w| w.frame == frame && same_sprite(&w.sprite, sprite))
     }

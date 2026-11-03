@@ -178,13 +178,14 @@ describe("canvas bar", () => {
     }
   });
 
-  // Checks that the Text switch is there but disabled until its spec exists.
+  // Checks that the Canvas and Text switch is there, with Canvas on at first
+  // and both buttons enabled (the Text view has its own tests).
   it("has the Canvas and Text switch", async () => {
     renderEditor(new FakeEditorApi(8, 8));
-    await screen.findByRole("button", { name: "Canvas" });
-    expect(
-      (screen.getByRole("button", { name: "Text" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    const canvas = await screen.findByRole("button", { name: "Canvas" });
+    const text = screen.getByRole("button", { name: "Text" });
+    expect(canvas.getAttribute("aria-pressed")).toBe("true");
+    expect(text.getAttribute("aria-pressed")).toBe("false");
+    expect((text as HTMLButtonElement).disabled).toBe(false);
   });
 });
