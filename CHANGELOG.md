@@ -157,3 +157,5 @@ and the project follows [Semantic Versioning](https://semver.org/).
   box instead of covering the tools and the neighbors.
 - Zooming with Control and the mouse wheel (or a pinch) now zooms only the pixel
   canvas, not the whole app.
+- Only one process starts the Sprixel app at a time: several AI tools (each with its
+  own `sprixel mcp` bridge) no longer open several windows at once.
