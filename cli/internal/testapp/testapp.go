@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Token is the access token the fake app writes.
@@ -293,6 +294,10 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 		}
 		return text(map[string]any{"name": "goblin", "frame": args["frame"], "client": client}, false)
 	case "set_pixels":
+		// wait_ms lets a test make early calls slower than late ones.
+		if ms, ok := args["wait_ms"].(float64); ok {
+			time.Sleep(time.Duration(ms) * time.Millisecond)
+		}
 		return text(map[string]any{"args": args}, false)
 	case "slow":
 		<-release

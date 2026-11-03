@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -442,6 +443,61 @@ func TestRunningToolFailsWhenTheAppStops(t *testing.T) {
 			t.Errorf("expected an error, got %v", got)
 		}
 	}
+}
+
+// Checks the scenario "Fast calls": 20 tools/call sent without waiting reach
+// the app in the same order, even when the early ones are slower. The early
+// calls wait longer (wait_ms), so parallel sending would swap them.
+func TestToolCallsRunInOrder(t *testing.T) {
+	app := testapp.Start(t, t.TempDir())
+	s := startBridge(t, app.Dir)
+	s.send(initialize)
+	s.reply()
+
+	const n = 20
+	for i := 1; i <= n; i++ {
+		s.send(fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":"set_pixels","arguments":{"seq":%d,"wait_ms":%d}}}`, i, i, n-i))
+	}
+	for i := 1; i <= n; i++ {
+		if got := s.reply(); got["id"] != float64(i) {
+			t.Fatalf("answer %d has id %v", i, got["id"])
+		}
+	}
+	var seen []int
+	for _, c := range app.Calls() {
+		if c.Method != "tools/call" {
+			continue
+		}
+		var m struct {
+			Params struct {
+				Arguments struct{ Seq int } `json:"arguments"`
+			} `json:"params"`
+		}
+		json.Unmarshal([]byte(c.Body), &m)
+		seen = append(seen, m.Params.Arguments.Seq)
+	}
+	for i, seq := range seen {
+		if seq != i+1 {
+			t.Fatalf("the app received the calls as %v", seen)
+		}
+	}
+}
+
+// Checks that a slow tools/call does not block other messages: tools/list is
+// answered while the tool still runs.
+func TestSlowToolDoesNotBlockOtherMessages(t *testing.T) {
+	app := testapp.Start(t, t.TempDir())
+	s := startBridge(t, app.Dir)
+	s.send(initialize)
+	s.reply()
+
+	s.send(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"slow","arguments":{}}}`)
+	s.send(`{"jsonrpc":"2.0","id":3,"method":"tools/list"}`)
+	if got := s.reply(); got["id"] != float64(3) {
+		t.Fatalf("first answer = %v, want the tools/list one (id 3)", got)
+	}
+	app.Stop()
+	s.reply()
 }
 
 // waitFor polls a condition until it is true (no fixed sleeps).

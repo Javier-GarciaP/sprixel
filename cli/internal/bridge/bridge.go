@@ -86,23 +86,40 @@ func New(cfg Config) *Bridge {
 func (b *Bridge) Run(ctx context.Context) error {
 	reader := bufio.NewReader(b.cfg.In)
 	var wg sync.WaitGroup
+	// One worker runs the tools/call messages in the order they arrived: an
+	// agent draws step by step, and a later step must not overtake an earlier
+	// one. The queue is big, so the reader is not blocked by a slow tool and
+	// keeps seeing pings and cancellations.
+	calls := make(chan []byte, 1024)
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		for message := range calls {
+			b.handle(ctx, message)
+		}
+	}()
 	for {
 		line, err := reader.ReadBytes('\n')
 		if text := bytes.TrimSpace(line); len(text) > 0 {
-			if isInitialize(text) {
+			switch {
+			case isInitialize(text):
 				// The session must exist before the next message is sent, so
 				// this one is answered first.
 				b.handle(ctx, text)
-				continue
+			case isToolCall(text):
+				calls <- text
+			default:
+				wg.Add(1)
+				// One goroutine per other message, so they do not wait for tools.
+				go func(message []byte) {
+					defer wg.Done()
+					b.handle(ctx, message)
+				}(text)
 			}
-			wg.Add(1)
-			// One goroutine per message, so a slow tool does not block the rest.
-			go func(message []byte) {
-				defer wg.Done()
-				b.handle(ctx, message)
-			}(text)
 		}
 		if err != nil {
+			close(calls)
+			<-workerDone
 			wg.Wait()
 			b.endSession()
 			if errors.Is(err, io.EOF) {
@@ -111,6 +128,11 @@ func (b *Bridge) Run(ctx context.Context) error {
 			return err
 		}
 	}
+}
+
+func isToolCall(line []byte) bool {
+	var m message
+	return json.Unmarshal(line, &m) == nil && m.Method == "tools/call"
 }
 
 func isInitialize(line []byte) bool {
