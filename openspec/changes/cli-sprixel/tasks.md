@@ -6,7 +6,7 @@
 
 ### 1. Shared runtime
 
-- [ ] 1.1 Implement the shared data folder, `runtime.json` and token reading for the three systems, and verify with tests on fixtures
+- [x] 1.1 Implement the shared data folder, `runtime.json` and token reading for the three systems, and verify with tests on fixtures
 - [ ] 1.2 Add output helpers (`--json`, exit codes, help) and verify the documented codes
 
 ### 2. Bridge
