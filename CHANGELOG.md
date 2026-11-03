@@ -39,6 +39,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
   action bar, a right-click menu and the keys F2, Ctrl+D, Delete and Enter.
 - The core sends the `project://changed` event after every change and answers
   `project_tree` and `sprite_frame` queries.
+- Export tab: choose the project, a folder or the selected sprites, export a
+  sprite sheet with a JSON file or single PNG files, with scale (1x to 8x),
+  space between frames, an output folder inside the project and a naming
+  pattern. It shows a preview, the files, a success message with "Open folder",
+  and clear error and empty states.
+- Exports are the same every time, are written only inside the project folder
+  and leave no partial files when they fail. The format is in
+  `docs/export-format.md`.
 - Palette panel in the editor with a "Show keys" switch (the one-letter key on
   each color) and an Edit button.
 - Palette editor: change the name, key and color (hex or RGB sliders) of a

@@ -68,6 +68,11 @@ type Props = {
   onOpenPalette: (name: string) => void;
   onNewPalette: () => void;
   shortcuts?: Shortcuts;
+  // Tells the app which folder is open and what is selected, for the Export tab.
+  onViewChange?: (view: {
+    folder: string[];
+    selection: SpriteTarget[];
+  }) => void;
 };
 
 // How long the message after a delete offers Undo.
@@ -98,6 +103,7 @@ function Browser({
   onOpenPalette,
   onNewPalette,
   shortcuts = noShortcuts,
+  onViewChange,
 }: Props & { tree: ProjectTree; cache: FrameCache }) {
   const t = useT();
   const [folderPath, setFolderPath] = useState<string[]>([]);
@@ -160,6 +166,15 @@ function Browser({
       : everySprite; // the project root lists the sprites of every folder
   const hasSprites = everySprite.length > 0;
   const crumb = currentPath[currentPath.length - 1] ?? tree.name;
+
+  const viewKey = JSON.stringify([currentPath, selectedKeys]);
+  useEffect(() => {
+    onViewChange?.({
+      folder: currentPath,
+      selection: selected.map(({ folder, name }) => ({ folder, name })),
+    });
+    // Only when the folder or the selection change, not on every render.
+  }, [viewKey]);
 
   const fail = (error: unknown) =>
     setNotice(t("error.io", { message: asCoreFailure(error).message }));

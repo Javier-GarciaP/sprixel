@@ -5,9 +5,11 @@ pub mod preferences;
 pub mod project;
 pub mod editor;
 pub mod frames;
+pub mod export;
 pub mod grid;
 pub mod palettes;
 
+use export::{FormatArg, OptionsArg, ScopeArg, SummaryInfo, WrittenInfo};
 use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};
 use preferences::{Data, RecentProject, Settings};
 use project::{ProjectError, ProjectInfo, ProjectState, StatusInfo};
@@ -238,4 +240,39 @@ pub fn delete_folder(
     path: Vec<String>,
 ) -> Result<u64, CoreError> {
     finish(&app, browser::delete_folder(&state, &path))
+}
+
+#[tauri::command]
+pub fn export_summary(
+    state: tauri::State<ProjectState>,
+    scope: ScopeArg,
+    format: FormatArg,
+    options: OptionsArg,
+) -> Result<SummaryInfo, CoreError> {
+    export::summary(&state, &scope, &format, &options)
+}
+
+#[tauri::command]
+pub fn export_preview(
+    state: tauri::State<ProjectState>,
+    scope: ScopeArg,
+    options: OptionsArg,
+) -> Result<tauri::ipc::Response, CoreError> {
+    export::preview(&state, &scope, &options).map(tauri::ipc::Response::new)
+}
+
+#[tauri::command]
+pub fn export_run(
+    state: tauri::State<ProjectState>,
+    scope: ScopeArg,
+    format: FormatArg,
+    options: OptionsArg,
+    output: String,
+) -> Result<WrittenInfo, CoreError> {
+    export::run(&state, &scope, &format, &options, &output)
+}
+
+#[tauri::command]
+pub fn export_reveal(state: tauri::State<ProjectState>, output: String) -> Result<(), CoreError> {
+    export::reveal(&state, &output)
 }
