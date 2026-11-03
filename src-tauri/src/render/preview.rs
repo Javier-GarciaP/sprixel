@@ -159,3 +159,12 @@ pub fn render_sheet(frames: &[Image], columns: u32, unit: u32, labels: bool, bac
     }
     flatten(&sheet, background, checker_cell(unit))
 }
+
+/// The size of `render_sheet` for `count` frames of `w` x `h` (before scale)
+/// at `scale`, without drawing it.
+pub fn sheet_size(w: u32, h: u32, count: u32, columns: u32, scale: u32, labels: bool) -> (u32, u32) {
+    let columns = columns.clamp(1, count.max(1));
+    let rows = count.div_ceil(columns);
+    let band = if labels { LABEL_BAND * (scale / 2).max(1) } else { 0 };
+    (columns * w * scale + (columns - 1) * scale, rows * (h * scale + band) + rows.saturating_sub(1) * scale)
+}

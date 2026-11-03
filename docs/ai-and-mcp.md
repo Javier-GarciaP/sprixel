@@ -109,6 +109,7 @@ description tells the AI the rules, so it does not need this page.
 | `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations |
 | `get_palette` | The colors with their one-letter keys |
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
+| `render_frames` | One PNG with several frames in a grid (`from`, `to`, `columns`, `scale`, `labels`, `background`), at most 1024 pixels on a side |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
 | `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |

@@ -13,7 +13,7 @@ pub const OPEN_SPRITE_EVENT: &str = "mcp://open-sprite";
 
 /// The largest preview, in pixels per side. Bigger images cost the AI many
 /// tokens and tell it nothing more.
-const MAX_PREVIEW_SIDE: u32 = 1024;
+pub(super) const MAX_PREVIEW_SIDE: u32 = 1024;
 const DEFAULT_SCALE: u32 = 8;
 
 pub fn tools() -> Vec<Tool> {
@@ -83,7 +83,7 @@ pub fn tools() -> Vec<Tool> {
 }
 
 /// Looks at the open project.
-fn read<R>(ctx: &Ctx, look: impl FnOnce(&crate::storage::Session) -> Result<R, ToolError>) -> Result<R, ToolError> {
+pub(super) fn read<R>(ctx: &Ctx, look: impl FnOnce(&crate::storage::Session) -> Result<R, ToolError>) -> Result<R, ToolError> {
     project::read(ctx.core.host.project(), look).ok_or_else(ToolError::no_project)?
 }
 
