@@ -1,0 +1,29 @@
+# Tasks
+
+## 1. Sessions and order
+
+- [ ] 1.1 Add `Client.Close` and use it in `tool`, `tools` and `doctor`; verify with a test that 20 calls leave no open session
+- [ ] 1.2 Send `tools/call` through one ordered worker in the bridge; verify 20 fast calls run in order
+
+## 2. Approval
+
+- [ ] 2.1 Refresh the clients after any answer, show the error, and emit the event when the entry is gone; verify allow, failed save and missing request
+
+## 3. Projects
+
+- [ ] 3.1 Add the permission "Open projects" (policy, panel, Spanish and English); verify off by default and change without reconnecting
+- [ ] 3.2 Add `list_projects` and `open_project` with their `Host` method, the shell event and the tests; verify allowed, denied and not-a-project
+
+## 4. Skill
+
+- [ ] 4.1 Write the embedded `SKILL.md` and install it from `sprixel mcp add claude`; verify first add and re-run
+- [ ] 4.2 Delete it in remove and uninstall and check it in doctor; verify each
+
+## 5. Launcher
+
+- [ ] 5.1 Print path and version in `sprixel start`, warn on a different version and document `SPRIXEL_APP`; verify with the test app
+- [ ] 5.2 Check if the app reads a project path argument and make the command honest about it; verify
+
+## 6. Docs
+
+- [ ] 6.1 Update `docs/ai-and-mcp.md` and `docs/roadmap.md` and run `openspec validate --all --strict`
