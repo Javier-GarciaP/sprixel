@@ -1,6 +1,7 @@
 mod document;
 mod export;
 mod history;
+mod mcp;
 mod render;
 mod storage;
 

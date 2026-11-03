@@ -1,0 +1,152 @@
+//! The Model Context Protocol on top of JSON-RPC 2.0, written by hand: it
+//! needs only `initialize`, `ping`, `tools/list` and `tools/call` (see
+//! `design.md`). This layer knows nothing about HTTP: it takes the id of the
+//! session and the body of a request and gives a reply.
+
+use super::sessions::{Session, clean_name};
+use super::tool::{Output, ToolError, ToolResult};
+use super::{Core, base64};
+use serde_json::{Value, json};
+
+/// The protocol versions the server speaks. The first is the newest.
+const VERSIONS: [&str; 3] = ["2025-06-18", "2025-03-26", "2024-11-05"];
+
+/// What the HTTP layer sends back.
+#[derive(Debug, PartialEq)]
+pub struct Reply {
+    pub status: u16,
+    /// The id of a new session (the `Mcp-Session-Id` header).
+    pub session: Option<String>,
+    /// The JSON body, or `None` for an empty answer (a notification).
+    pub body: Option<Value>,
+}
+
+impl Reply {
+    fn json(body: Value) -> Reply {
+        Reply { status: 200, session: None, body: Some(body) }
+    }
+
+    fn empty(status: u16) -> Reply {
+        Reply { status, session: None, body: None }
+    }
+}
+
+fn result(id: &Value, result: Value) -> Reply {
+    Reply::json(json!({ "jsonrpc": "2.0", "id": id, "result": result }))
+}
+
+fn error(id: &Value, code: i64, message: &str) -> Reply {
+    Reply::json(json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } }))
+}
+
+impl Core {
+    /// Answers one JSON-RPC message. `session` is the id the client sent, if any.
+    pub fn handle(&self, session: Option<&str>, body: &[u8]) -> Reply {
+        let Ok(message) = serde_json::from_slice::<Value>(body) else {
+            return error(&Value::Null, -32700, "the body is not valid JSON");
+        };
+        let (Some(method), true) = (message["method"].as_str(), message.is_object()) else {
+            return error(&Value::Null, -32600, "expected one JSON-RPC request (batches are not supported)");
+        };
+        // A message with no id is a notification: it gets no answer.
+        let Some(id) = message.get("id").filter(|id| !id.is_null()) else {
+            return Reply::empty(202);
+        };
+        let params = &message["params"];
+        match method {
+            "initialize" => self.initialize(id, params),
+            "ping" => result(id, json!({})),
+            "tools/list" | "tools/call" => {
+                let Some(client) = session.and_then(|s| self.sessions.lock().unwrap().touch(s)) else {
+                    return Reply {
+                        status: 400,
+                        session: None,
+                        body: Some(json!({ "jsonrpc": "2.0", "id": id, "error": {
+                            "code": -32002,
+                            "message": "no session: send `initialize` first and use the Mcp-Session-Id header"
+                        }})),
+                    };
+                };
+                if method == "tools/list" {
+                    result(id, json!({ "tools": self.list_tools(&client) }))
+                } else {
+                    result(id, self.call_tool(&client, params))
+                }
+            }
+            _ => error(id, -32601, &format!("unknown method {method:?}")),
+        }
+    }
+
+    fn initialize(&self, id: &Value, params: &Value) -> Reply {
+        let asked = params["protocolVersion"].as_str().unwrap_or("");
+        let version = VERSIONS.iter().find(|v| **v == asked).unwrap_or(&VERSIONS[0]);
+        let text = |value: &Value| value.as_str().unwrap_or("").chars().take(64).collect::<String>();
+        let client = Session {
+            name: clean_name(&text(&params["clientInfo"]["name"])),
+            version: text(&params["clientInfo"]["version"]),
+        };
+        let Some(session) = self.sessions.lock().unwrap().start(client) else {
+            return error(id, -32000, "limit_exceeded: too many clients are connected");
+        };
+        let mut reply = result(
+            id,
+            json!({
+                "protocolVersion": version,
+                "capabilities": { "tools": {} },
+                "serverInfo": { "name": "sprixel", "version": env!("CARGO_PKG_VERSION") },
+            }),
+        );
+        reply.session = Some(session);
+        reply
+    }
+
+    /// The tools a client sees, with their schemas.
+    fn list_tools(&self, _client: &Session) -> Vec<Value> {
+        self.tools
+            .iter()
+            .map(|tool| {
+                json!({ "name": tool.name, "description": tool.description, "inputSchema": tool.schema })
+            })
+            .collect()
+    }
+
+    /// Runs `tools/call`. A failure of the tool is a normal result with
+    /// `isError`, so the AI reads the exact error and fixes it.
+    fn call_tool(&self, client: &Session, params: &Value) -> Value {
+        let outcome = match params["name"].as_str() {
+            Some(name) => self.run_tool(client, name, &params["arguments"]),
+            None => Err(ToolError::new("bad_arguments", "`name` is the name of the tool to call")),
+        };
+        tool_result(outcome)
+    }
+
+    /// Finds a tool and runs it. The checks before it runs (approval,
+    /// permissions) belong here.
+    pub fn run_tool(&self, client: &Session, name: &str, arguments: &Value) -> ToolResult {
+        let tool = self.tools.iter().find(|t| t.name == name).ok_or_else(|| {
+            let names: Vec<&str> = self.tools.iter().map(|t| t.name).collect();
+            ToolError::new("unknown_tool", format!("there is no tool {name:?}; the tools are {}", names.join(", ")))
+        })?;
+        let ctx = super::tool::Ctx { core: self, client: &client.name };
+        (tool.run)(&ctx, arguments)
+    }
+}
+
+/// A tool result as MCP wants it: a list of content and the `isError` flag.
+fn tool_result(outcome: ToolResult) -> Value {
+    match outcome {
+        Ok(Output::Json(value)) => text_result(&value, false),
+        Ok(Output::Image { png, info }) => json!({
+            "content": [
+                { "type": "image", "data": base64::encode(&png), "mimeType": "image/png" },
+                { "type": "text", "text": info.to_string() },
+            ],
+            "isError": false,
+        }),
+        Err(error) => text_result(&error.to_json(), true),
+    }
+}
+
+fn text_result(value: &Value, is_error: bool) -> Value {
+    json!({ "content": [{ "type": "text", "text": value.to_string() }], "isError": is_error })
+}
