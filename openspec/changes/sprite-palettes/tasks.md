@@ -2,7 +2,7 @@
 
 ## 1. Document model
 
-- [ ] 1.1 Add the operation `SetSpritePalette` with `keys_missing` and its inverse; verify apply, undo and the error
+- [x] 1.1 Add the operation `SetSpritePalette` with `keys_missing` and its inverse; verify apply, undo and the error
 - [ ] 1.2 Add `document/ramp.rs` (`ramp`); verify exact values, hue shift and bad steps
 
 ## 2. Palette tools
