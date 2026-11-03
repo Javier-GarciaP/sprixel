@@ -32,7 +32,7 @@
 
 ### 5. Security and documentation
 
-- [ ] 5.1 Run a security review of the server (token, Origin, paths, limits) and verify all findings are fixed or recorded
+- [x] 5.1 Run a security review of the server (token, Origin, paths, limits) and verify all findings are fixed or recorded
 - [ ] 5.2 Update `docs/ai-and-mcp.md` with the final tool list and verify each tool is described
 
 ## Demo, built with the export-spritesheet spec

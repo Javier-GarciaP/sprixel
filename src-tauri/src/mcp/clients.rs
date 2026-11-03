@@ -13,6 +13,11 @@ use std::path::{Path, PathBuf};
 
 pub const CLIENTS_FILE: &str = "clients.json";
 
+/// How many clients may wait for an answer at the same time.
+pub const MAX_PENDING: usize = 16;
+/// How many answers are kept in `clients.json`.
+pub const MAX_KNOWN: usize = 256;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Decision {
@@ -87,14 +92,21 @@ impl Clients {
 
     /// A client connects. A client that is not known becomes pending (or is
     /// allowed at once when `ask` is false). The flag is true when the client
-    /// just became pending, so the user is told only once.
-    pub fn request(&mut self, name: &str, version: &str, ask: bool) -> (Standing, bool) {
-        match self.standing(name, version) {
+    /// just became pending, so the user is told only once. `None` when the
+    /// lists are full: a program must not be able to fill them with names.
+    pub fn request(&mut self, name: &str, version: &str, ask: bool) -> Option<(Standing, bool)> {
+        Some(match self.standing(name, version) {
             Standing::Unknown if ask => {
+                if self.pending.len() >= MAX_PENDING {
+                    return None;
+                }
                 self.pending.push((name.to_string(), version.to_string()));
                 (Standing::Pending, true)
             }
             Standing::Unknown => {
+                if self.known.len() >= MAX_KNOWN {
+                    return None;
+                }
                 self.known.push(Known {
                     name: name.to_string(),
                     version: version.to_string(),
@@ -105,7 +117,7 @@ impl Clients {
                 (Standing::Allowed, false)
             }
             standing => (standing, false),
-        }
+        })
     }
 
     /// The answer of the user for a pending client. False if none waits.

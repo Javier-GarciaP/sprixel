@@ -65,13 +65,27 @@ impl Sessions {
     }
 }
 
+/// Characters that draw nothing or change the direction of the text. A name
+/// with them could look like another name, so they are removed.
+fn is_invisible(c: char) -> bool {
+    matches!(c,
+        '\u{00AD}' | '\u{061C}' | '\u{180E}' | '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}'
+        | '\u{2060}'..='\u{2064}' | '\u{2066}'..='\u{2069}' | '\u{FEFF}')
+}
+
+/// Text from a client, safe to keep and show: no control, invisible or
+/// direction characters, trimmed, at most `max` characters.
+pub fn clean_text(raw: &str, max: usize) -> String {
+    let text: String = raw.chars().filter(|c| !c.is_control() && !is_invisible(*c)).take(max).collect();
+    text.trim().to_string()
+}
+
 /// The name of a client as the app keeps and shows it. It is only a label
-/// that the client chose, so it is cleaned: no control characters, at most 64
+/// that the client chose, so it is cleaned (see `clean_text`), at most 64
 /// characters, never empty, and never `user`, which is the author of the
 /// changes made by the person and must not be faked.
 pub fn clean_name(raw: &str) -> String {
-    let name: String = raw.chars().filter(|c| !c.is_control()).take(64).collect();
-    let name = name.trim().to_string();
+    let name = clean_text(raw, 64);
     if name.is_empty() {
         "unknown client".to_string()
     } else if name.eq_ignore_ascii_case(crate::history::USER) {
@@ -120,5 +134,8 @@ mod tests {
         assert_eq!(clean_name("User"), "User (agent)");
         assert_eq!(clean_name("\u{0}\u{7}"), "unknown client");
         assert_eq!(clean_name(&"x".repeat(500)).chars().count(), 64);
+        // A direction mark or a zero-width space cannot make a name look like another.
+        assert_eq!(clean_name("Claude\u{202E} Code\u{200B}"), "Claude Code");
+        assert_eq!(clean_text("1.0\u{0}\u{202E}", 64), "1.0");
     }
 }

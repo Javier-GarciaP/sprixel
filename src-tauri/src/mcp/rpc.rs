@@ -3,7 +3,7 @@
 //! `design.md`). This layer knows nothing about HTTP: it takes the id of the
 //! session and the body of a request and gives a reply.
 
-use super::sessions::{Session, clean_name};
+use super::sessions::{Session, clean_name, clean_text};
 use super::tool::{Output, ToolError, ToolResult};
 use super::clients::Standing;
 use super::{tools, CLIENTS_EVENT, CLIENT_PENDING_EVENT, Core, base64};
@@ -81,16 +81,25 @@ impl Core {
     fn initialize(&self, id: &Value, params: &Value) -> Reply {
         let asked = params["protocolVersion"].as_str().unwrap_or("");
         let version = VERSIONS.iter().find(|v| **v == asked).unwrap_or(&VERSIONS[0]);
-        let text = |value: &Value| value.as_str().unwrap_or("").chars().take(64).collect::<String>();
+        let text = |value: &Value| value.as_str().unwrap_or("").chars().take(256).collect::<String>();
         let client = Session {
             name: clean_name(&text(&params["clientInfo"]["name"])),
-            version: text(&params["clientInfo"]["version"]),
+            version: clean_text(&text(&params["clientInfo"]["version"]), 64),
         };
         let (client_name, client_version) = (client.name.clone(), client.version.clone());
         let Some(session) = self.sessions.lock().unwrap().start(client) else {
             return error(id, -32000, "limit_exceeded: too many clients are connected");
         };
-        let (_, asked) = self.clients.lock().unwrap().request(&client_name, &client_version, self.permissions().ask_on_connect);
+        let asked = match self.clients.lock().unwrap().request(&client_name, &client_version, self.permissions().ask_on_connect) {
+            Some((_, asked)) => asked,
+            None => {
+                // Too many clients wait for an answer: do not let a program
+                // fill the list of the person with names.
+                self.sessions.lock().unwrap().end(&session);
+                self.log("a client was refused: too many clients are waiting for approval");
+                return error(id, -32000, "limit_exceeded: too many clients are waiting for approval");
+            }
+        };
         if asked {
             // The user answers in the app; a system notification is sent when
             // the app is in the background.
@@ -172,7 +181,13 @@ impl Core {
             if tool.need != super::Need::Nothing && self.host.agents().is_stopped(&client.name) {
                 return Err(tools::write::stopped());
             }
-            (tool.run)(&ctx, arguments)
+            // A bug in a tool must not take the connection down: it becomes an
+            // error for the client.
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (tool.run)(&ctx, arguments)))
+                .unwrap_or_else(|_| {
+                    self.log("a tool failed unexpectedly");
+                    Err(ToolError::new("internal_error", "the tool failed unexpectedly; the project was not changed by this call"))
+                })
         });
         // Reading tools are not actions: they are not logged.
         if tool.need != super::Need::Nothing {

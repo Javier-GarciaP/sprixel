@@ -87,13 +87,16 @@ pub fn entry_for(client: &str, tool: &str, args: &Value, outcome: &ToolResult) -
         Ok(super::tool::Output::Image { .. }) => (tool.to_string(), None, "ok", None, None),
         Err(error) => (failed(tool, error), sprite_of(args), "error", Some(error.code.clone()), None),
     };
+    // Names and paths come from the client: keep them short and clean, so a
+    // client cannot fill the memory of the app through the log.
+    let clip = |text: String, max: usize| super::sessions::clean_text(&text, max);
     Entry {
         id: 0,
         at_ms: now_ms(),
         client: client.to_string(),
         tool: tool.to_string(),
-        summary,
-        sprite,
+        summary: clip(summary, 300),
+        sprite: sprite.map(|s| clip(s, 200)),
         result,
         error,
         revision,
