@@ -17,6 +17,9 @@ type Props = {
   onFilled: (filled: boolean) => void;
   // An AI agent is drawing: what to say and what Stop does.
   agent?: { text: string; onStop: () => void } | null;
+  // The Canvas and Text switch: the same place in both views.
+  mode: "canvas" | "text";
+  onMode: (mode: "canvas" | "text") => void;
 };
 
 const iconButton =
@@ -37,6 +40,8 @@ export function CanvasBar({
   filled,
   onFilled,
   agent,
+  mode,
+  onMode,
 }: Props) {
   const t = useT();
   const active = tools.find((entry) => entry.id === tool)!;
@@ -104,22 +109,22 @@ export function CanvasBar({
           </button>
         </div>
       )}
-      <div className="ml-auto flex rounded-md border border-border bg-surface p-0.5 text-xs">
-        <button
-          type="button"
-          aria-pressed="true"
-          className="rounded px-3 py-1 font-semibold text-text"
-        >
-          {t("editor.canvasMode")}
-        </button>
-        <button
-          type="button"
-          disabled
-          title={t("editor.textSoon")}
-          className="rounded px-3 py-1 text-text-faint disabled:cursor-not-allowed"
-        >
-          {t("editor.textMode")}
-        </button>
+      <div
+        role="group"
+        aria-label={t("editor.viewMode")}
+        className="ml-auto flex rounded-md border border-border bg-surface p-0.5 text-xs"
+      >
+        {(["canvas", "text"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            onClick={() => onMode(value)}
+            className={`rounded px-3 py-1 ${mode === value ? "font-semibold text-text" : "text-text-muted"}`}
+          >
+            {t(value === "canvas" ? "editor.canvasMode" : "editor.textMode")}
+          </button>
+        ))}
       </div>
     </div>
   );
