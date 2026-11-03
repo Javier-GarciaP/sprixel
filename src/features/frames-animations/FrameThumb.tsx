@@ -39,13 +39,13 @@ export function FrameThumb({ api, sprite, frame, revision, box }: Props) {
 
   return (
     <div
-      className="flex items-center justify-center rounded"
+      className="flex items-center justify-center overflow-hidden rounded"
       style={{ ...checkerboard, width: box, height: box }}
     >
       <canvas
         ref={canvas}
         aria-hidden
-        className="[image-rendering:pixelated]"
+        className="max-h-full max-w-full object-contain [image-rendering:pixelated]"
       />
     </div>
   );

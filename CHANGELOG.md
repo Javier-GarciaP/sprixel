@@ -142,3 +142,7 @@ and the project follows [Semantic Versioning](https://semver.org/).
   differs from the command. It says that it does not open a project path yet.
 - `sprixel tool` saves the PNG of `render_preview` to `~/.sprixel/previews/`
   and prints its path.
+- The frame thumbnails and the preview of a big or wide sprite now fit their
+  box instead of covering the tools and the neighbors.
+- Zooming with Control and the mouse wheel (or a pinch) now zooms only the pixel
+  canvas, not the whole app.

@@ -4,7 +4,6 @@ import {
   useState,
   type PointerEvent,
   type Ref,
-  type WheelEvent,
 } from "react";
 import type { Scene, View } from "../render/renderer";
 import { pixelAt, type Point } from "../view/viewMath";
@@ -82,11 +81,25 @@ export function CanvasArea({
     };
   };
 
-  const onWheel = (event: WheelEvent) => {
+  // A native listener, not onWheel: React's wheel handler is passive, so it
+  // cannot stop the webview from zooming the whole page. The handler is kept
+  // in a ref so the listener is added once and always uses the latest props.
+  const zoomWithWheel = useRef((event: globalThis.WheelEvent) => {
+    void event;
+  });
+  zoomWithWheel.current = (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
     onZoom(event.deltaY < 0 ? 1 : -1, local(event));
   };
+  useEffect(() => {
+    const element = holder.current;
+    if (!element) return;
+    const listener = (event: globalThis.WheelEvent) =>
+      zoomWithWheel.current(event);
+    element.addEventListener("wheel", listener, { passive: false });
+    return () => element.removeEventListener("wheel", listener);
+  }, []);
 
   const onPointerDown = (event: PointerEvent) => {
     const pan = event.button === 1 || (event.button === 0 && spaceHeld);
@@ -149,7 +162,6 @@ export function CanvasArea({
       data-testid="canvas-area"
       className="min-h-0 min-w-0 flex-1"
       style={{ cursor }}
-      onWheel={onWheel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={release}
