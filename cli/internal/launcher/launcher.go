@@ -10,8 +10,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ErrNoDisplay means the computer has no screen for the app (for example a
@@ -68,11 +70,11 @@ func candidates(e Environment) []string {
 			list = append(list, filepath.Join(dir, "sprixel-app"))
 		}
 		// bin/sprixel built from source: the app is in src-tauri/target.
-		for _, build := range []string{"release", "debug"} {
-			name := "sprixel"
-			if e.GOOS == "windows" {
-				name = "sprixel.exe"
-			}
+		name := "sprixel"
+		if e.GOOS == "windows" {
+			name = "sprixel.exe"
+		}
+		for _, build := range newestFirst(filepath.Join(dir, "..", "src-tauri", "target"), name, "release", "debug") {
 			list = append(list, filepath.Join(dir, "..", "src-tauri", "target", build, name))
 		}
 	}
@@ -168,4 +170,20 @@ func (t *tail) String() string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.buf.String()
+}
+
+// newestFirst orders the build folders so the app built last comes first. An
+// old release build must not win over the debug build the person is using. A
+// build that does not exist keeps its place at the end.
+func newestFirst(target, name string, builds ...string) []string {
+	modified := func(build string) time.Time {
+		info, err := os.Stat(filepath.Join(target, build, name))
+		if err != nil {
+			return time.Time{}
+		}
+		return info.ModTime()
+	}
+	ordered := append([]string(nil), builds...)
+	sort.SliceStable(ordered, func(i, j int) bool { return modified(ordered[i]).After(modified(ordered[j])) })
+	return ordered
 }

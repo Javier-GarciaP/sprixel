@@ -192,3 +192,7 @@ and the project follows [Semantic Versioning](https://semver.org/).
   canvas, not the whole app.
 - Only one process starts the Sprixel app at a time: several AI tools (each with its
   own `sprixel mcp` bridge) no longer open several windows at once.
+- `sprixel mcp add claude` and `doctor` now see a server that is registered but cannot
+  connect, instead of saying it is not registered.
+- A source build starts the app that was built last (debug or release), not an old
+  release build left in `src-tauri/target`.

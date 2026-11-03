@@ -295,3 +295,19 @@ func TestByID(t *testing.T) {
 		t.Error("cursor is not supported")
 	}
 }
+
+// A server that is registered but cannot connect makes `claude mcp get` exit
+// with an error and print "Failed to connect". It is still registered: Add
+// must not try to add it again and State must say so.
+func TestClaudeRegisteredEvenWhenItFailsToConnect(t *testing.T) {
+	run := func(name string, args ...string) (string, error) {
+		return "sprixel:\n  Scope: User config\n  Status: ✘ Failed to connect\n  Type: stdio\n  Command: sprixel\n", errors.New("exit status 1")
+	}
+	c := Claude{Run: run}
+	if state, err := c.State(); err != nil || state != StateYes {
+		t.Errorf("State = %v, %v; want registered", state, err)
+	}
+	if result, err := c.Add("sprixel"); err != nil || result.Outcome != AlreadyRegistered {
+		t.Errorf("Add = %+v, %v; want already registered", result, err)
+	}
+}
