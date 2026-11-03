@@ -31,7 +31,9 @@ function Host({
   frameCount = 2,
   onFrame,
   onApplied,
+  language = "en",
 }: {
+  language?: "en" | "es";
   api: FakeTextApi;
   frame?: number;
   frameCount?: number;
@@ -40,7 +42,7 @@ function Host({
 }) {
   const [current, setCurrent] = useState(frame);
   return (
-    <I18nProvider language="en">
+    <I18nProvider language={language}>
       <TextView
         api={api}
         sprite={goblin}
@@ -214,6 +216,23 @@ describe("Errors in the text", () => {
     expect(preview().getAttribute("data-rows")).toBe(GOBLIN_ROWS.join("|"));
   });
 
+  // Checks screen 22 in Spanish: the message of the core is shown in the
+  // language of the app, on the line and in the status.
+  it("shows the error in Spanish when the app is in Spanish", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} language="es" />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    typeRow(6, ".NAAAAN");
+    await waitFor(() =>
+      expect(status().textContent).toBe(
+        "Línea 17 (fila 7 del frame 1): tiene 7 columnas y se esperaban 8",
+      ),
+    );
+    expect(document.querySelector("[data-error-line]")?.textContent).toContain(
+      "tiene 7 columnas y se esperaban 8",
+    );
+  });
+
   // Checks that when there are several errors, the status shows the first one
   // and how many more there are, and every line is marked.
   it("counts the other errors", async () => {
@@ -305,6 +324,18 @@ describe("Apply, copy and paste", () => {
     fireEvent.click(button("Apply"));
     await waitFor(() => expect(box().value).toContain("# saved"));
     expect(api.loaded.length).toBeGreaterThan(reads);
+  });
+
+  // Checks that a good Apply tells the person: before, nothing on the screen
+  // said the grid was written.
+  it("says the grid was applied", async () => {
+    const api = new FakeTextApi();
+    render(<Host api={api} />);
+    await waitFor(() => expect(status().getAttribute("data-tone")).toBe("ok"));
+    typeRow(0, "....NRRR");
+    await waitFor(() => expect(button("Apply").disabled).toBe(false));
+    fireEvent.click(button("Apply"));
+    await screen.findByText("Grid applied");
   });
 
   // Checks that Apply is off while there is an error, and while the text

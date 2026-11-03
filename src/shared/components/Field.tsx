@@ -6,11 +6,12 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 // A labeled text input. When `error` is set the field turns red and the
-// message is linked to the input for screen readers.
+// message floats under it (out of the layout flow, so the form never jumps)
+// and is linked to the input for screen readers.
 export function Field({ label, error, ...rest }: Props) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
+    <div className="relative flex flex-col gap-1">
       <label htmlFor={id} className="text-xs text-text-muted">
         {label}
       </label>
@@ -22,7 +23,10 @@ export function Field({ label, error, ...rest }: Props) {
         {...rest}
       />
       {error && (
-        <p id={`${id}-error`} className="text-xs text-error">
+        <p
+          id={`${id}-error`}
+          className="absolute left-0 top-full z-10 mt-1 w-max max-w-full rounded-md border border-error bg-surface px-2 py-1 text-xs text-error shadow-lg"
+        >
           {error}
         </p>
       )}

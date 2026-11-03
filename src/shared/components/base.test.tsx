@@ -37,6 +37,13 @@ describe("base components", () => {
     expect(screen.getByText("Already exists")).toBeTruthy();
   });
 
+  // Checks that the error is a floating note: it is out of the layout flow, so
+  // showing it never moves the form (the screen used to jump).
+  it("Field shows its error as a floating note", () => {
+    render(<Field label="Name" error="Already exists" />);
+    expect(screen.getByText("Already exists").className).toContain("absolute");
+  });
+
   // Checks that the switch reports the opposite value when it is clicked.
   it("Switch toggles", () => {
     const onChange = vi.fn();
