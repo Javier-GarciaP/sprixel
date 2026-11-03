@@ -92,4 +92,30 @@ describe("bump-version", () => {
     expect(check.status).toBe(1);
     expect(check.stderr).toContain("src-tauri/Cargo.toml");
   });
+
+  // Checks the scenario "Wrong tag": the tag says one version and the code
+  // another, so the release pipeline must stop before building.
+  it("--tag passes when the tag is v plus the code version", () => {
+    expect(run("--tag", "v0.1.0").status).toBe(0);
+  });
+
+  it("--tag fails when the tag and the code version differ", () => {
+    const wrong = run("--tag", "v1.2.0");
+
+    expect(wrong.status).toBe(1);
+    expect(wrong.stderr).toContain("v1.2.0");
+    expect(wrong.stderr).toContain("0.1.0");
+  });
+
+  it("--tag fails when the tag is not in the vMAJOR.MINOR.PATCH form", () => {
+    expect(run("--tag", "0.1.0").status).toBe(1);
+    expect(run("--tag", "release-1").status).toBe(1);
+  });
+
+  it("--tag also fails when the version files disagree", () => {
+    const toml = read("src-tauri/Cargo.toml").replace("0.1.0", "0.9.9");
+    fs.writeFileSync(path.join(copy, "src-tauri/Cargo.toml"), toml);
+
+    expect(run("--tag", "v0.1.0").status).toBe(1);
+  });
 });

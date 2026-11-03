@@ -3,6 +3,8 @@
 //
 //   node scripts/bump-version.mjs 0.2.0   set the version everywhere
 //   node scripts/bump-version.mjs --check fail if the files disagree
+//   node scripts/bump-version.mjs --tag v0.2.0
+//                                         fail if the tag and the code differ
 //
 // Files: package.json (the source), package-lock.json, src-tauri/Cargo.toml,
 // src-tauri/Cargo.lock and the default of the Go command. Tauri reads
@@ -106,12 +108,26 @@ export function bump(root, version) {
   }
 }
 
+/** Returns the problem when the tag is not "v" plus the code version. */
+export function checkTag(root, tag) {
+  const version = JSON.parse(read(root, "package.json")).version;
+  if (tag !== `v${version}`) {
+    return `the tag is ${tag} but the code version is ${version} (the tag must be v${version})`;
+  }
+}
+
 function main(args) {
   const root = process.cwd();
+  if (args[0] === "--tag" && args.length === 2) {
+    const problems = [checkTag(root, args[1]), ...check(root)].filter(Boolean);
+    for (const p of problems) console.error(`error: ${p}`);
+    if (problems.length === 0) console.log(`Tag ${args[1]} matches the code.`);
+    return problems.length === 0 ? 0 : 1;
+  }
   const [arg] = args;
   if (!arg || args.length > 1) {
     console.error(
-      "usage: node scripts/bump-version.mjs <MAJOR.MINOR.PATCH> | --check",
+      "usage: node scripts/bump-version.mjs <MAJOR.MINOR.PATCH> | --check | --tag vX.Y.Z",
     );
     return 2;
   }
