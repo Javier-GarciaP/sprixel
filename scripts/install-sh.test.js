@@ -1,0 +1,202 @@
+import process from "node:process";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeRelease } from "./release-fixture.mjs";
+
+// Every test runs install.sh with a temporary HOME and a fake release in a
+// local folder (file:// URL). Nothing touches the real machine or the network.
+const script = path.resolve("install.sh");
+let root, home, release;
+
+beforeEach(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "sprixel-install-"));
+  home = path.join(root, "home");
+  release = path.join(root, "release");
+  fs.mkdirSync(home);
+});
+afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+function install(args = [], env = {}) {
+  return spawnSync("sh", [script, ...args], {
+    encoding: "utf8",
+    env: {
+      PATH: process.env.PATH,
+      HOME: home,
+      SHELL: "/bin/bash",
+      SPRIXEL_BASE_URL: `file://${release}`,
+      SPRIXEL_OS: "Linux",
+      SPRIXEL_ARCH: "x86_64",
+      ...env,
+    },
+  });
+}
+const file = (...p) => path.join(home, ...p);
+
+describe("install.sh", () => {
+  it("installs the command, the app and the notices for the user", () => {
+    makeRelease(release);
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.existsSync(file(".local/bin/sprixel"))).toBe(true);
+    expect(fs.existsSync(file(".local/bin/sprixel-app"))).toBe(true);
+    expect(fs.statSync(file(".local/bin/sprixel")).mode & 0o100).toBeTruthy();
+    expect(fs.existsSync(file(".local/share/sprixel/LICENSE"))).toBe(true);
+    expect(fs.existsSync(file(".local/share/sprixel/THIRD-PARTY.md"))).toBe(
+      true,
+    );
+  });
+
+  it("prints the license notice and the source URL before installing", () => {
+    makeRelease(release);
+    const out = install().stdout;
+
+    expect(out).toContain("MIT License");
+    expect(out).toContain("https://github.com/Javier-GarciaP/sprixel");
+    expect(out.indexOf("MIT License")).toBeLessThan(out.indexOf("Downloading"));
+  });
+
+  it("prints the next steps", () => {
+    makeRelease(release);
+    const out = install().stdout;
+
+    expect(out).toContain("sprixel doctor");
+    expect(out).toContain("sprixel mcp add");
+    expect(out).toContain("Sprixel 0.2.0 is installed");
+  });
+
+  it("stops and installs nothing when a checksum is wrong", () => {
+    makeRelease(release, { wrongChecksum: "Sprixel-linux-x64.AppImage" });
+    const r = install();
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("checksum of Sprixel-linux-x64.AppImage");
+    expect(fs.existsSync(file(".local"))).toBe(false);
+    expect(fs.existsSync(file(".profile"))).toBe(false);
+  });
+
+  it("stops when a file is changed after the checksums were made", () => {
+    makeRelease(release);
+    fs.appendFileSync(path.join(release, "sprixel-linux-x64"), "evil\n");
+    const r = install();
+
+    expect(r.status).toBe(1);
+    expect(fs.existsSync(file(".local"))).toBe(false);
+  });
+
+  it("stops when checksums.txt does not list a file", () => {
+    makeRelease(release);
+    const sums = path.join(release, "checksums.txt");
+    const lines = fs.readFileSync(sums, "utf8").split("\n");
+    fs.writeFileSync(
+      sums,
+      lines.filter((l) => !l.endsWith("  LICENSE")).join("\n"),
+    );
+    const r = install();
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("no checksum for LICENSE");
+    expect(fs.existsSync(file(".local"))).toBe(false);
+  });
+
+  it("stops with the supported systems on an unsupported one", () => {
+    makeRelease(release);
+    for (const env of [
+      { SPRIXEL_OS: "FreeBSD" },
+      { SPRIXEL_ARCH: "riscv64" },
+    ]) {
+      const r = install([], env);
+
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain("not supported");
+      expect(r.stderr).toContain("Linux x64");
+      expect(fs.existsSync(file(".local"))).toBe(false);
+    }
+  });
+
+  it("adds the install folder to the PATH once and says to open a new terminal", () => {
+    makeRelease(release);
+    const first = install([], { PATH: "/usr/bin:/bin" });
+    const second = install([], { PATH: "/usr/bin:/bin" });
+    const profile = fs.readFileSync(file(".profile"), "utf8");
+
+    expect(first.stdout).toContain("Open a new terminal");
+    expect(profile).toContain('export PATH="$HOME/.local/bin:$PATH"');
+    expect(profile.match(/Added by the Sprixel installer/g)).toHaveLength(1);
+    expect(second.status).toBe(0);
+  });
+
+  it("does not touch the profile when the folder is already in the PATH", () => {
+    makeRelease(release);
+    const r = install([], {
+      PATH: `${file(".local/bin")}:${process.env.PATH}`,
+    });
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.existsSync(file(".profile"))).toBe(false);
+    expect(r.stdout).not.toContain("Open a new terminal");
+  });
+
+  it("uses .zprofile for zsh", () => {
+    makeRelease(release);
+    install([], { PATH: "/usr/bin:/bin", SHELL: "/usr/bin/zsh" });
+
+    expect(fs.existsSync(file(".zprofile"))).toBe(true);
+    expect(fs.existsSync(file(".profile"))).toBe(false);
+  });
+
+  it("reinstalling upgrades the version and keeps projects, settings and tokens", () => {
+    makeRelease(release, { version: "0.2.0" });
+    install();
+    const keep = {
+      ".sprixel/token": "secret-token\n",
+      ".sprixel/settings.json": '{"theme":"dark"}\n',
+      ".sprixel/clients.json": '{"approved":["claude"]}\n',
+      "Sprites/hero/sprixel.json": '{"name":"hero"}\n',
+    };
+    for (const [name, text] of Object.entries(keep)) {
+      fs.mkdirSync(path.dirname(file(name)), { recursive: true });
+      fs.writeFileSync(file(name), text);
+    }
+
+    makeRelease(release, { version: "0.3.0" });
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("Sprixel 0.3.0 is installed");
+    expect(fs.readFileSync(file(".local/bin/sprixel"), "utf8")).toContain(
+      "0.3.0",
+    );
+    for (const [name, text] of Object.entries(keep)) {
+      expect(fs.readFileSync(file(name), "utf8")).toBe(text);
+    }
+  });
+
+  it("--version needs a value and unknown options fail", () => {
+    expect(install(["--version"]).status).toBe(1);
+    expect(install(["--nope"]).stderr).toContain("unknown option");
+  });
+
+  it("installs the app on macOS under ~/Applications and replaces the old one", () => {
+    makeRelease(release);
+    const mac = {
+      SPRIXEL_OS: "Darwin",
+      SPRIXEL_ARCH: "arm64",
+      SHELL: "/bin/zsh",
+    };
+    const r = install([], mac);
+    const exe = file("Applications/Sprixel.app/Contents/MacOS/sprixel");
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.existsSync(exe)).toBe(true);
+    expect(fs.existsSync(file(".local/bin/sprixel"))).toBe(true);
+    expect(r.stdout).toContain("not signed");
+
+    makeRelease(release, { version: "0.3.0" });
+    install([], mac);
+    expect(fs.readFileSync(exe, "utf8")).toContain("0.3.0");
+  });
+});
