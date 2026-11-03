@@ -42,6 +42,13 @@ pub fn optional_u32(args: &Value, key: &str) -> Result<Option<u32>, ToolError> {
     }
 }
 
+pub fn optional_u64(args: &Value, key: &str) -> Result<Option<u64>, ToolError> {
+    match object(args)?.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(value) => value.as_u64().map(Some).ok_or_else(|| bad(key, "a whole number, zero or more")),
+    }
+}
+
 pub fn required_u32(args: &Value, key: &str) -> Result<u32, ToolError> {
     optional_u32(args, key)?.ok_or_else(|| bad(key, "given, as a whole number"))
 }

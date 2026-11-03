@@ -337,8 +337,44 @@ pub fn check_name(
     })
 }
 
-/// Creates a sprite. With no palette the sprite uses `main`, which is created
-/// empty first when the project has none. Everything is one history entry.
+/// The operations that create a sprite. With no palette the sprite uses
+/// `main`, which is created empty first when the project has none. The app
+/// and the MCP tool `create_sprite` share it, so they follow the same rules.
+pub fn create_sprite_operations(
+    project: &crate::document::Project,
+    folder: &[String],
+    name: &str,
+    width: u32,
+    height: u32,
+    palette: Option<&str>,
+) -> Vec<Operation> {
+    let mut ops = Vec::new();
+    let palette = match palette {
+        Some(chosen) => chosen.to_string(),
+        None => {
+            if project.palette(DEFAULT_PALETTE).is_none() {
+                ops.push(Operation::CreatePalette {
+                    palette: Palette {
+                        name: DEFAULT_PALETTE.to_string(),
+                        colors: Vec::new(),
+                    },
+                    index: None,
+                });
+            }
+            DEFAULT_PALETTE.to_string()
+        }
+    };
+    ops.push(Operation::CreateSprite {
+        folder: folder.to_vec(),
+        name: name.to_string(),
+        width,
+        height,
+        palette,
+    });
+    ops
+}
+
+/// Creates a sprite. Everything is one history entry.
 pub fn create_sprite(
     state: &ProjectState,
     folder: &[String],
@@ -348,29 +384,7 @@ pub fn create_sprite(
     palette: Option<&str>,
 ) -> Result<(SpriteTarget, ChangedEvent), CoreError> {
     change(state, |session| {
-        let mut ops = Vec::new();
-        let palette = match palette {
-            Some(chosen) => chosen.to_string(),
-            None => {
-                if session.project.palette(DEFAULT_PALETTE).is_none() {
-                    ops.push(Operation::CreatePalette {
-                        palette: Palette {
-                            name: DEFAULT_PALETTE.to_string(),
-                            colors: Vec::new(),
-                        },
-                        index: None,
-                    });
-                }
-                DEFAULT_PALETTE.to_string()
-            }
-        };
-        ops.push(Operation::CreateSprite {
-            folder: folder.to_vec(),
-            name: name.to_string(),
-            width,
-            height,
-            palette,
-        });
+        let ops = create_sprite_operations(&session.project, folder, name, width, height, palette);
         let touched = session.apply("user", ops)?;
         let target = touched
             .iter()

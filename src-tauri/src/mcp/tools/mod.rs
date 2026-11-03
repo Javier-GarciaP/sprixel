@@ -1,7 +1,9 @@
 //! The tools an AI can call. Each file has the tools of one group.
 
 mod args;
+mod create;
 mod read;
+mod write;
 
 use super::Tool;
 
@@ -11,8 +13,12 @@ pub use read::OPEN_SPRITE_EVENT;
 pub fn all() -> Vec<Tool> {
     let mut tools = Vec::new();
     tools.extend(read::tools());
+    tools.extend(create::tools());
     tools
 }
 
 #[cfg(test)]
 mod read_tests;
+
+#[cfg(test)]
+mod create_tests;

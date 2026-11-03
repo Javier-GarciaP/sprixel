@@ -46,6 +46,8 @@ pub struct Core {
     pub(crate) sessions: Mutex<sessions::Sessions>,
     pub(crate) clients: Mutex<clients::Clients>,
     pub(crate) permissions: Mutex<Permissions>,
+    /// Taken by every write of an agent, so they happen one at a time.
+    pub(crate) write_lock: Mutex<()>,
     pub(crate) limits: limits::Limits,
     pub(crate) rate: Mutex<limits::RateLimiter>,
     /// Connections being served now.
@@ -66,6 +68,7 @@ impl Core {
             sessions: Mutex::default(),
             clients: Mutex::new(clients::Clients::load(&data_dir)),
             permissions: Mutex::new(Permissions::load(&data_dir)),
+            write_lock: Mutex::new(()),
             limits: limits::Limits::default(),
             rate: Mutex::default(),
             connections: AtomicUsize::new(0),

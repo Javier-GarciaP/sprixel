@@ -18,7 +18,7 @@
 ### 3. Tools
 
 - [x] 3.1 Implement the read tools and `render_preview` and verify they do not change the revision
-- [ ] 3.2 Implement `create_folder`, `create_sprite` and `add_frame` and verify the shared error codes
+- [x] 3.2 Implement `create_folder`, `create_sprite` and `add_frame` and verify the shared error codes
 - [ ] 3.3 Implement `apply_grid`, `set_pixels` and `draw_shape` as atomic actions and verify the invalid grid test
 - [ ] 3.4 Implement `delete_frame`, `create_tag`, `set_palette_color` and `delete_sprite` and verify validation matches the app
 - [ ] 3.6 Implement revisions, `base_revision` and `stale_revision` on all write tools and verify the stale test
