@@ -45,9 +45,12 @@ func (c Claude) registered() (bool, error) {
 	if errors.Is(err, ErrNotInstalled) {
 		return false, err
 	}
-	// `claude mcp get` fails when the server does not exist. The docs do not
-	// give its exit codes, so the answer must also name the server.
-	return err == nil && strings.Contains(out, ServerName), nil
+	// `claude mcp get` also exits with an error when the server exists but
+	// cannot connect ("Failed to connect"), so the exit code is not enough.
+	// A server that exists is described with its scope and command; a missing
+	// one only gets a "No MCP server found" line, which also names it.
+	described := strings.Contains(out, "Scope:") || strings.Contains(out, "Command:")
+	return described && strings.Contains(out, ServerName), nil
 }
 
 func (c Claude) State() (State, error) {

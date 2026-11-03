@@ -163,3 +163,27 @@ func TestStartMissingProgram(t *testing.T) {
 		t.Error("expected an error")
 	}
 }
+
+// A source build has a release and a debug app. The one built last is the one
+// the person is working with: an old release build must not win just because
+// release comes first in the list.
+func TestFindSourceBuildPrefersTheNewestApp(t *testing.T) {
+	root := t.TempDir()
+	release := filepath.Join(root, "src-tauri", "target", "release", "sprixel")
+	debug := filepath.Join(root, "src-tauri", "target", "debug", "sprixel")
+	touch(t, release)
+	touch(t, debug)
+	old := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(release, old, old); err != nil {
+		t.Fatal(err)
+	}
+	e := Environment{GOOS: "linux", Home: t.TempDir(), Exe: filepath.Join(root, "bin", "sprixel"), Getenv: func(string) string { return "" }}
+
+	got, err := Find(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want, _ := filepath.Abs(debug); filepath.Clean(got) != want {
+		t.Errorf("Find = %q, want the newer debug build %q", got, want)
+	}
+}
