@@ -203,8 +203,49 @@ Palette guide: how to choose colors\n\
 7. Make a ramp for you: `generate_ramp` adds 3 to 9 tones of one color (use `hue_shift` for cooler shadows and warmer lights). `remove_unused_colors` cleans a palette at the end.\n\
 8. A sprite can have its own palette: `create_sprite` with `own_palette: true`, or `create_palette` and then `set_sprite_palette`. Check the palette of a sprite with `get_palette` before you write a grid for it.";
 
+/// The cap of the mushroom example of the `large-sprites` guide: the left half
+/// (8 columns) of a 16x16 sprite, to be written at x 0, y 2 with a horizontal
+/// symmetry.
+macro_rules! mushroom_cap_grid {
+    () => {
+        "\
+legend\n\
+\x20\x20K outline #3A1F2B\n\
+\x20\x20C cap #D9453B\n\
+\x20\x20D cap shade #A52F3A\n\
+\x20\x20L cap light #F07A5E\n\
+\x20\x20W spot #FFF4E0\n\
+\x20\x20S stem #E9D8B4\n\
+frame 1\n\
+....CCCC\n\
+..CCCCCC\n\
+.CCWWCCC\n\
+.CCWWCCC\n\
+.CCCCCCC\n\
+.CCCCCCC"
+    };
+}
+
+/// The stem of the mushroom example: the left half, written at x 0, y 8.
+macro_rules! mushroom_stem_grid {
+    () => {
+        "\
+frame 1\n\
+....SSSS\n\
+.....SSS\n\
+.....SSS\n\
+.....SSS\n\
+.....SSS\n\
+....SSSS"
+    };
+}
+
+/// The two grids of the mushroom example, for the tests.
+pub const MUSHROOM_CAP_GRID: &str = mushroom_cap_grid!();
+pub const MUSHROOM_STEM_GRID: &str = mushroom_stem_grid!();
+
 /// How to draw sprites bigger than 32x32. Also available as the topic `large-sprites`.
-pub const LARGE_SPRITES_GUIDE: &str = "\
+pub const LARGE_SPRITES_GUIDE: &str = concat!("\
 Large sprites guide: how to draw more than 32x32 without losing count\n\
 \n\
 1. Plan the parts. Before you draw, list the parts (head, body, arms, legs) and give each one a box: `x`, `y`, `width`, `height`. Parts must not overlap by accident.\n\
@@ -213,7 +254,25 @@ Large sprites guide: how to draw more than 32x32 without losing count\n\
 4. Start from a picture. Put a PNG in the folder `references/` of the project and call `import_reference` (`width` and `height` scale it down, `max_colors` adds colors to the palette). It is a rough start: clean it with `apply_grid` and `set_pixels`.\n\
 5. Read only what you need. `get_sprite` with `frame`, `region` and `include_palette` false returns one part, still as a valid grid. Do not read the whole sprite after every change.\n\
 6. Let the server finish. When the parts are done, call `auto_outline` once, then `auto_shade` for each material with the same light direction, then `analyze_sprite` with `outline_key`. Fix the loose pixels and the outline gaps it lists and call it again until both counts are 0.\n\
-7. Keep your changes safe. Pass `base_revision` on every write; if the person edits at the same time you get `stale_revision` and you read again instead of overwriting.";
+7. Keep your changes safe. Pass `base_revision` on every write; if the person edits at the same time you get `stale_revision` and you read again instead of overwriting.\n\
+\n\
+Worked example: a 16x16 mushroom, drawn part by part with only the left half of each part. The steps are the same for a 64x64 sprite; only the parts are more.\n\
+1. `create_sprite` with name mushroom, width 16 and height 16.\n\
+2. The cap: `apply_grid` with name mushroom, `x` 0, `y` 2, `frame` 1, `symmetry` horizontal and this grid. Only the left 8 columns are written; the right half is the mirror. The `legend` adds the colors (D and L are for the shading later):\n\
+\n",
+    mushroom_cap_grid!(),
+    "\n\
+LOOK at the image. The cap is full width, with a white spot on each side.\n\
+3. The stem: `apply_grid` with name mushroom, `x` 0, `y` 8, `frame` 1, `symmetry` horizontal and this grid:\n\
+\n",
+    mushroom_stem_grid!(),
+    "\n\
+LOOK at the image again.\n\
+4. `auto_outline` with name mushroom and key K: the outline is drawn around the whole shape.\n\
+5. `auto_shade` with name mushroom, `light` top-left, `base` C and `keys` [D, C, L]: the top left of the cap gets lighter and the bottom right darker.\n\
+6. `analyze_sprite` with name mushroom and `outline_key` K: `loose_pixels` and `outline_gaps` are 0, so there is nothing to fix.\n\
+7. To check one part later, read only it: `get_sprite` with name mushroom, `frame` 1, `region` {x: 0, y: 8, width: 16, height: 6} and `include_palette` false."
+);
 
 /// How to draw faces and animals. Also available as the topic `faces-and-animals`.
 pub const FACES_GUIDE: &str = "\

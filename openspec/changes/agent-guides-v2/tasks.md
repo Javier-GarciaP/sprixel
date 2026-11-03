@@ -7,7 +7,7 @@
 ## 2. Worked examples
 
 - [x] 2.1 Add the repair example to the `tools` guide and verify it runs (gap found, fixed, confirmed)
-- [ ] 2.2 Add the mushroom example to `large-sprites` and verify it runs (symmetry, outline, shade, no loose pixels)
+- [x] 2.2 Add the mushroom example to `large-sprites` and verify it runs (symmetry, outline, shade, no loose pixels)
 - [ ] 2.3 Add the cat head example to `faces-and-animals` and verify it runs
 - [ ] 2.4 Add the walker example to `walk-and-attack-cycles` and verify the walk, the attack, the durations and `analyze_sprite`
 - [ ] 2.5 Add the anchor, tile and export example to `game-ready` and verify it runs
