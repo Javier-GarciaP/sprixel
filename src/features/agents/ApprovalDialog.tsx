@@ -12,28 +12,46 @@ const abilities: { name: keyof Permissions; label: TranslationKey }[] = [
 
 const idOf = (c: AgentClient) => `${c.version}\u0000${c.name}`;
 
+// The text of an error of the core ({ code, message }) or of anything else.
+const messageOf = (e: unknown) =>
+  typeof e === "object" && e && "message" in e
+    ? String((e as { message: unknown }).message)
+    : String(e);
+
 type Props = {
   api: AgentsApi;
   clients: AgentClient[];
   // What the agent would be allowed to do. Not shown until the core says.
   permissions: Permissions | null;
+  // Reads the clients again. Called after any answer, so the list is right
+  // even when the core sent no event.
+  refresh: () => void;
 };
 
 // The prompt for a new agent. It is mounted once by the app shell, so it
 // appears on any tab. The name is text of the agent: React shows it as plain
 // text, never as HTML (the core also removes invisible characters).
-export function ApprovalDialog({ api, clients, permissions }: Props) {
+export function ApprovalDialog({ api, clients, permissions, refresh }: Props) {
   const t = useT();
   // Closing the dialog does not answer: the agent keeps waiting and can be
   // answered from its card in the Agents tab.
   const [closed, setClosed] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const waiting = clients.find(
     (c) => c.state === "pending" && !closed.includes(idOf(c)),
   );
   if (!waiting) return null;
 
-  const answer = (allow: boolean) =>
-    void api.answer(waiting.name, waiting.version, allow).catch(() => {});
+  // Any answer of the core ends the request, also "it is gone" (false): the
+  // list is read again and the dialog goes away with it. Only an error keeps
+  // the dialog open, with the message, so the person can try again.
+  const answer = (allow: boolean) => {
+    setError(null);
+    api
+      .answer(waiting.name, waiting.version, allow)
+      .then(refresh)
+      .catch((e: unknown) => setError(messageOf(e)));
+  };
   const names = (allowed: boolean) =>
     abilities
       .filter(({ name }) => permissions?.[name] === allowed)
@@ -59,6 +77,11 @@ export function ApprovalDialog({ api, clients, permissions }: Props) {
           </>
         )}
       </dl>
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-error">
+          {t("agents.approve.error", { message: error })}
+        </p>
+      )}
       <div className="mt-5 flex justify-end gap-3">
         <Button onClick={() => answer(false)}>
           {t("agents.approve.reject")}

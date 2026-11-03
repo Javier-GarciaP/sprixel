@@ -181,12 +181,14 @@ impl Core {
 
     /// The user allows or rejects a client that waits. False if none waits.
     pub fn answer_client(&self, name: &str, version: &str, allow: bool) -> std::io::Result<bool> {
-        let done = self.clients.lock().unwrap().answer(name, version, allow)?;
-        if done {
+        let result = self.clients.lock().unwrap().answer(name, version, allow);
+        if matches!(result, Ok(true)) {
             self.log(&format!("client {}", if allow { "allowed" } else { "rejected" }));
-            self.host.emit(CLIENTS_EVENT, serde_json::Value::Null);
         }
-        Ok(done)
+        // Always tell the UI, also when the request was already gone or the
+        // answer could not be saved: its list must show what the core knows.
+        self.host.emit(CLIENTS_EVENT, serde_json::Value::Null);
+        result
     }
 
     /// The user removes a client. Its sessions end, so its next call fails

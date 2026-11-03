@@ -459,6 +459,7 @@
   "agents.approve.allow": "Allow",
   "agents.approve.reject": "Reject",
   "agents.approve.close": "Close",
+  "agents.approve.error": "Could not save your answer: {message}",
   "agents.indicator.waiting": "Waiting for approval",
   "agents.notify.title": "{agent} wants to connect",
   "agents.notify.body": "Open Sprixel to allow or reject it."

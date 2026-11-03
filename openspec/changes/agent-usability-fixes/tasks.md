@@ -7,7 +7,7 @@
 
 ## 2. Approval
 
-- [ ] 2.1 Refresh the clients after any answer, show the error, and emit the event when the entry is gone; verify allow, failed save and missing request
+- [x] 2.1 Refresh the clients after any answer, show the error, and emit the event when the entry is gone; verify allow, failed save and missing request
 
 ## 3. Projects
 

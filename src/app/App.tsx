@@ -305,6 +305,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         api={coreAgentsApi}
         clients={agents.clients}
         permissions={agents.permissions}
+        refresh={agents.refreshClients}
       />
       {notice && <Toast tone="error" message={notice} />}
     </Shell>
