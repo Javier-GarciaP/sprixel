@@ -83,9 +83,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - The core records the activity of every agent, shows who edited a sprite last,
   marks the frame an agent is writing, and lets you Stop an agent
   (`stopped_by_user`) and undo only its latest action.
+- The `sprixel` command: `sprixel mcp` (the stdio bridge for AI tools, which
+  starts the app and reconnects), `mcp add|remove|list` for Claude Code and
+  OpenCode, `doctor`, `start`, `status`, `tools` and `tool`, with `--json` and
+  documented exit codes.
 
 ### Fixed
 
+- `runtime.json` now also has the version of the app.
 - The "..." menu of a folder is no longer cut by the folders column.
 - The canvas no longer jumps when the "pick a color" hint goes away.
 - The project root lists the sprites of every folder.
