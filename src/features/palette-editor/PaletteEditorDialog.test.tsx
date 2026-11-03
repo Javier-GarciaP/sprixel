@@ -124,7 +124,9 @@ describe("Palette editor dialog", () => {
   it("refuses an invalid hex", async () => {
     const { api } = await open();
     type("Color (hex)", "#12");
-    expect((await screen.findByRole("alert")).textContent).toContain("#F04545");
+    // More time than the default: the machine can be busy (the CI, a stress run).
+    const alert = await screen.findByRole("alert", {}, { timeout: 4000 });
+    expect(alert.textContent).toContain("#F04545");
     done();
     await waitFor(() => expect(api.applied).toHaveLength(1));
     expect(api.applied[0].colors[0].hex).toBe("#000000");

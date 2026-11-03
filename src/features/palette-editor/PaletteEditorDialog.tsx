@@ -69,7 +69,7 @@ function DraftField({
   // The color changed elsewhere (a slider, another color): start again.
   useEffect(() => setText(value), [value]);
   return (
-    <div className="flex flex-col gap-1 text-xs text-text-muted">
+    <div className="relative flex flex-col gap-1 text-xs text-text-muted">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -84,7 +84,10 @@ function DraftField({
         className={`rounded-md border bg-bg px-3 py-2 text-sm text-text ${mono ? "font-mono" : ""} ${message ? "border-error" : "border-border"}`}
       />
       {message && (
-        <span role="alert" className="text-error">
+        <span
+          role="alert"
+          className="absolute right-0 top-full z-10 mt-1 w-max max-w-[14rem] rounded-md border border-error bg-surface px-2 py-1 text-error shadow-lg"
+        >
           {message}
         </span>
       )}
@@ -190,7 +193,7 @@ export function PaletteEditorDialog({
         <div className="flex w-72 shrink-0 flex-col gap-2">
           <ul
             aria-label={t("palette.colors")}
-            className="flex max-h-80 flex-col gap-1 overflow-y-auto"
+            className="flex max-h-[min(26rem,50vh)] flex-col gap-1 overflow-y-auto"
           >
             {draft.map((color) => (
               <li key={color.id}>
