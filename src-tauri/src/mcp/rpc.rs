@@ -104,6 +104,7 @@ impl Core {
                 "protocolVersion": version,
                 "capabilities": { "tools": {} },
                 "serverInfo": { "name": "sprixel", "version": env!("CARGO_PKG_VERSION") },
+                "instructions": super::tools::INSTRUCTIONS,
             }),
         );
         reply.session = Some(session);

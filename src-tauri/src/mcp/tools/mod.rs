@@ -1,5 +1,13 @@
 //! The tools an AI can call. Each file has the tools of one group.
 
+/// The sentence every write tool ends with. A macro, so `concat!` can use it
+/// in a description.
+macro_rules! write_note {
+    () => {
+        " Returns the new `revision`. Pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. The whole call is applied or nothing is, and the person can undo it."
+    };
+}
+
 mod args;
 mod create;
 mod docs;
@@ -12,6 +20,7 @@ mod write;
 
 use super::Tool;
 
+pub use docs::INSTRUCTIONS;
 pub use read::OPEN_SPRITE_EVENT;
 
 /// Every tool of the server, in the order a client sees them.
@@ -42,3 +51,6 @@ mod export_tests;
 
 #[cfg(test)]
 mod revision_tests;
+
+#[cfg(test)]
+mod docs_tests;

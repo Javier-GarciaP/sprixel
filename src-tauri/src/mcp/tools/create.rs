@@ -13,7 +13,7 @@ pub fn tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "create_folder",
-            description: "Creates a folder in the project. `parent` is the folder to create it in (omit for the project root). Names are unique inside a folder, ignoring case.",
+            description: concat!("Creates a folder in the project. `parent` is the folder to create it in (omit for the project root). Names are unique inside a folder, ignoring case.", write_note!()),
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string", "description": "The new folder name." },
                 "parent": { "type": "string", "description": "A folder path like \"Characters\". Omit for the project root." },
@@ -24,7 +24,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "create_sprite",
-            description: "Creates an empty (transparent) sprite with one frame. The size is chosen now and cannot change later: 1 to 512 on each side. Without `palette` it uses the palette `main`.",
+            description: concat!("Creates an empty (transparent) sprite with one frame. The size is chosen now and cannot change later: 1 to 512 on each side. Without `palette` it uses the palette `main`.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "width", "height"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string", "description": "A folder path like \"Characters\". Omit for the project root." },
@@ -38,7 +38,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "add_frame",
-            description: "Adds a frame to a sprite: empty, or a copy of another frame with `copy_of`. Frames are numbered from 1. By default it goes at the end.",
+            description: concat!("Adds a frame to a sprite: empty, or a copy of another frame with `copy_of`. Frames are numbered from 1. By default it goes at the end.", write_note!()),
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },

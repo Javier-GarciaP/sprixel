@@ -14,7 +14,7 @@ pub fn tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "delete_frame",
-            description: "Deletes one frame of a sprite (frames are numbered from 1). A sprite keeps at least one frame. Animations (tags) follow the frames.",
+            description: concat!("Deletes one frame of a sprite (frames are numbered from 1). A sprite keeps at least one frame. Animations (tags) follow the frames.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "frame"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -26,7 +26,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "create_tag",
-            description: "Creates an animation (a tag): a named range of frames with a speed. `sprite` is the sprite, `name` is the name of the new animation. Frames are numbered from 1 and both ends are included.",
+            description: concat!("Creates an animation (a tag): a named range of frames with a speed. `sprite` is the sprite, `name` is the name of the new animation. Frames are numbered from 1 and both ends are included.", write_note!()),
             schema: json!({ "type": "object", "required": ["sprite", "name", "from", "to", "fps"], "properties": {
                 "sprite": { "type": "string", "description": "The sprite that gets the animation." },
                 "folder": { "type": "string" },
@@ -42,7 +42,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "set_palette_color",
-            description: "Adds a color to a palette, or changes the name or the hex value of the color that has this `key`. A key is one printable character that is not a space and not `.`. Without `key` a new color gets the next free key. A palette has at most 93 colors. Pixels keep their key, so changing a color recolors every pixel that uses it.",
+            description: concat!("Adds a color to a palette, or changes the name or the hex value of the color that has this `key`. A key is one printable character that is not a space and not `.`. Without `key` a new color gets the next free key. A palette has at most 93 colors. Pixels keep their key, so changing a color recolors every pixel that uses it.", write_note!()),
             schema: json!({ "type": "object", "required": ["hex"], "properties": {
                 "palette": { "type": "string", "description": "The palette name. Default: the palette of `sprite`, or `main`." },
                 "sprite": { "type": "string", "description": "Use the palette of this sprite." },
@@ -57,7 +57,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "delete_sprite",
-            description: "Moves a sprite to the trash. The person can undo it. It needs the permission \"Delete sprites\", which is off by default.",
+            description: concat!("Moves a sprite to the trash. The person can undo it. It needs the permission \"Delete sprites\", which is off by default.", write_note!()),
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },

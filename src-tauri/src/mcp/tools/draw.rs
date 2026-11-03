@@ -31,7 +31,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "set_pixels",
-            description: "Sets single pixels of one frame. Each pixel is `{x, y, key}`; x and y count from 0 at the top left. The key is a palette key, or `.` to erase. All pixels are checked first: if one is wrong, none is set.",
+            description: concat!("Sets single pixels of one frame. Each pixel is `{x, y, key}`; x and y count from 0 at the top left. The key is one key of the palette (read them with get_palette), or `.` to erase. All pixels are checked first: if one is wrong, none is set.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "pixels"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -48,7 +48,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "draw_shape",
-            description: "Draws a shape in one frame with one palette key (`.` erases). Shapes: `line` (x0, y0, x1, y1), `rectangle` and `ellipse` (x, y of the top left corner of the box, width, height, and `filled`), and `fill` (x, y: replaces the connected area of the same key, like a bucket). The whole shape must fit inside the sprite.",
+            description: concat!("Draws a shape in one frame with one key of the palette (read them with get_palette; `.` erases). Shapes: `line` (x0, y0, x1, y1), `rectangle` and `ellipse` (x, y of the top left corner of the box, width, height, and `filled`), and `fill` (x, y: replaces the connected area of the same key, like a bucket). The whole shape must fit inside the sprite.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "shape", "key"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
