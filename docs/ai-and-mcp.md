@@ -109,6 +109,7 @@ description tells the AI the rules, so it does not need this page.
 | `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations |
 | `get_palette` | The colors with their one-letter keys |
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
+| `analyze_sprite` | Checks a sprite: loose pixels, gaps in the outline (`outline_key`), unused colors, and how each frame differs from the next (`changed_pixels`, `bbox`, `ground_kept`). Changes nothing |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
 | `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |

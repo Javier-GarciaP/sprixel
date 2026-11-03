@@ -10,7 +10,7 @@
 
 - [x] 2.1 Add the tool `auto_outline` through `write()` and verify it with MCP tests (result, one history entry, errors, permission, stale revision)
 - [x] 2.2 Add the tool `auto_shade` through `write()` and verify it with MCP tests
-- [ ] 2.3 Add the read-only tool `analyze_sprite` and verify it with MCP tests (JSON shape, no change of revision or history, not in the activity log)
+- [x] 2.3 Add the read-only tool `analyze_sprite` and verify it with MCP tests (JSON shape, no change of revision or history, not in the activity log)
 - [ ] 2.4 Add the activity texts (Rust summary, `en.json`, `es.json`, activity list) and verify with a Rust and a UI test
 
 ## 3. Docs and guides

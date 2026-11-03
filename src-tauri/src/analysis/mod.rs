@@ -1,4 +1,3 @@
-#![allow(dead_code, unused_imports)]
 //! Pure functions that outline, shade and check a frame. They know nothing of
 //! Tauri or MCP: a frame goes in (`View`), a list of pixel changes or a report
 //! comes out, and the same input always gives the same output. The MCP tools in
@@ -9,9 +8,9 @@ mod outline;
 mod report;
 mod shade;
 
-pub use outline::{Outline, OutlineOptions, auto_outline};
+pub use outline::{OutlineOptions, auto_outline};
 pub use report::{FrameChange, colors, compare, loose_pixels, outline_gaps};
-pub use shade::{Light, Region, Shade, ShadeOptions, auto_shade};
+pub use shade::{Light, Region, ShadeOptions, auto_shade};
 
 use crate::document::TRANSPARENT;
 

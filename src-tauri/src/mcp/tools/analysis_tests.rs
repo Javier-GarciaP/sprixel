@@ -218,3 +218,81 @@ fn auto_shade_needs_the_edit_permission() {
 
     assert_eq!(error["code"], "permission_denied");
 }
+
+/// A goblin (4x4, 2 frames) drawn for the report tests.
+fn goblin_frames(core: &crate::mcp::Core, session: &str) {
+    let g = |frame: u32, x: u32, y: u32, key: &str| json!({ "name": "goblin", "frame": frame, "pixels": [{ "x": x, "y": y, "key": key }] });
+    // Frame 1 has (0,0) R and (3,3) G. Frame 2 gets a block, a loose pixel and a floor.
+    for (frame, x, y, key) in [(2, 0, 3, "G"), (2, 1, 3, "G"), (2, 1, 2, "G"), (2, 3, 0, "G")] {
+        call(core, session, "set_pixels", g(frame, x, y, key)).unwrap();
+    }
+}
+
+// Checks the report of a two frame sprite: colors, loose pixels per frame, the
+// comparison of the frames, and that the call changes nothing and is not logged.
+#[test]
+fn analyze_sprite_reports_loose_pixels_colors_and_changes() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    goblin_frames(&core, &session);
+    project::edit(&host.project, |s| s.history.clear()).unwrap();
+    let before = (revision(&host), core.activity().len());
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "goblin" })).unwrap();
+
+    assert_eq!(report["sprite"], "Characters/goblin");
+    assert_eq!((report["width"].as_u64(), report["height"].as_u64(), report["frames"].as_u64()), (Some(4), Some(4), Some(2)));
+    assert_eq!(report["colors"], json!({ "count": 2, "used": ["R", "G"], "unused": [] }));
+    // Frame 1: R at (0,0) and G at (3,3) touch nothing.
+    assert_eq!(report["frame_reports"][0]["loose_pixels"], json!({ "count": 2, "at": [[0, 0], [3, 3]] }));
+    assert!(report["frame_reports"][0]["outline_gaps"].is_null(), "no outline_key, no gaps");
+    // Frame 2: only (3,0) is alone (the R of frame 1 is gone; (0,3),(1,3),(1,2) touch).
+    assert_eq!(report["frame_reports"][1]["loose_pixels"], json!({ "count": 1, "at": [[3, 0]] }));
+    let change = &report["changes"][0];
+    assert_eq!((change["from"].as_u64(), change["to"].as_u64()), (Some(1), Some(2)));
+    assert_eq!(change["changed_pixels"], 6);
+    assert_eq!(change["bbox"], json!({ "x": 0, "y": 0, "width": 4, "height": 4 }));
+    assert_eq!(change["ground_kept"], false, "the bottom rows changed");
+    assert_eq!((revision(&host), core.activity().len()), before);
+    assert_eq!(entries(&host), 0);
+}
+
+// Checks the unused colors, the outline gaps and `ground_rows`, and that a
+// sprite with one frame has no `changes`.
+#[test]
+fn analyze_sprite_finds_gaps_unused_colors_and_has_no_changes_for_one_frame() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    // slime: a 3x3 block of G with an R outline that misses the pixel at (1,2).
+    call(&core, &session, "draw_shape", json!({ "name": "slime", "shape": "rectangle", "key": "G", "x": 2, "y": 2, "width": 3, "height": 3, "filled": true })).unwrap();
+    call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R" })).unwrap();
+    call(&core, &session, "set_pixels", json!({ "name": "slime", "pixels": [{ "x": 1, "y": 3, "key": "." }] })).unwrap();
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "slime", "outline_key": "R" })).unwrap();
+
+    assert_eq!(report["frame_reports"][0]["outline_gaps"], json!({ "count": 1, "at": [[2, 3]] }));
+    assert_eq!(report["colors"]["unused"], json!([]));
+    assert!(report["changes"].is_null());
+    let clean = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+    assert_eq!(clean["frame_reports"][0]["loose_pixels"]["count"], 0);
+    let error = call(&core, &session, "analyze_sprite", json!({ "name": "slime", "outline_key": "Z" })).unwrap_err();
+    assert_eq!(error["code"], "unknown_key");
+    let none = call(&core, &session, "analyze_sprite", json!({ "name": "nobody" })).unwrap_err();
+    assert_eq!(none["code"], "not_found");
+}
+
+// Checks that lists are cut at 50 coordinates while `count` stays complete.
+#[test]
+fn analyze_sprite_cuts_long_lists() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "create_sprite", json!({ "name": "dots", "width": 16, "height": 16 })).unwrap();
+    // Every other pixel of the even rows: 8 x 8 = 64 loose pixels.
+    let pixels: Vec<_> = (0..16).step_by(2).flat_map(|y| (0..16).step_by(2).map(move |x| json!({ "x": x, "y": y, "key": "R" }))).collect();
+    call(&core, &session, "set_pixels", json!({ "name": "dots", "pixels": pixels })).unwrap();
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "dots" })).unwrap();
+
+    assert_eq!(report["frame_reports"][0]["loose_pixels"]["count"], 64);
+    assert_eq!(report["frame_reports"][0]["loose_pixels"]["at"].as_array().unwrap().len(), 50);
+}
