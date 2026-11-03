@@ -83,3 +83,79 @@ pub fn flatten(image: &Image, background: Background, cell: u32) -> Image {
 pub fn checker_cell(scale: u32) -> u32 {
     (scale / 2).max(1)
 }
+
+/// The digits 0 to 9 in a 3x5 font: 5 rows, 3 bits each (the left bit first).
+const DIGITS: [[u8; 5]; 10] = [
+    [0b111, 0b101, 0b101, 0b101, 0b111],
+    [0b010, 0b110, 0b010, 0b010, 0b111],
+    [0b111, 0b001, 0b111, 0b100, 0b111],
+    [0b111, 0b001, 0b111, 0b001, 0b111],
+    [0b101, 0b101, 0b111, 0b001, 0b001],
+    [0b111, 0b100, 0b111, 0b001, 0b111],
+    [0b111, 0b100, 0b111, 0b101, 0b111],
+    [0b111, 0b001, 0b001, 0b001, 0b001],
+    [0b111, 0b101, 0b111, 0b101, 0b111],
+    [0b111, 0b101, 0b111, 0b001, 0b111],
+];
+
+/// The height of the band above a labeled frame, in label pixels: one of
+/// space, five of digit and one of space.
+pub const LABEL_BAND: u32 = 7;
+
+/// The pixels of a number: its width, its height and the (x, y) of every
+/// lit pixel. Each font pixel is `lu` x `lu`, digits are one font pixel apart.
+pub(super) fn draw_number(number: u32, lu: u32) -> (u32, u32, Vec<(u32, u32)>) {
+    let text = number.to_string();
+    let mut lit = Vec::new();
+    for (at, digit) in text.bytes().enumerate() {
+        let rows = DIGITS[(digit - b'0') as usize];
+        let left = at as u32 * 4;
+        for (y, row) in rows.iter().enumerate() {
+            for x in 0..3u32 {
+                if row >> (2 - x) & 1 == 1 {
+                    for (dx, dy) in (0..lu).flat_map(|dx| (0..lu).map(move |dy| (dx, dy))) {
+                        lit.push(((left + x) * lu + dx, y as u32 * lu + dy));
+                    }
+                }
+            }
+        }
+    }
+    let chars = text.len() as u32;
+    ((chars * 4 - 1) * lu, 5 * lu, lit)
+}
+
+/// All `frames` (same size) in a grid of `columns`, in reading order, over
+/// the background. Cells are `unit` pixels apart (one sprite pixel). With
+/// `labels`, a band above each frame shows its number (from 1).
+pub fn render_sheet(frames: &[Image], columns: u32, unit: u32, labels: bool, background: Background) -> Image {
+    let unit = unit.max(1);
+    let (fw, fh) = frames.first().map_or((0, 0), |f| (f.width, f.height));
+    let columns = columns.clamp(1, frames.len().max(1) as u32);
+    let rows = (frames.len() as u32).div_ceil(columns);
+    let lu = (unit / 2).max(1);
+    let band = if labels { LABEL_BAND * lu } else { 0 };
+    let (width, height) = (columns * fw + (columns - 1) * unit, rows * (fh + band) + rows.saturating_sub(1) * unit);
+    let mut sheet = Image { width, height, rgba: vec![0; (width * height * 4) as usize] };
+    let ink = if background == Background::Dark { [255, 255, 255, 255] } else { [0, 0, 0, 255] };
+    let mut put = |x: u32, y: u32, color: [u8; 4]| {
+        if x < width && y < height {
+            let at = ((y * width + x) * 4) as usize;
+            sheet.rgba[at..at + 4].copy_from_slice(&color);
+        }
+    };
+    for (index, frame) in frames.iter().enumerate() {
+        let (col, row) = (index as u32 % columns, index as u32 / columns);
+        let (left, top) = (col * (fw + unit), row * (fh + band + unit));
+        for (at, px) in frame.rgba.chunks_exact(4).enumerate() {
+            let (x, y) = (at as u32 % frame.width, at as u32 / frame.width);
+            put(left + x, top + band + y, [px[0], px[1], px[2], px[3]]);
+        }
+        if labels {
+            let (_, _, lit) = draw_number(index as u32 + 1, lu);
+            for (x, y) in lit {
+                put(left + x, top + lu + y, ink);
+            }
+        }
+    }
+    flatten(&sheet, background, checker_cell(unit))
+}

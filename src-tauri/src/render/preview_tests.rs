@@ -1,4 +1,5 @@
 use super::*;
+use super::preview::{LABEL_BAND, draw_number};
 
 fn one(rgba: [u8; 4]) -> Image {
     Image { width: 1, height: 1, rgba: rgba.to_vec() }
@@ -61,4 +62,71 @@ fn translucent_pixels_blend_with_the_background() {
     let out = flatten(&half, Background::Light, 1);
     assert_eq!(out.rgba[3], 255);
     assert!((out.rgba[0] as i32 - 127).abs() <= 1, "{:?}", out.rgba);
+}
+
+fn blank(w: u32, h: u32) -> Image {
+    Image { width: w, height: h, rgba: vec![0; (w * h * 4) as usize] }
+}
+
+fn opaque_count(image: &Image) -> usize {
+    image.rgba.chunks_exact(4).filter(|p| p[3] != 0).count()
+}
+
+// Checks the sheet size: 4 frames of 4x4 in 2 columns, a gap of `unit` (1)
+// between cells, no label band: 4+1+4 = 9 on each side.
+#[test]
+fn sheet_size_follows_columns_and_gap() {
+    let frames = vec![blank(4, 4); 4];
+    let sheet = render_sheet(&frames, 2, 1, false, Background::Transparent);
+    assert_eq!((sheet.width, sheet.height), (9, 9));
+    // 3 frames in 2 columns: still 2 rows.
+    let sheet = render_sheet(&frames[..3], 2, 1, false, Background::Transparent);
+    assert_eq!((sheet.width, sheet.height), (9, 9));
+    // Columns never exceed the number of frames.
+    let sheet = render_sheet(&frames[..2], 5, 1, false, Background::Transparent);
+    assert_eq!((sheet.width, sheet.height), (9, 4));
+}
+
+// Checks that each frame is placed in reading order (left to right, then down):
+// frame 2 has a red pixel and lands in the second column.
+#[test]
+fn frames_are_placed_in_order() {
+    let mut second = blank(2, 2);
+    second.rgba[0..4].copy_from_slice(&[255, 0, 0, 255]);
+    let frames = vec![blank(2, 2), second];
+    let sheet = render_sheet(&frames, 2, 1, false, Background::Transparent);
+    assert_eq!(px(&sheet, 3, 0), [255, 0, 0, 255]); // 2 wide + 1 gap
+    assert_eq!(opaque_count(&sheet), 1);
+}
+
+// Checks the labels: with `labels` the sheet is taller (a band above each
+// frame) and the band has ink pixels; without it there is nothing drawn.
+#[test]
+fn labels_add_a_band_with_the_frame_number() {
+    let frames = vec![blank(4, 4); 2];
+    let plain = render_sheet(&frames, 2, 1, false, Background::Transparent);
+    let labeled = render_sheet(&frames, 2, 1, true, Background::Transparent);
+    assert_eq!(opaque_count(&plain), 0);
+    assert_eq!(labeled.width, plain.width);
+    assert_eq!(labeled.height, plain.height + LABEL_BAND);
+    assert!(opaque_count(&labeled) > 0);
+    // Nothing is drawn below the band (the frames are empty).
+    let below = Image { width: labeled.width, height: 4, rgba: labeled.rgba[(LABEL_BAND * labeled.width * 4) as usize..].to_vec() };
+    assert_eq!(opaque_count(&below), 0);
+}
+
+// Checks that "1" and "2" look different, that ink is white on dark and black
+// elsewhere, and that a number with two digits is wider than one with one.
+#[test]
+fn digits_differ_and_ink_follows_the_background() {
+    let one = draw_number(1, 1);
+    let two = draw_number(2, 1);
+    assert_ne!(one, two);
+    assert_eq!(one.1, 5);
+    assert!(draw_number(12, 1).0 > one.0);
+    let frames = vec![blank(8, 4)];
+    let dark = render_sheet(&frames, 1, 1, true, Background::Dark);
+    let light = render_sheet(&frames, 1, 1, true, Background::Light);
+    assert!(dark.rgba.chunks_exact(4).any(|p| p == [255, 255, 255, 255]));
+    assert!(light.rgba.chunks_exact(4).any(|p| p == [0, 0, 0, 255]));
 }
