@@ -15,4 +15,4 @@
 ## 3. Docs and checks
 
 - [x] 3.1 Update `CHANGELOG.md` and the docs, and verify the docs and guide tests pass
-- [ ] 3.2 Run format, lint, all tests, builds and `openspec validate --all --strict`
+- [x] 3.2 Run format, lint, all tests, builds and `openspec validate --all --strict`
