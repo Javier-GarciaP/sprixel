@@ -6,10 +6,12 @@ type Props = {
   closeLabel: string;
   onClose: () => void;
   children: ReactNode;
+  // A wide dialog is for two columns, like the palette editor.
+  wide?: boolean;
 };
 
 // A modal over the current screen. Escape closes it.
-export function Dialog({ title, closeLabel, onClose, children }: Props) {
+export function Dialog({ title, closeLabel, onClose, children, wide }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -22,7 +24,7 @@ export function Dialog({ title, closeLabel, onClose, children }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-[560px] max-w-[90vw] rounded-lg border-2 border-border-strong bg-surface p-7"
+        className={`${wide ? "w-[780px]" : "w-[560px]"} max-w-[90vw] rounded-lg border-2 border-border-strong bg-surface p-7`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-title text-xl font-bold">{title}</h2>

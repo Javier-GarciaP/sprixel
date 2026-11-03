@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +22,13 @@ const core = vi.hoisted(() => ({
   projectTree: vi.fn(),
   spriteFrame: vi.fn(),
   onProjectChanged: vi.fn(),
+}));
+
+const paletteApi = vi.hoisted(() => ({
+  loadPalette: vi.fn(),
+  applyEdit: vi.fn(),
+  listPresets: vi.fn(),
+  createPalette: vi.fn(),
 }));
 
 vi.mock("./api/project", async (original) => ({
@@ -43,6 +51,11 @@ vi.mock("@/shared/lib/core", async (original) => ({
 vi.mock("@/shared/lib/render", async (original) => ({
   ...(await original<typeof import("@/shared/lib/render")>()),
   drawFrame: vi.fn(),
+}));
+
+vi.mock("@/features/palette-editor", async (original) => ({
+  ...(await original<typeof import("@/features/palette-editor")>()),
+  corePaletteApi: paletteApi,
 }));
 
 import App from "./App";
@@ -98,7 +111,11 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  for (const fn of [...Object.values(api), ...Object.values(core)])
+  for (const fn of [
+    ...Object.values(api),
+    ...Object.values(core),
+    ...Object.values(paletteApi),
+  ])
     fn.mockReset();
 });
 
@@ -168,5 +185,58 @@ describe("Project tab in the app", () => {
     expect(hint("Duplicate")).toBe("Ctrl+D");
     expect(hint("Delete")).toBe("Delete");
     expect(hint("Open in editor")).toBe("Enter");
+  });
+});
+
+describe("Palettes in the Project tab", () => {
+  async function openProject() {
+    core.projectTree.mockResolvedValue({
+      name: "Kit",
+      revision: 1,
+      root: { name: "", path: [], sprites: [], folders: [] },
+      palettes: [{ name: "dungeon16", colors: 2 }],
+    });
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open project" }),
+    );
+  }
+
+  // Checks task 3.1 in the app: the "+" of the palettes list opens the New
+  // palette dialog with the presets, and creating from "Farm 32" asks the
+  // core for a palette with that preset.
+  it("creates a palette from a preset with the plus button", async () => {
+    paletteApi.listPresets.mockResolvedValue([
+      {
+        id: "farm-32",
+        name: "Farm 32",
+        colors: [{ key: "A", hex: "#000000" }],
+      },
+    ]);
+    paletteApi.createPalette.mockResolvedValue("Farm 32");
+    await openProject();
+    fireEvent.click(await screen.findByRole("button", { name: "New palette" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /Farm 32/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() =>
+      expect(paletteApi.createPalette).toHaveBeenCalledWith(
+        "Farm 32",
+        "farm-32",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  // Checks that clicking a palette of the list opens the palette editor for it.
+  it("opens the palette editor when a palette is clicked", async () => {
+    paletteApi.loadPalette.mockResolvedValue({
+      name: "dungeon16",
+      colors: [{ key: "R", name: "red", hex: "#F04545", used: false }],
+    });
+    await openProject();
+    fireEvent.click(await screen.findByRole("button", { name: /dungeon16/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.getAttribute("aria-label")).toBe("Edit palette · dungeon16");
+    expect(paletteApi.loadPalette).toHaveBeenCalledWith("dungeon16");
   });
 });

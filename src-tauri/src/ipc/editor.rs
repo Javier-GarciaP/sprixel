@@ -56,6 +56,8 @@ pub struct SpriteInfo {
     pub width: u32,
     pub height: u32,
     pub frame_count: usize,
+    /// The name of the palette of the sprite (the palette editor opens it).
+    pub palette_name: String,
     pub palette: Vec<PaletteColor>,
     #[serde(flatten)]
     pub history: HistoryState,
@@ -201,6 +203,7 @@ pub fn sprite_info(state: &ProjectState, sprite: &SpriteArg) -> Result<SpriteInf
             width: found.width,
             height: found.height,
             frame_count: found.frame_count(),
+            palette_name: found.palette.clone(),
             palette: palette_of(&session.project, &sprite.to_ref()),
             history: history_of(session),
         })
@@ -640,6 +643,7 @@ mod tests {
         assert_eq!(info["canRedo"], false);
         assert!(info["revision"].is_u64());
         assert_eq!(info["palette"], serde_json::json!([]));
+        assert_eq!(info["paletteName"], "main");
 
         let applied = apply(&state, &agents, &arg("goblin"), 1, &[change(0, 0, Some("#336699"))])
             .unwrap();
