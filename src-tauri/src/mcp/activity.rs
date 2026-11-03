@@ -132,6 +132,7 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "apply_grid" => format!("Applied a grid to {name}"),
         "set_pixels" => format!("Set {} pixels on {name}", answer["pixels_set"]),
         "draw_shape" => format!("Drew a {} on {name}", text(args, "shape")),
+        "transform_region" => format!("Applied {} to a region of {name}", text(args, "operation")),
         "delete_frame" => format!("Deleted frame {} of {name}", answer["deleted_frame"]),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
         "set_palette_color" => format!(

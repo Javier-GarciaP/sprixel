@@ -1,9 +1,146 @@
-//! Region tools: `transform_region` and `copy_region`. This part is the pure
-//! math on a rectangle of pixels (`width` x `height` bytes, row by row). The
-//! tools below it cut the rectangle out of a frame, call these functions and
-//! write back only the pixels that changed.
+//! Region tools: `transform_region` and `copy_region`. The first part is the
+//! pure math on a rectangle of pixels (`width` x `height` bytes, row by row).
+//! The tools cut the rectangle out of a frame, call these functions and write
+//! back only the pixels that changed, as one `SetPixels` (so history, undo,
+//! replay and preview work as for every other write).
 
-use crate::document::TRANSPARENT;
+use super::args;
+use super::create::base_revision;
+use super::draw::preview_arg;
+use super::read::check_frame;
+use super::write::{Plan, write};
+use crate::document::{Operation, PixelChange, TRANSPARENT};
+use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
+use serde_json::{Value, json};
+
+
+pub fn tools() -> Vec<Tool> {
+    vec![Tool {
+        name: "transform_region",
+        description: concat!(
+            "Changes a rectangle of one frame in one step, without rewriting pixels. `region` is {x, y, width, height} (default: the whole frame). `operation`: `flip_horizontal` (left and right swap), `flip_vertical`, `mirror` (needs `direction`: `left_to_right` copies the mirrored left half over the right half; also `right_to_left`, `top_to_bottom`, `bottom_to_top`), `move` (needs `dx` and `dy`; pixels that leave the region are lost unless `wrap` is true) and `rotate` (needs `degrees`: 90 clockwise, 180 or 270; 90 and 270 need a square region).",
+            write_note!()
+        ),
+        schema: json!({ "type": "object", "required": ["name", "operation"], "properties": {
+            "name": { "type": "string" },
+            "folder": { "type": "string" },
+            "frame": { "type": "integer", "minimum": 1, "description": "Default 1." },
+            "region": region_schema("The rectangle to change. Default: the whole frame."),
+            "operation": { "type": "string", "enum": ["flip_horizontal", "flip_vertical", "mirror", "move", "rotate"] },
+            "direction": { "type": "string", "enum": ["left_to_right", "right_to_left", "top_to_bottom", "bottom_to_top"], "description": "For `mirror`." },
+            "dx": { "type": "integer", "description": "For `move`: pixels to the right (negative: left)." },
+            "dy": { "type": "integer", "description": "For `move`: pixels down (negative: up)." },
+            "wrap": { "type": "boolean", "description": "For `move`: what leaves one side comes back on the other. Default false." },
+            "degrees": { "type": "integer", "enum": [90, 180, 270], "description": "For `rotate`, clockwise." },
+            "preview": preview_arg(),
+            "base_revision": base_revision(),
+        }}),
+        need: Need::Edit,
+        run: transform_region,
+    }]
+}
+
+/// The schema of a `region` argument.
+fn region_schema(description: &str) -> Value {
+    json!({ "type": "object", "description": description, "required": ["x", "y", "width", "height"], "properties": {
+        "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+    }})
+}
+
+type Rect = (u32, u32, u32, u32);
+
+/// The pixels of a rectangle of a frame.
+fn cut(pixels: &[u8], sprite_width: u32, (x, y, w, h): Rect) -> Vec<u8> {
+    (y..y + h)
+        .flat_map(|row| {
+            let start = (row * sprite_width + x) as usize;
+            pixels[start..start + w as usize].iter().copied()
+        })
+        .collect()
+}
+
+/// The pixels that change when `new` replaces the rectangle.
+fn changes(current: &[u8], sprite_width: u32, (x, y, w, _): Rect, new: &[u8]) -> Vec<PixelChange> {
+    let old = {
+        let h = new.len() as u32 / w;
+        cut(current, sprite_width, (x, y, w, h))
+    };
+    new.iter()
+        .zip(&old)
+        .enumerate()
+        .filter(|(_, (n, o))| n != o)
+        .map(|(i, (n, _))| PixelChange { x: x + i as u32 % w, y: y + i as u32 / w, key: *n as char })
+        .collect()
+}
+
+/// A whole number that may be negative.
+fn signed(input: &Value, key: &str) -> Result<i64, ToolError> {
+    match &input[key] {
+        Value::Null => Err(ToolError::new("bad_argument", format!("`{key}` must be given, as a whole number")).with("argument", key)),
+        value => value
+            .as_i64()
+            .ok_or_else(|| ToolError::new("bad_argument", format!("`{key}` must be a whole number")).with("argument", key)),
+    }
+}
+
+fn transform_region(ctx: &Ctx, input: &Value) -> ToolResult {
+    let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
+    let operation = args::required_str(input, "operation")?.to_string();
+    let wrap = args::optional_bool(input, "wrap")?.unwrap_or(false);
+    write(ctx, input, |session| {
+        let project = &session.project;
+        let target = args::sprite(project, input)?;
+        let sprite = project.find_sprite(&target).expect("just found");
+        check_frame(sprite, frame)?;
+        let (sw, sh) = (sprite.width, sprite.height);
+        let rect = args::region(input, "region", sw, sh)?.unwrap_or((0, 0, sw, sh));
+        let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
+        let (w, h) = (rect.2 as usize, rect.3 as usize);
+        let old = cut(current, sw, rect);
+        let new = match operation.as_str() {
+            "flip_horizontal" => flip_horizontal(&old, w, h),
+            "flip_vertical" => flip_vertical(&old, w, h),
+            "mirror" => {
+                let text = args::required_str(input, "direction")?;
+                let direction = Direction::parse(text).ok_or_else(|| {
+                    ToolError::new(
+                        "bad_argument",
+                        format!("`direction` is {text:?}; it must be left_to_right, right_to_left, top_to_bottom or bottom_to_top"),
+                    )
+                    .with("argument", "direction")
+                })?;
+                mirror(&old, w, h, direction)
+            }
+            "move" => shift(&old, w, h, signed(input, "dx")?, signed(input, "dy")?, wrap),
+            "rotate" => {
+                let degrees = args::required_u32(input, "degrees")?;
+                rotate(&old, w, h, degrees).ok_or_else(|| {
+                    ToolError::new(
+                        "bad_argument",
+                        format!("cannot rotate a {w}x{h} region by {degrees}: use 90, 180 or 270, and a square region for 90 and 270"),
+                    )
+                    .with("argument", "degrees")
+                })?
+            }
+            other => {
+                return Err(ToolError::new(
+                    "bad_argument",
+                    format!("`operation` is {other:?}; it must be flip_horizontal, flip_vertical, mirror, move or rotate"),
+                )
+                .with("argument", "operation"));
+            }
+        };
+        let pixels = changes(current, sw, rect, &new);
+        let count = pixels.len();
+        let ops = if pixels.is_empty() {
+            Vec::new()
+        } else {
+            vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame, pixels }]
+        };
+        Ok(Plan::new(ops, json!({ "pixels_changed": count })).preview().busy(&target, frame))
+    })
+}
 
 const BLANK: u8 = TRANSPARENT as u8;
 

@@ -36,6 +36,7 @@ pub fn all() -> Vec<Tool> {
     tools.extend(projects::tools());
     tools.extend(create::tools());
     tools.extend(draw::tools());
+    tools.extend(region::tools());
     tools.extend(structure::tools());
     tools.extend(export::tools());
     tools.extend(undo::tools());
@@ -59,6 +60,9 @@ mod structure_tests;
 
 #[cfg(test)]
 mod edit_tests;
+
+#[cfg(test)]
+mod region_tests;
 
 #[cfg(test)]
 mod export_tests;

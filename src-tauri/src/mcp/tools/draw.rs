@@ -76,7 +76,7 @@ pub fn tools() -> Vec<Tool> {
 }
 
 /// The `preview` argument of the three drawing tools.
-fn preview_arg() -> Value {
+pub(super) fn preview_arg() -> Value {
     json!({ "type": "boolean", "description": "Default true: the result carries an image of the edited frame (at most 512 pixels on a side). LOOK at it and fix what is wrong. Set false to skip it." })
 }
 
