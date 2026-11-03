@@ -3,7 +3,7 @@
 ## 1. Pure analysis module
 
 - [x] 1.1 Add `analysis` with the shared helpers (neighbors, exterior) and `auto_outline` logic, and verify with exact unit tests (4 and 8 neighbors, outside only, inner, clipped)
-- [ ] 1.2 Add `auto_shade` logic and verify with exact unit tests (the 6x6 square, longer ramp, light directions, region, other keys kept)
+- [x] 1.2 Add `auto_shade` logic and verify with exact unit tests (the 6x6 square, longer ramp, light directions, region, other keys kept)
 - [ ] 1.3 Add `analyze_sprite` logic (loose pixels, gaps, colors, frame comparison) and verify with exact unit tests
 
 ## 2. Tools

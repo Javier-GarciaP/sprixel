@@ -6,8 +6,10 @@
 //! `openspec/changes/agent-analysis-tools/design.md`.
 
 mod outline;
+mod shade;
 
 pub use outline::{Outline, OutlineOptions, auto_outline};
+pub use shade::{Light, Region, Shade, ShadeOptions, auto_shade};
 
 use crate::document::TRANSPARENT;
 
@@ -97,3 +99,6 @@ mod support_tests;
 
 #[cfg(test)]
 mod outline_tests;
+
+#[cfg(test)]
+mod shade_tests;
