@@ -426,5 +426,14 @@
   "agents.tool.set_palette_color": "Cambió un color de la paleta",
   "agents.tool.delete_sprite": "Borró el sprite {sprite}",
   "agents.tool.export": "Exportó archivos",
-  "agents.tool.undo_last_ai_action": "Deshizo su última acción"
+  "agents.tool.undo_last_ai_action": "Deshizo su última acción",
+  "agents.permissions": "Permisos",
+  "agents.permissions.hint": "Elige qué pueden hacer tus agentes.",
+  "agents.permissions.create": "Crear sprites",
+  "agents.permissions.edit": "Editar píxeles",
+  "agents.permissions.delete": "Borrar sprites",
+  "agents.permissions.export": "Exportar archivos",
+  "agents.permissions.askOnConnect": "Pedir aprobación al conectar",
+  "agents.permissions.note": "Los cambios de la IA se pueden deshacer, excepto los archivos exportados.",
+  "agents.permissions.error": "No se pudieron guardar los permisos."
 }

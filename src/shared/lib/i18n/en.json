@@ -426,5 +426,14 @@
   "agents.tool.set_palette_color": "Changed a palette color",
   "agents.tool.delete_sprite": "Deleted the sprite {sprite}",
   "agents.tool.export": "Exported files",
-  "agents.tool.undo_last_ai_action": "Undid its last action"
+  "agents.tool.undo_last_ai_action": "Undid its last action",
+  "agents.permissions": "Permissions",
+  "agents.permissions.hint": "Choose what your agents may do.",
+  "agents.permissions.create": "Create sprites",
+  "agents.permissions.edit": "Edit pixels",
+  "agents.permissions.delete": "Delete sprites",
+  "agents.permissions.export": "Export files",
+  "agents.permissions.askOnConnect": "Ask me when a new agent connects",
+  "agents.permissions.note": "AI changes can be undone, except exported files.",
+  "agents.permissions.error": "Could not save the permissions."
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useT } from "@/shared/lib/i18n";
 import { ActivityList } from "./ActivityList";
 import { AgentCard } from "./AgentCard";
+import { PermissionsPanel } from "./PermissionsPanel";
 import { cardsFor, nameOf, type AgentKindId } from "./clients";
 import type { AgentsApi } from "./types";
 import type { AgentsState } from "./useAgents";
@@ -14,6 +15,7 @@ export function AgentsScreen({ api, state }: Props) {
   const cards = cardsFor(state.clients);
   // The agent whose Connect dialog is open (built in the next task).
   const [, setConnecting] = useState<AgentKindId | null>(null);
+  const anyConnected = cards.some((card) => card.state === "connected");
   const lost = cards.find((card) => card.state === "lost");
 
   return (
@@ -62,6 +64,9 @@ export function AgentsScreen({ api, state }: Props) {
         </h2>
         <ActivityList api={api} rows={state.activity} writing={state.writing} />
       </div>
+      {anyConnected && state.permissions && (
+        <PermissionsPanel api={api} permissions={state.permissions} />
+      )}
     </div>
   );
 }
