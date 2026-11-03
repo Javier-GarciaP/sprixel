@@ -71,17 +71,23 @@ pub fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     let result = (|| {
-        let mut file = options.open(&temporary)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
+        let mut file = step("create the temporary file", options.open(&temporary))?;
+        step("write the file", file.write_all(bytes))?;
+        step("flush the file", file.sync_all())?;
         drop(file);
-        restrict(&temporary)?;
-        fs::rename(&temporary, path)
+        step("close the file for the user", restrict(&temporary))?;
+        step("move the file into place", fs::rename(&temporary, path))
     })();
     if result.is_err() {
         let _ = fs::remove_file(&temporary);
     }
     result
+}
+
+/// Says which step of a write failed, so an error from another system can be
+/// understood from its message alone.
+fn step<T>(what: &str, result: io::Result<T>) -> io::Result<T> {
+    result.map_err(|e| io::Error::new(e.kind(), format!("could not {what}: {e}")))
 }
 
 /// Makes a file or folder private to the current user: mode 0600 (0700 for a
@@ -96,16 +102,31 @@ fn restrict(path: &Path) -> io::Result<()> {
     }
     #[cfg(windows)]
     {
-        // `icacls` ships with Windows. `/inheritance:r` drops the rights
-        // inherited from the parent folder; then only the user is granted.
+        // The data folder is inside the profile of the user, which Windows
+        // already keeps private (user, administrators and the system). Only the
+        // files are closed, as OpenSSH does for its keys. `icacls` ships with
+        // Windows: `/inheritance:r` drops the rights inherited from the folder,
+        // then only the user is granted. The user is named with the domain
+        // (the computer name for a local account), so the name is not ambiguous.
+        if path.is_dir() {
+            return Ok(());
+        }
         let user = std::env::var("USERNAME").map_err(|e| io::Error::other(e.to_string()))?;
-        let grant = format!("{user}:(OI)(CI)F");
-        let status = std::process::Command::new("icacls")
+        let account = match std::env::var("USERDOMAIN") {
+            Ok(domain) if !domain.is_empty() => format!("{domain}\\{user}"),
+            _ => user,
+        };
+        let grant = format!("{account}:F");
+        let output = std::process::Command::new("icacls")
             .arg(path)
             .args(["/inheritance:r", "/grant:r", &grant])
-            .stdout(std::process::Stdio::null())
-            .status()?;
-        if status.success() { Ok(()) } else { Err(io::Error::other("icacls failed")) }
+            .output()?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            let text = String::from_utf8_lossy(&output.stdout);
+            Err(io::Error::other(format!("icacls failed for {account}: {}", text.trim())))
+        }
     }
     #[cfg(not(any(unix, windows)))]
     {
