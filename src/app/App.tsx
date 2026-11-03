@@ -91,9 +91,14 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   );
   // What the core says about the agents, for the Agents tab.
   // A new agent that waits while the window is in the background is also
-  // told with a system notification.
+  // told with a system notification. An agent that asks to open a sprite
+  // (`open_sprite`) makes the Editor show it, so the person sees its work.
   const agents = useAgents(coreAgentsApi, (event) => {
-    if (event.type === "pending") {
+    if (event.type === "open-sprite") {
+      setActiveSprite(event.sprite);
+      setTab("editor");
+      setSettingsOpen(false);
+    } else if (event.type === "pending") {
       notifyApproval(
         t("agents.notify.title", { agent: event.name }),
         t("agents.notify.body"),

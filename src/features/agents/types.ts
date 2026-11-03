@@ -53,7 +53,7 @@ export type AgentsEvent =
   | { type: "permissions"; permissions: Permissions }
   | { type: "activity" }
   | { type: "writing"; write: AgentWrite | null }
-  | { type: "open-sprite"; sprite: { folder: string; name: string } };
+  | { type: "open-sprite"; sprite: { folder: string[]; name: string } };
 
 export type AgentsApi = {
   clients(): Promise<AgentClient[]>;
