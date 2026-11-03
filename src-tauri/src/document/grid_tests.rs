@@ -517,18 +517,83 @@ fn the_legend_adds_a_color_and_the_pixels() {
     assert_eq!(pixels_of(&project, &sprite), b"....");
 }
 
-// Checks "The legend never changes a color": a legend line for a key that
-// exists, with another value or name, changes nothing in the palette.
+// Checks "Different color": a legend line for a key that exists with another
+// hex does not change that color. The line and the cells move to a free key,
+// the new key gets the color, and the answer says it (one sentence).
 #[test]
-fn the_legend_never_changes_an_existing_color() {
+fn a_legend_conflict_moves_the_pixels_to_a_free_key() {
     let (mut project, sprite) = project_with_goblin();
     let before = project.palette("dungeon16").unwrap().clone();
     let text = "legend\n  R crimson #00FF00\nframe 1\nR.\n.R\n";
-    let ops = project.grid_operations(&sprite, text, &GridOptions::default()).unwrap();
-    assert!(ops.iter().all(|op| matches!(op, Operation::SetPixels { .. })));
-    project.apply_group(&ops).unwrap();
-    assert_eq!(project.palette("dungeon16").unwrap(), &before);
+
+    let plan = project.grid_plan(&sprite, text, &GridOptions::default()).unwrap();
+
+    let new_key = plan.remap.keys[0].1;
+    assert_eq!(plan.remap.keys, vec![('R', new_key)]);
+    assert!(!before.colors.iter().any(|c| c.key == new_key), "a key the palette did not have");
+    assert_eq!(plan.remap.warnings.len(), 1);
+    assert!(plan.remap.warnings[0].contains("#00FF00") && plan.remap.warnings[0].contains(&before.colors.iter().find(|c| c.key == 'R').unwrap().hex));
+    project.apply_group(&plan.ops).unwrap();
+    let after = project.palette("dungeon16").unwrap();
+    assert_eq!(&after.colors[..before.colors.len()], &before.colors[..], "old colors did not change");
+    let added = after.colors.last().unwrap();
+    assert_eq!((added.key, added.hex.as_str()), (new_key, "#00FF00"));
+    assert_eq!(pixels_of(&project, &sprite), [new_key as u8, b'.', b'.', new_key as u8]);
+}
+
+// Checks "Same color": the same hex (also in other letter case) is not a
+// conflict: no remap, no warning, the pixels keep their key.
+#[test]
+fn the_same_legend_color_is_not_a_conflict() {
+    let (mut project, sprite) = project_with_goblin();
+    let hex = project.palette("dungeon16").unwrap().colors.iter().find(|c| c.key == 'R').unwrap().hex.to_lowercase();
+    let text = format!("legend\n  R anything {hex}\nframe 1\nR.\n.R\n");
+
+    let plan = project.grid_plan(&sprite, &text, &GridOptions::default()).unwrap();
+
+    assert_eq!(plan.remap, Remap::default());
+    project.apply_group(&plan.ops).unwrap();
     assert_eq!(pixels_of(&project, &sprite), b"R..R");
+}
+
+// Checks that a color the palette already has under another key is reused:
+// no new color is added, the pixels use the key that has that hex.
+#[test]
+fn a_legend_conflict_reuses_an_equal_color_under_another_key() {
+    let (mut project, sprite) = project_with_goblin();
+    let other = project.palette("dungeon16").unwrap().colors.iter().find(|c| c.key != 'R').unwrap().clone();
+    let count = project.palette("dungeon16").unwrap().colors.len();
+    let text = format!("legend\n  R same {}\nframe 1\nR.\n.R\n", other.hex);
+
+    let plan = project.grid_plan(&sprite, &text, &GridOptions::default()).unwrap();
+
+    assert_eq!(plan.remap.keys, vec![('R', other.key)]);
+    assert!(plan.ops.iter().all(|op| matches!(op, Operation::SetPixels { .. })), "no color is added");
+    project.apply_group(&plan.ops).unwrap();
+    assert_eq!(project.palette("dungeon16").unwrap().colors.len(), count);
+    assert_eq!(pixels_of(&project, &sprite), [other.key as u8, b'.', b'.', other.key as u8]);
+}
+
+// Checks that the free key is not one the grid already uses for something
+// else, and that the color name stays unique.
+#[test]
+fn the_free_key_is_not_used_by_the_grid_and_the_name_is_unique() {
+    let (project, sprite) = project_with_goblin();
+    let palette = project.palette("dungeon16").unwrap();
+    let first_free = Palette { name: String::new(), colors: palette.colors.clone() }.next_free_key().unwrap();
+    // The grid draws the key `first_free` with a legend color of its own.
+    let name = palette.colors.iter().find(|c| c.key == 'R').unwrap().name.clone();
+    let text = format!("legend\n  R {name} #00FF00\n  {first_free} other #0000FF\nframe 1\nR{first_free}\n..\n");
+
+    let plan = project.grid_plan(&sprite, &text, &GridOptions::default()).unwrap();
+
+    let moved = plan.remap.keys[0].1;
+    assert_ne!(moved, first_free);
+    let names: Vec<&str> = plan.ops.iter().filter_map(|op| match op {
+        Operation::AddColor { color, .. } => Some(color.name.as_str()),
+        _ => None,
+    }).collect();
+    assert!(names.contains(&format!("{name} 2").as_str()), "{names:?}");
 }
 
 // Checks "Legend color and a full palette": the errors come back and no
@@ -545,6 +610,20 @@ fn a_legend_color_in_a_full_palette_applies_nothing() {
     project.palettes[0] = full;
     let text = "legend\n  Q teal #1FB5A8\nframe 1\nQ.\n.Q\n";
     let errors = project.grid_operations(&sprite, text, &GridOptions::default()).unwrap_err();
+    assert_eq!(errors[0].code, "palette_full");
+    assert_eq!(pixels_of(&project, &sprite), b"....");
+}
+
+// Checks that a conflict with a palette that has no free key is
+// `palette_full` and applies nothing (the old color is never kept silently).
+#[test]
+fn a_legend_conflict_in_a_full_palette_applies_nothing() {
+    let (mut project, sprite) = project_with_goblin();
+    let mut full = full_palette();
+    full.name = "dungeon16".to_string();
+    project.palettes[0] = full;
+    let text = "legend\n  A other #000001\nframe 1\nA.\n.A\n";
+    let errors = project.grid_plan(&sprite, text, &GridOptions::default()).unwrap_err();
     assert_eq!(errors[0].code, "palette_full");
     assert_eq!(pixels_of(&project, &sprite), b"....");
 }

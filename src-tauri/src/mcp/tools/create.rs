@@ -4,7 +4,7 @@
 
 use super::args;
 use super::write::{Plan, write};
-use crate::document::{DEFAULT_FRAME_MS, Operation, SpriteRef};
+use crate::document::{DEFAULT_FRAME_MS, Operation, Palette, SpriteRef};
 use crate::ipc::browser::create_sprite_operations;
 use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
@@ -24,13 +24,14 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "create_sprite",
-            description: concat!("Creates an empty (transparent) sprite with one frame. The size is chosen now and cannot change later: 1 to 512 on each side. Without `palette` it uses the palette `main`.", write_note!()),
+            description: concat!("Creates an empty (transparent) sprite with one frame. The size is chosen now and cannot change later: 1 to 512 on each side. Without `palette` it uses the palette `main`. With `own_palette: true` it creates a new empty palette with the name of the sprite and uses it.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "width", "height"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string", "description": "A folder path like \"Characters\". Omit for the project root." },
                 "width": { "type": "integer", "minimum": 1, "maximum": 512 },
                 "height": { "type": "integer", "minimum": 1, "maximum": 512 },
                 "palette": { "type": "string", "description": "The name of an existing palette. Default `main`." },
+                "own_palette": { "type": "boolean", "description": "Create a palette named like the sprite and use it. Cannot be used with `palette`." },
                 "base_revision": base_revision(),
             }}),
             need: Need::Create,
@@ -73,9 +74,19 @@ fn create_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
     let name = args::required_str(input, "name")?.to_string();
     let folder = args::folder_path(input, "folder")?.unwrap_or_default();
     let (width, height) = (args::required_u32(input, "width")?, args::required_u32(input, "height")?);
-    let palette = args::optional_str(input, "palette")?.map(str::to_string);
+    let mut palette = args::optional_str(input, "palette")?.map(str::to_string);
+    let own = args::optional_bool(input, "own_palette")?.unwrap_or(false);
+    if own && palette.is_some() {
+        return Err(ToolError::new("bad_argument", "use `own_palette` or `palette`, not both").with("argument", "own_palette"));
+    }
     write(ctx, input, |session| {
-        let ops = create_sprite_operations(&session.project, &folder, &name, width, height, palette.as_deref());
+        let mut ops = Vec::new();
+        if own {
+            let own_palette = Palette { name: name.clone(), colors: Vec::new() };
+            ops.push(Operation::CreatePalette { palette: own_palette, index: None });
+            palette = Some(name.clone());
+        }
+        ops.extend(create_sprite_operations(&session.project, &folder, &name, width, height, palette.as_deref()));
         let extra = json!({
             "name": name, "folder": args::join(&folder), "width": width, "height": height,
             "palette": palette.unwrap_or_else(|| "main".to_string()),

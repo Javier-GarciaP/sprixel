@@ -143,6 +143,18 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
             text(answer, "key"),
             text(answer, "palette")
         ),
+        "create_palette" => format!("Created the palette {}", text(answer, "palette")),
+        "set_sprite_palette" => format!("Pointed {name} to the palette {}", text(answer, "palette")),
+        "remove_unused_colors" => format!(
+            "Removed {} unused colors from palette {}",
+            answer["removed"].as_array().map_or(0, Vec::len),
+            text(answer, "palette")
+        ),
+        "generate_ramp" => format!(
+            "Made a ramp of {} tones in palette {}",
+            answer["keys"].as_array().map_or(0, Vec::len),
+            text(answer, "palette")
+        ),
         "delete_sprite" => format!("Deleted the sprite {}", text(answer, "deleted")),
         "export" => format!(
             "Exported {} files to {}",

@@ -314,16 +314,109 @@ impl Grid {
 
     /// Reads a text and checks it: the errors of the text and the errors
     /// against the sprite, all together. `Ok` has a grid that can be applied.
+    /// A legend color that conflicts with the palette is moved to another key
+    /// first (see `remap_legend`).
     pub fn check(
         text: &str,
         sprite: &Sprite,
         palette: &Palette,
         options: &GridOptions,
     ) -> Result<Grid, Vec<GridError>> {
-        let (grid, mut errors) = Grid::parse(text);
-        errors.extend(grid.validate(sprite, palette, options));
-        if errors.is_empty() { Ok(grid) } else { Err(errors) }
+        Grid::check_remapped(text, sprite, palette, options).map(|(grid, _)| grid)
     }
+
+    /// Like `check`, and also says which keys were changed.
+    pub fn check_remapped(
+        text: &str,
+        sprite: &Sprite,
+        palette: &Palette,
+        options: &GridOptions,
+    ) -> Result<(Grid, Remap), Vec<GridError>> {
+        let (mut grid, mut errors) = Grid::parse(text);
+        let remap = grid.remap_legend(palette, &mut errors);
+        errors.extend(grid.validate(sprite, palette, options));
+        if errors.is_empty() { Ok((grid, remap)) } else { Err(errors) }
+    }
+
+    /// A legend line with a `#hex` for a key that the palette has with a
+    /// DIFFERENT color must not keep the old color without a word. The line
+    /// and every cell of that key move to another key: the key that already
+    /// has that hex, or else a free key (not in the palette, the legend or
+    /// the cells). The same hex is not a conflict.
+    pub fn remap_legend(&mut self, palette: &Palette, errors: &mut Vec<GridError>) -> Remap {
+        let mut remap = Remap::default();
+        let mut taken: std::collections::HashSet<char> = palette.colors.iter().map(|c| c.key).collect();
+        taken.extend(self.legend.iter().map(|l| l.key));
+        taken.extend(self.frames.iter().flat_map(|f| f.rows.iter()).flat_map(|r| r.cells.iter().copied()));
+        let mut names: Vec<String> = palette.colors.iter().map(|c| c.name.to_lowercase()).collect();
+        names.extend(self.legend.iter().map(|l| l.name.to_lowercase()));
+        for entry in &mut self.legend {
+            let Some(hex) = entry.hex.clone() else { continue };
+            let Some(old) = palette.colors.iter().find(|c| c.key == entry.key) else { continue };
+            if old.hex.eq_ignore_ascii_case(&hex) {
+                continue;
+            }
+            let (to, how) = match palette.key_of_hex(&hex) {
+                Some(existing) => (existing, "the palette already has that color under that key"),
+                None => {
+                    let letters = ('A'..='Z').chain('a'..='z').chain('0'..='9');
+                    let others = ('!'..='~').filter(|c| !c.is_ascii_alphanumeric() && *c != TRANSPARENT);
+                    match letters.chain(others).find(|k| !taken.contains(k)) {
+                        Some(free) => {
+                            taken.insert(free);
+                            (free, "a new color")
+                        }
+                        None => {
+                            errors.push(
+                                GridError::new(
+                                    "palette_full",
+                                    format!(
+                                        "line {}: the legend key {:?} conflicts with palette {} and there is no free key left",
+                                        entry.line, entry.key, palette.name
+                                    ),
+                                )
+                                .at(entry.line),
+                            );
+                            continue;
+                        }
+                    }
+                }
+            };
+            remap.warnings.push(format!(
+                "legend line {}: key \"{}\" is {hex} but palette {} already has \"{}\" as {}. The pixels use key \"{to}\" instead ({how}); \"{}\" stays {}",
+                entry.line, entry.key, palette.name, entry.key, old.hex, entry.key, old.hex
+            ));
+            remap.keys.push((entry.key, to));
+            entry.key = to;
+            let mut name = entry.name.clone();
+            let mut n = 2;
+            while names.contains(&name.to_lowercase()) && !palette.colors.iter().any(|c| c.key == to) {
+                name = format!("{} {n}", entry.name);
+                n += 1;
+            }
+            names.push(name.to_lowercase());
+            entry.name = name;
+        }
+        if !remap.keys.is_empty() {
+            let map: std::collections::HashMap<char, char> = remap.keys.iter().copied().collect();
+            for row in self.frames.iter_mut().flat_map(|f| f.rows.iter_mut()) {
+                for cell in &mut row.cells {
+                    if let Some(to) = map.get(cell) {
+                        *cell = *to;
+                    }
+                }
+            }
+        }
+        remap
+    }
+}
+
+/// The keys that `Grid::remap_legend` changed: `(from, to)`, and one sentence
+/// for each.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Remap {
+    pub keys: Vec<(char, char)>,
+    pub warnings: Vec<String>,
 }
 
 // A comment is a line that starts with `#`. Inside a frame, "#" is also a
@@ -430,6 +523,13 @@ pub fn write_grid_part(
     out
 }
 
+/// What applying a grid does: the operations, and the keys that were moved.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GridPlan {
+    pub ops: Vec<Operation>,
+    pub remap: Remap,
+}
+
 impl Project {
     /// Checks a text grid for a sprite and gives the operations that apply
     /// it: first the colors that the legend adds, then the pixels of each
@@ -442,12 +542,23 @@ impl Project {
         text: &str,
         options: &GridOptions,
     ) -> Result<Vec<Operation>, Vec<GridError>> {
+        self.grid_plan(sprite, text, options).map(|plan| plan.ops)
+    }
+
+    /// Like `grid_operations`, and also says which legend keys were moved
+    /// because they conflicted with a color of the palette.
+    pub fn grid_plan(
+        &self,
+        sprite: &SpriteRef,
+        text: &str,
+        options: &GridOptions,
+    ) -> Result<GridPlan, Vec<GridError>> {
         let missing = |what: &str, name: &str| {
             vec![GridError::new("not_found", format!("{what} {name:?} does not exist"))]
         };
         let target = self.find_sprite(sprite).ok_or_else(|| missing("sprite", &sprite.name))?;
         let palette = self.palette(&target.palette).ok_or_else(|| missing("palette", &target.palette))?;
-        let grid = Grid::check(text, target, palette, options)?;
+        let (grid, remap) = Grid::check_remapped(text, target, palette, options)?;
         let (new_colors, _) = grid.legend_colors(palette);
         let mut ops: Vec<Operation> = new_colors
             .into_iter()
@@ -456,6 +567,6 @@ impl Project {
         for (frame, pixels) in grid.pixel_changes(target, options) {
             ops.push(Operation::SetPixels { sprite: sprite.clone(), layer: 0, frame, pixels });
         }
-        Ok(ops)
+        Ok(GridPlan { ops, remap })
     }
 }
