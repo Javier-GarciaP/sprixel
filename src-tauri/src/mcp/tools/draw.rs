@@ -72,12 +72,12 @@ pub fn tools() -> Vec<Tool> {
 }
 
 /// The `preview` argument of the three drawing tools.
-fn preview_arg() -> Value {
+pub(super) fn preview_arg() -> Value {
     json!({ "type": "boolean", "description": "Default true: the result carries an image of the edited frame (at most 512 pixels on a side). LOOK at it and fix what is wrong. Set false to skip it." })
 }
 
 /// The keys a sprite accepts: those of its palette and `.`.
-fn valid_keys(project: &Project, sprite: &Sprite) -> Vec<String> {
+pub(super) fn valid_keys(project: &Project, sprite: &Sprite) -> Vec<String> {
     let mut keys: Vec<String> = project
         .palette(&sprite.palette)
         .map(|p| p.colors.iter().map(|c| c.key.to_string()).collect())
@@ -97,7 +97,7 @@ fn unknown_key(key: &str, valid: &[String]) -> ToolError {
 }
 
 /// One palette key from a text argument.
-fn key_of(text: &str, valid: &[String]) -> Result<char, ToolError> {
+pub(super) fn key_of(text: &str, valid: &[String]) -> Result<char, ToolError> {
     let mut chars = text.chars();
     match (chars.next(), chars.next()) {
         (Some(key), None) if valid.iter().any(|k| *k == text) => Ok(key),

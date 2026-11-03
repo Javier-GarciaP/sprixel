@@ -6,9 +6,10 @@ use crate::mcp::testing::{connect_allowed, core_with, rpc};
 use crate::mcp::tools;
 use serde_json::Value;
 
-const WRITE_TOOLS: [&str; 11] = [
+const WRITE_TOOLS: [&str; 12] = [
     "create_folder", "create_sprite", "add_frame", "apply_grid", "set_pixels", "draw_shape",
     "delete_frame", "create_tag", "set_palette_color", "delete_sprite", "undo_last_ai_action",
+    "auto_outline",
 ];
 
 fn listed() -> Vec<Value> {
