@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -26,7 +27,7 @@ func download(t *testing.T, version string, target release.Target) map[string][]
 	t.Helper()
 	dir := t.TempDir()
 	testrelease.Make(t, dir, version, testrelease.Options{})
-	files, err := release.Download(release.FileURL(dir), target)
+	files, err := release.Download(testrelease.Serve(t, dir), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestApplyLinuxUpgradesInPlace(t *testing.T) {
 	if !strings.Contains(read(t, filepath.Join(l.Share, "LICENSE")), "MIT") {
 		t.Error("the license was not installed")
 	}
-	if info, _ := os.Stat(l.Command); info.Mode()&0o100 == 0 {
+	if info, _ := os.Stat(l.Command); runtime.GOOS != "windows" && info.Mode()&0o100 == 0 {
 		t.Error("the command is not executable")
 	}
 	for _, left := range []string{l.Command + ".new", l.Command + ".old"} {

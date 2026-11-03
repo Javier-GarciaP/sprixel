@@ -3,6 +3,7 @@ package release_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/release"
@@ -23,7 +24,7 @@ func TestRemoveProfileLinesKeepsEverythingElse(t *testing.T) {
 	if got := read(t, path); got != before+after {
 		t.Errorf("profile = %q", got)
 	}
-	if info, _ := os.Stat(path); info.Mode().Perm() != 0o640 {
+	if info, _ := os.Stat(path); runtime.GOOS != "windows" && info.Mode().Perm() != 0o640 {
 		t.Errorf("mode = %v", info.Mode())
 	}
 }

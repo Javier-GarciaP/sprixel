@@ -1,3 +1,4 @@
+import process from "node:process";
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -59,27 +60,30 @@ describe("stage-release", () => {
     expect(fs.existsSync(path.join(out, "sprixel-macos-arm64"))).toBe(true);
   });
 
-  it("packs Sprixel.exe into a zip on Windows", () => {
-    write("bin/sprixel.exe", "cli");
-    write("src-tauri/target/release/sprixel.exe", "app");
+  it.skipIf(process.platform === "win32")(
+    "packs Sprixel.exe into a zip on Windows",
+    () => {
+      write("bin/sprixel.exe", "cli");
+      write("src-tauri/target/release/sprixel.exe", "app");
 
-    stage(root, { os: "windows", arch: "x64" }, out);
+      stage(root, { os: "windows", arch: "x64" }, out);
 
-    const zip = path.join(out, "Sprixel-windows-x64.zip");
-    expect(execFileSync("unzip", ["-l", zip], { encoding: "utf8" })).toContain(
-      "Sprixel.exe",
-    );
-    expect(
-      fs.readFileSync(
-        path.join(out, cliName({ os: "windows", arch: "x64" })),
-        "utf8",
-      ),
-    ).toBe("cli");
-    expect(fs.readdirSync(out).sort()).toEqual([
-      "Sprixel-windows-x64.zip",
-      "sprixel-windows-x64.exe",
-    ]);
-  });
+      const zip = path.join(out, "Sprixel-windows-x64.zip");
+      expect(
+        execFileSync("unzip", ["-l", zip], { encoding: "utf8" }),
+      ).toContain("Sprixel.exe");
+      expect(
+        fs.readFileSync(
+          path.join(out, cliName({ os: "windows", arch: "x64" })),
+          "utf8",
+        ),
+      ).toBe("cli");
+      expect(fs.readdirSync(out).sort()).toEqual([
+        "Sprixel-windows-x64.zip",
+        "sprixel-windows-x64.exe",
+      ]);
+    },
+  );
 
   it("fails with a clear message when the build output is missing", () => {
     write("bin/sprixel");

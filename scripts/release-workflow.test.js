@@ -1,3 +1,4 @@
+import process from "node:process";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -5,7 +6,9 @@ import { describe, expect, it } from "vitest";
 // The workflow cannot run here (it needs GitHub runners), so these tests read
 // it as text and check the rules that matter for safety, and that every
 // script it calls exists.
-const text = fs.readFileSync(".github/workflows/release.yml", "utf8");
+const text = fs
+  .readFileSync(".github/workflows/release.yml", "utf8")
+  .replace(/\r\n/g, "\n");
 
 describe("release workflow", () => {
   it("starts only on version tags", () => {
@@ -72,17 +75,24 @@ describe("release workflow", () => {
     expect(release).toMatch(/needs: \[verify, build, smoke\]/);
   });
 
-  it("marks a tag with a suffix as a pre-release", () => {
-    const snippet = text.match(/case "\$TAG" in .*? esac/)[0];
-    const flag = (tag) =>
-      spawnSync("sh", ["-c", `TAG=${tag}; ${snippet}; echo "[$PRERELEASE]"`], {
-        encoding: "utf8",
-      }).stdout.trim();
+  it.skipIf(process.platform === "win32")(
+    "marks a tag with a suffix as a pre-release",
+    () => {
+      const snippet = text.match(/case "\$TAG" in .*? esac/)[0];
+      const flag = (tag) =>
+        spawnSync(
+          "sh",
+          ["-c", `TAG=${tag}; ${snippet}; echo "[$PRERELEASE]"`],
+          {
+            encoding: "utf8",
+          },
+        ).stdout.trim();
 
-    expect(flag("v0.3.0-alpha.1")).toBe("[--prerelease]");
-    expect(flag("v1.0.0-rc.2")).toBe("[--prerelease]");
-    expect(flag("v1.0.0")).toBe("[]");
-  });
+      expect(flag("v0.3.0-alpha.1")).toBe("[--prerelease]");
+      expect(flag("v1.0.0-rc.2")).toBe("[--prerelease]");
+      expect(flag("v1.0.0")).toBe("[]");
+    },
+  );
 
   it("takes the notes from the changelog and checks the tag exists", () => {
     expect(text).toContain('node scripts/release-notes.mjs "$TAG"');

@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -43,14 +44,20 @@ describe("assemble-release", () => {
     );
   });
 
-  it("checksums.txt is checked by sha256sum", () => {
+  it("every checksum in checksums.txt is the SHA-256 of its file", () => {
     assemble(process.cwd(), artifacts, out);
+    const lines = fs
+      .readFileSync(path.join(out, "checksums.txt"), "utf8")
+      .trim()
+      .split("\n");
 
-    const check = spawnSync("sha256sum", ["-c", "checksums.txt"], {
-      cwd: out,
-      encoding: "utf8",
-    });
-    expect(check.status, check.stdout + check.stderr).toBe(0);
+    for (const line of lines) {
+      const [hash, name] = line.split("  ");
+      const real = createHash("sha256")
+        .update(fs.readFileSync(path.join(out, name)))
+        .digest("hex");
+      expect(hash, name).toBe(real);
+    }
   });
 
   it("checksums.txt lists every file but itself", () => {
@@ -75,26 +82,31 @@ describe("assemble-release", () => {
 
   // The installer and the pipeline must agree on names and checksums: install
   // from the assembled folder, with a temporary HOME.
-  it("install.sh installs the assembled release", () => {
-    assemble(process.cwd(), artifacts, out);
-    const home = path.join(work, "home");
-    fs.mkdirSync(home);
+  it.skipIf(process.platform === "win32")(
+    "install.sh installs the assembled release",
+    () => {
+      assemble(process.cwd(), artifacts, out);
+      const home = path.join(work, "home");
+      fs.mkdirSync(home);
 
-    const r = spawnSync("sh", [path.resolve("install.sh")], {
-      encoding: "utf8",
-      env: {
-        PATH: process.env.PATH,
-        HOME: home,
-        SHELL: "/bin/bash",
-        SPRIXEL_BASE_URL: `file://${out}`,
-        SPRIXEL_OS: "Linux",
-        SPRIXEL_ARCH: "x86_64",
-      },
-    });
+      const r = spawnSync("sh", [path.resolve("install.sh")], {
+        encoding: "utf8",
+        env: {
+          PATH: process.env.PATH,
+          HOME: home,
+          SHELL: "/bin/bash",
+          SPRIXEL_BASE_URL: `file://${out}`,
+          SPRIXEL_OS: "Linux",
+          SPRIXEL_ARCH: "x86_64",
+        },
+      });
 
-    expect(r.status, r.stderr).toBe(0);
-    expect(
-      execFileSync(path.join(home, ".local/bin/sprixel"), { encoding: "utf8" }),
-    ).toContain("sprixel-linux-x64");
-  });
+      expect(r.status, r.stderr).toBe(0);
+      expect(
+        execFileSync(path.join(home, ".local/bin/sprixel"), {
+          encoding: "utf8",
+        }),
+      ).toContain("sprixel-linux-x64");
+    },
+  );
 });

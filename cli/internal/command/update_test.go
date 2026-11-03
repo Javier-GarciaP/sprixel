@@ -19,6 +19,7 @@ type installed struct {
 	t       *testing.T
 	home    string
 	release string
+	url     string // the address of the folder `release`
 	layout  release.Layout
 }
 
@@ -31,11 +32,12 @@ func newInstalled(t *testing.T) *installed {
 	t.Cleanup(func() { version.Version = old })
 
 	in := &installed{t: t, home: t.TempDir(), release: t.TempDir()}
+	in.url = testrelease.Serve(t, in.release)
 	in.layout = release.LayoutFor("linux", in.home, "")
 	first := t.TempDir()
 	testrelease.Make(t, first, "0.1.0", testrelease.Options{})
 	target := release.Target{OS: "linux", Arch: "x64"}
-	files, err := release.Download(release.FileURL(first), target)
+	files, err := release.Download(testrelease.Serve(t, first), target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +57,7 @@ func (in *installed) env(stdin string, out, errOut *bytes.Buffer) Env {
 		Stdin: strings.NewReader(stdin), Stdout: out, Stderr: errOut,
 		Home: in.home, Exe: in.layout.Command,
 		GOOS: "linux", GOARCH: "amd64",
-		Getenv:   func(n string) string { return map[string]string{release.BaseEnv: release.FileURL(in.release)}[n] },
+		Getenv:   func(n string) string { return map[string]string{release.BaseEnv: in.url}[n] },
 		LookPath: func(string) (string, error) { return "", os.ErrNotExist },
 		Runner:   func(string, ...string) (string, error) { return "", os.ErrNotExist },
 	}

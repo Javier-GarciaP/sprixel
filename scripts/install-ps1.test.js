@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeRelease } from "./release-fixture.mjs";
 
@@ -64,7 +65,7 @@ describe.skipIf(!pwsh)("install.ps1 (run with PowerShell)", () => {
       env: {
         ...process.env,
         LOCALAPPDATA: local,
-        SPRIXEL_BASE_URL: `file://${release}`,
+        SPRIXEL_BASE_URL: pathToFileURL(release).href,
         SPRIXEL_SKIP_PATH: "1",
         ...env,
       },

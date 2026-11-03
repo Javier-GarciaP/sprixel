@@ -11,6 +11,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sort"
@@ -122,4 +124,13 @@ func appZip(t testing.TB, version string) []byte {
 	w.Write([]byte(AppText(version)))
 	zw.Close()
 	return buf.Bytes()
+}
+
+// Serve serves a folder over HTTP on a free local port and returns its address.
+// It stops when the test ends. This is the "release server" of the tests.
+func Serve(t testing.TB, dir string) string {
+	t.Helper()
+	server := httptest.NewServer(http.FileServer(http.Dir(dir)))
+	t.Cleanup(server.Close)
+	return server.URL
 }

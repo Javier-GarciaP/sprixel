@@ -35,7 +35,8 @@ function install(args = [], env = {}) {
 }
 const file = (...p) => path.join(home, ...p);
 
-describe("install.sh", () => {
+// install.sh is for Linux and macOS; Windows has install.ps1.
+describe.skipIf(process.platform === "win32")("install.sh", () => {
   it("installs the command, the app and the notices for the user", () => {
     makeRelease(release);
     const r = install();

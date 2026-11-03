@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -20,9 +19,9 @@ import (
 // Source is the home of the project. Every download starts here.
 const Source = "https://github.com/Javier-GarciaP/sprixel"
 
-// BaseEnv is the name of the variable that replaces the download folder. It is
-// meant for tests (for example file:///tmp/release) and is documented in
-// docs/usage.md.
+// BaseEnv is the name of the variable that replaces the download folder (an
+// http or https address; the install scripts also take file://). It is meant
+// for tests and is documented in docs/usage.md.
 const BaseEnv = "SPRIXEL_BASE_URL"
 
 // Names of the files that are not different for each system.
@@ -100,10 +99,9 @@ func BaseURL(getenv func(string) string, version string) string {
 	return Source + "/releases/latest/download"
 }
 
-// Get downloads one file of the release. http, https and file URLs work; the
-// last one is for tests.
+// Get downloads one file of the release.
 func Get(base, name string) ([]byte, error) {
-	client := &http.Client{Timeout: 5 * time.Minute, Transport: transport()}
+	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Get(base + "/" + name)
 	if err != nil {
 		return nil, fmt.Errorf("cannot download %s/%s (are you online?)", base, name)
@@ -117,17 +115,6 @@ func Get(base, name string) ([]byte, error) {
 		return nil, fmt.Errorf("the download of %s was interrupted: %w", name, err)
 	}
 	return data, nil
-}
-
-func transport() http.RoundTripper {
-	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
-	return t
-}
-
-// FileURL turns a local folder into a file:// URL, the form BaseEnv takes.
-func FileURL(dir string) string {
-	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(dir)}).String()
 }
 
 // LatestVersion reads the VERSION file of a release.

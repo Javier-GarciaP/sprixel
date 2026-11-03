@@ -17,7 +17,7 @@ func TestDownloadChecksOutAndReturnsTheFiles(t *testing.T) {
 	dir := t.TempDir()
 	testrelease.Make(t, dir, "0.2.0", testrelease.Options{})
 
-	files, err := release.Download(release.FileURL(dir), linux)
+	files, err := release.Download(testrelease.Serve(t, dir), linux)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestDownloadStopsOnAWrongChecksum(t *testing.T) {
 	dir := t.TempDir()
 	testrelease.Make(t, dir, "0.2.0", testrelease.Options{WrongChecksum: linux.AppName()})
 
-	files, err := release.Download(release.FileURL(dir), linux)
+	files, err := release.Download(testrelease.Serve(t, dir), linux)
 	if err == nil || !strings.Contains(err.Error(), "does not match") || !strings.Contains(err.Error(), linux.AppName()) {
 		t.Fatalf("err = %v, want a checksum error naming the file", err)
 	}
@@ -46,7 +46,7 @@ func TestDownloadStopsWhenAFileWasChanged(t *testing.T) {
 	testrelease.Make(t, dir, "0.2.0", testrelease.Options{})
 	os.WriteFile(filepath.Join(dir, linux.CLIName()), []byte("evil"), 0o644)
 
-	if _, err := release.Download(release.FileURL(dir), linux); err == nil || !strings.Contains(err.Error(), "does not match") {
+	if _, err := release.Download(testrelease.Serve(t, dir), linux); err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -65,7 +65,7 @@ func TestDownloadStopsWhenChecksumsDoNotListAFile(t *testing.T) {
 	}
 	os.WriteFile(sums, []byte(strings.Join(keep, "\n")), 0o644)
 
-	if _, err := release.Download(release.FileURL(dir), linux); err == nil || !strings.Contains(err.Error(), "no checksum for LICENSE") {
+	if _, err := release.Download(testrelease.Serve(t, dir), linux); err == nil || !strings.Contains(err.Error(), "no checksum for LICENSE") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -74,7 +74,7 @@ func TestDownloadReportsAMissingFile(t *testing.T) {
 	dir := t.TempDir()
 	testrelease.Make(t, dir, "0.2.0", testrelease.Options{Without: []string{"LICENSE"}})
 
-	if _, err := release.Download(release.FileURL(dir), linux); err == nil || !strings.Contains(err.Error(), "cannot download") {
+	if _, err := release.Download(testrelease.Serve(t, dir), linux); err == nil || !strings.Contains(err.Error(), "cannot download") {
 		t.Fatalf("err = %v", err)
 	}
 }
