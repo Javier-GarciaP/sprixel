@@ -36,6 +36,7 @@ fn the_port_is_free_and_written_to_runtime_json() {
     let runtime: serde_json::Value = serde_json::from_str(&text).unwrap();
     assert_eq!(runtime["port"], server.port());
     assert_eq!(runtime["pid"], std::process::id());
+    assert_eq!(runtime["version"], env!("CARGO_PKG_VERSION"));
     assert_ne!(server.port(), 0);
 
     let (_h2, _c2, second) = start();
