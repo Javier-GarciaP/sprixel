@@ -19,7 +19,7 @@
 
 ## 4. Top bar and editor
 
-- [ ] 4.1 Build the top bar indicator states and verify the lost connection case
+- [x] 4.1 Build the top bar indicator states and verify the lost connection case
   _In the demo: the indicator states without the lost connection case, which is built after the demo with task 4.4 of `mcp-server-and-tools`._
 - [ ] 4.2 Build the editor tag with Stop and verify the stop scenario
 
