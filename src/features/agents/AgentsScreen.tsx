@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useT } from "@/shared/lib/i18n";
+import { ActivityList } from "./ActivityList";
 import { AgentCard } from "./AgentCard";
 import { cardsFor, nameOf, type AgentKindId } from "./clients";
 import type { AgentsApi } from "./types";
@@ -56,6 +57,10 @@ export function AgentsScreen({ api, state }: Props) {
             />
           ))}
         </div>
+        <h2 className="mt-8 mb-3 font-title text-xl font-bold">
+          {t("agents.activity")}
+        </h2>
+        <ActivityList api={api} rows={state.activity} writing={state.writing} />
       </div>
     </div>
   );

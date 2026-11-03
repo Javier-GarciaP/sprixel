@@ -9,7 +9,7 @@
 ## 2. Agents tab
 
 - [x] 2.1 Build the agent cards with the four states and actions and verify against screens 28 to 30
-- [ ] 2.2 Build the activity list with Stop and Undo rules and verify the in-progress and latest-only scenarios
+- [x] 2.2 Build the activity list with Stop and Undo rules and verify the in-progress and latest-only scenarios
 - [ ] 2.3 Build the permissions panel and verify a change applies to the next call
 
 ## 3. Connecting
