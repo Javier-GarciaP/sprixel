@@ -2,7 +2,10 @@
 
 mod args;
 mod create;
+mod docs;
+mod draw;
 mod read;
+mod shapes;
 mod write;
 
 use super::Tool;
@@ -14,6 +17,7 @@ pub fn all() -> Vec<Tool> {
     let mut tools = Vec::new();
     tools.extend(read::tools());
     tools.extend(create::tools());
+    tools.extend(draw::tools());
     tools
 }
 
@@ -22,3 +26,6 @@ mod read_tests;
 
 #[cfg(test)]
 mod create_tests;
+
+#[cfg(test)]
+mod draw_tests;
