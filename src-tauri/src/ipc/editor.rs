@@ -682,6 +682,42 @@ mod tests {
         assert_eq!(sprite.layers[0].frames[0].pixels[16 + 2], b'A');
     }
 
+    // Checks that a sprite with its own palette gives the name and the colors
+    // of THAT palette (not `main`) to the editor.
+    #[test]
+    fn a_sprite_with_its_own_palette_gives_that_palette() {
+        let (_dir, state, _agents) = open_project(vec![]);
+        project::edit(&state, |session| {
+            let color = Color { key: 'S', name: "skin".to_string(), hex: "#FFCC99".to_string() };
+            session
+                .apply(
+                    USER,
+                    vec![
+                        Operation::CreatePalette {
+                            palette: Palette { name: "orc".to_string(), colors: vec![color] },
+                            index: None,
+                        },
+                        Operation::CreateSprite {
+                            folder: vec![],
+                            name: "orc".to_string(),
+                            width: 4,
+                            height: 4,
+                            palette: "orc".to_string(),
+                        },
+                    ],
+                )
+                .unwrap();
+        })
+        .unwrap();
+
+        let info = serde_json::to_value(sprite_info(&state, &arg("orc")).unwrap()).unwrap();
+
+        assert_eq!(info["paletteName"], "orc");
+        assert_eq!(info["palette"], serde_json::json!([{ "key": "S", "hex": "#FFCC99" }]));
+        let goblin = serde_json::to_value(sprite_info(&state, &arg("goblin")).unwrap()).unwrap();
+        assert_eq!(goblin["paletteName"], "main");
+    }
+
     // Checks the wire format the UI reads: camelCase fields, the history
     // flags next to the size, and errors as a code with a message.
     #[test]

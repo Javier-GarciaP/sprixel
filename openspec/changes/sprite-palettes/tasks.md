@@ -19,6 +19,6 @@
 
 ## 4. UI and docs
 
-- [ ] 4.1 Check the palette panel with an own palette and fix only what is broken; verify with a test
+- [x] 4.1 Check the palette panel with an own palette and fix only what is broken; verify with a test
 - [x] 4.2 Add the tools to the activity log (Rust, `en.json`, `es.json`); verify the summaries
 - [ ] 4.3 Update `docs/ai-and-mcp.md`, `docs/text-grid-format.md`, the guides and `SKILL.md`, and `CHANGELOG.md`; verify the docs tests and the skill test

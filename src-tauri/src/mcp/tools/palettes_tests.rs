@@ -354,3 +354,22 @@ fn a_legend_with_the_same_color_has_no_warning() {
     assert!(done.get("remapped").is_none() && done.get("warnings").is_none(), "{done}");
     assert_eq!(done["colors_added"], 0);
 }
+
+// Checks that the open editor is told: `set_sprite_palette` marks the sprite
+// as busy and frees it, so the editor reads the sprite (and its palette) again.
+#[test]
+fn set_sprite_palette_tells_the_editor_to_read_the_sprite_again() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "create_palette", json!({ "name": "other", "colors": [
+        { "key": "R", "hex": "#FF0000" }, { "key": "G", "hex": "#00FF00" },
+    ]})).unwrap();
+
+    call(&core, &session, "set_sprite_palette", json!({ "name": "goblin", "palette": "other" })).unwrap();
+
+    let events = host.events.lock().unwrap();
+    let activity: Vec<&serde_json::Value> =
+        events.iter().filter(|(e, _)| e == crate::ipc::editor::AGENT_EVENT).map(|(_, p)| p).collect();
+    assert_eq!(activity.first().map(|p| p["sprite"]["name"].clone()), Some(json!("goblin")));
+    assert!(activity.last().unwrap().is_null(), "the frame is free again");
+}

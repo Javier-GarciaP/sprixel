@@ -231,7 +231,8 @@ fn set_sprite_palette(ctx: &Ctx, input: &Value) -> ToolResult {
             .map(|p| p.name.clone())
             .ok_or_else(|| ToolError::new("not_found", format!("there is no palette {palette:?}")).with("name", palette.clone()))?;
         let ops = vec![Operation::SetSpritePalette { sprite: target.clone(), palette: real.clone() }];
-        Ok(Plan::new(ops, json!({ "palette": real })).about(&target))
+        // Busy, so an editor that has this sprite open reads its palette again when the call ends.
+        Ok(Plan::new(ops, json!({ "palette": real })).busy(&target, 1))
     })
 }
 

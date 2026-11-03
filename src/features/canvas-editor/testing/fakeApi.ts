@@ -44,6 +44,8 @@ export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
   activity: AgentActivity | null = null;
   stopped = 0;
   revision = 0;
+  // The name of the palette of the sprite (a sprite can have its own).
+  paletteName = "main";
   // The animations of the sprite (the core tests the range rules).
   tags: Tag[] = [];
   private sprite: SpriteRef = { folder: [], name: "goblin" };
@@ -87,7 +89,7 @@ export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
       width: this.width,
       height: this.height,
       frameCount: this.frames.length,
-      paletteName: "main",
+      paletteName: this.paletteName,
       palette: this.palette.map((c) => ({ ...c })),
       ...this.history(),
     };
