@@ -8,7 +8,7 @@
 
 - [x] 1.1 Decide and add the MCP implementation (after approval of the dependency) and verify a client can list an example tool
 - [x] 1.2 Implement the loopback server, the free port, `runtime.json` and the token file with user-only permissions on each system, and verify permissions in a test
-- [ ] 1.3 Implement token checks, Host and Origin rejection and request limits, and verify one test per rule including a request with a valid token and an Origin
+- [x] 1.3 Implement token checks, Host and Origin rejection and request limits, and verify one test per rule including a request with a valid token and an Origin
 
 ### 2. Approval and permissions
 

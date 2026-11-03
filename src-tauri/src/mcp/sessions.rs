@@ -47,6 +47,10 @@ impl Sessions {
         Some(entry.session.clone())
     }
 
+    pub fn exists(&self, id: &str) -> bool {
+        self.0.contains_key(id)
+    }
+
     pub fn end(&mut self, id: &str) {
         self.0.remove(id);
     }

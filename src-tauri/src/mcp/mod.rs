@@ -8,6 +8,7 @@
 mod base64;
 mod host;
 mod http;
+mod limits;
 mod random;
 mod rpc;
 mod server;
@@ -25,6 +26,8 @@ pub use sessions::{MAX_SESSIONS, Session};
 pub use tool::{Ctx, Need, Output, Tool, ToolError, ToolResult};
 
 use std::path::PathBuf;
+use std::collections::VecDeque;
+use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 
 /// Everything the server shares: the host, the tools and the sessions.
@@ -36,13 +39,43 @@ pub struct Core {
     pub(crate) token: String,
     pub(crate) tools: Vec<Tool>,
     pub(crate) sessions: Mutex<sessions::Sessions>,
+    pub(crate) limits: limits::Limits,
+    pub(crate) rate: Mutex<limits::RateLimiter>,
+    /// Connections being served now.
+    pub(crate) connections: AtomicUsize,
+    /// The last log lines (see `log`).
+    pub(crate) logs: Mutex<VecDeque<String>>,
 }
 
 impl Core {
     /// Opens the data folder: reads the token or makes a new one.
     pub fn new(host: Arc<dyn Host>, tools: Vec<Tool>, data_dir: PathBuf) -> std::io::Result<Core> {
         let token = token::load_or_create(&data_dir)?;
-        Ok(Core { host, data_dir, token, tools, sessions: Mutex::default() })
+        Ok(Core {
+            host,
+            data_dir,
+            token,
+            tools,
+            sessions: Mutex::default(),
+            limits: limits::Limits::default(),
+            rate: Mutex::default(),
+            connections: AtomicUsize::new(0),
+            logs: Mutex::default(),
+        })
+    }
+}
+
+impl Core {
+    /// Writes a line to the log (the terminal, and the last 200 lines in
+    /// memory). A line says what happened and why. It must never have the
+    /// token, nor anything a client sent.
+    pub fn log(&self, line: &str) {
+        eprintln!("[mcp] {line}");
+        let mut logs = self.logs.lock().unwrap();
+        if logs.len() >= 200 {
+            logs.pop_front();
+        }
+        logs.push_back(line.to_string());
     }
 }
 
@@ -51,3 +84,6 @@ mod protocol_tests;
 
 #[cfg(test)]
 mod server_tests;
+
+#[cfg(test)]
+mod http_tests;
