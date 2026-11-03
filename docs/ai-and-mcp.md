@@ -176,6 +176,8 @@ The most common codes:
 | `unknown_topic` | `get_guide` got a topic that is not `design`, `animation` or `palette` |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
+| `palette_mismatch`, `palette_not_found` | The `palette:` line of a grid names a palette that is not the one of the sprite, or that does not exist (the message says how to fix it) |
+| `keys_missing` | `set_sprite_palette` to a palette that lacks a key the sprite uses |
 | `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
 | `out_of_range`, `unknown_key` | A pixel outside the sprite, or a key that is not in the palette (`valid_keys` lists the ones that are) |
 | `invalid_path`, `outside_project` | A path that is not allowed |
