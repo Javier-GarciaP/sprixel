@@ -8,29 +8,51 @@ use super::create::base_revision;
 use super::draw::{key_of, preview_arg, valid_keys};
 use super::read::check_frame;
 use super::write::{Plan, write};
-use crate::analysis::{self, Connectivity, OutlineOptions, View};
+use crate::analysis::{self, Connectivity, Light, OutlineOptions, Region, ShadeOptions, View};
 use crate::document::{Operation, PixelChange, Sprite, SpriteRef, TRANSPARENT};
 use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
 pub fn tools() -> Vec<Tool> {
-    vec![Tool {
-        name: "auto_outline",
-        description: concat!("Draws a one pixel outline with one palette key around the shape of a frame, so you do not draw it by hand. By default it draws on every transparent pixel that touches the shape (`connectivity` 8 also counts corners, 4 only the sides), holes included. `outside_only` true skips holes. `inner` true recolors the edge pixels of the shape instead of drawing around it. Outline pixels that fall outside the sprite are skipped and counted in `clipped`. Call it once, when the shape is done. Returns `pixels_changed` and an image of the frame.", write_note!()),
-        schema: json!({ "type": "object", "required": ["name", "key"], "properties": {
-            "name": { "type": "string" },
-            "folder": { "type": "string" },
-            "frame": { "type": "integer", "minimum": 1, "description": "Default 1." },
-            "key": { "type": "string", "description": "The palette key of the outline (not `.`). Read the keys with get_palette." },
-            "connectivity": { "type": "integer", "enum": [4, 8], "description": "Default 8." },
-            "outside_only": { "type": "boolean", "description": "Do not outline holes. Default false." },
-            "inner": { "type": "boolean", "description": "Outline inside the shape. Default false." },
-            "preview": preview_arg(),
-            "base_revision": base_revision(),
-        }}),
-        need: Need::Edit,
-        run: auto_outline,
-    }]
+    vec![
+        Tool {
+            name: "auto_outline",
+            description: concat!("Draws a one pixel outline with one palette key around the shape of a frame, so you do not draw it by hand. By default it draws on every transparent pixel that touches the shape (`connectivity` 8 also counts corners, 4 only the sides), holes included. `outside_only` true skips holes. `inner` true recolors the edge pixels of the shape instead of drawing around it. Outline pixels that fall outside the sprite are skipped and counted in `clipped`. Call it once, when the shape is done. Returns `pixels_changed` and an image of the frame.", write_note!()),
+            schema: json!({ "type": "object", "required": ["name", "key"], "properties": {
+                "name": { "type": "string" },
+                "folder": { "type": "string" },
+                "frame": { "type": "integer", "minimum": 1, "description": "Default 1." },
+                "key": { "type": "string", "description": "The palette key of the outline (not `.`). Read the keys with get_palette." },
+                "connectivity": { "type": "integer", "enum": [4, 8], "description": "Default 8." },
+                "outside_only": { "type": "boolean", "description": "Do not outline holes. Default false." },
+                "inner": { "type": "boolean", "description": "Outline inside the shape. Default false." },
+                "preview": preview_arg(),
+                "base_revision": base_revision(),
+            }}),
+            need: Need::Edit,
+            run: auto_outline,
+        },
+        Tool {
+            name: "auto_shade",
+            description: concat!("Shades the pixels of one key with a ramp of tones, so you do not shade by hand. Give the `light` direction, the `base` key to shade and the ramp `keys` from dark to light (it includes `base`). A pixel of `base` is measured by how many steps it is from the edge of its area, going toward the light and away from it. The pixels on the edge that faces the light get the lightest key, the next row a little less light, and so on for as many keys as are lighter than `base`; the same on the edge that faces away with the darker keys. A pixel that is as near the lit edge as the dark edge keeps `base`. Pixels of other keys never change. `region` limits which pixels change. Returns `pixels_changed`, `lit`, `shadow` and an image of the frame.", write_note!()),
+            schema: json!({ "type": "object", "required": ["name", "light", "base", "keys"], "properties": {
+                "name": { "type": "string" },
+                "folder": { "type": "string" },
+                "frame": { "type": "integer", "minimum": 1, "description": "Default 1." },
+                "light": { "type": "string", "enum": Light::NAMES, "description": "Where the light comes from." },
+                "base": { "type": "string", "description": "The key of the pixels to shade." },
+                "keys": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 8, "description": "The ramp from dark to light, for example [\"D\", \"B\", \"L\"]. A text like \"DBL\" also works. It must include `base`." },
+                "region": { "type": "object", "required": ["x", "y", "width", "height"], "description": "Only pixels inside this box change.", "properties": {
+                    "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
+                    "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+                }},
+                "preview": preview_arg(),
+                "base_revision": base_revision(),
+            }}),
+            need: Need::Edit,
+            run: auto_shade,
+        },
+    ]
 }
 
 /// The pixels of a frame (from 1) of the first layer.
@@ -76,5 +98,82 @@ fn auto_outline(ctx: &Ctx, input: &Value) -> ToolResult {
         let count = outline.changes.len();
         let ops = set_ops(&target, frame, outline.changes);
         Ok(Plan::new(ops, json!({ "pixels_changed": count, "clipped": outline.clipped })).preview().busy(&target, frame))
+    })
+}
+
+/// The ramp: a list of one-key texts, or one text with a key per character.
+fn ramp_of(input: &Value, valid: &[String]) -> Result<Vec<char>, ToolError> {
+    let bad = |why: &str| ToolError::new("bad_argument", format!("`keys` {why}")).with("argument", "keys");
+    let texts: Vec<String> = match &input["keys"] {
+        Value::String(text) => text.chars().map(String::from).collect(),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| item.as_str().map(str::to_string).ok_or_else(|| bad("must be a list of keys")))
+            .collect::<Result<_, _>>()?,
+        _ => return Err(bad("must be a list of keys, from dark to light")),
+    };
+    if !(2..=8).contains(&texts.len()) {
+        return Err(bad("must have 2 to 8 keys"));
+    }
+    let keys = texts.iter().map(|text| opaque_key(text, valid, "keys")).collect::<Result<Vec<char>, _>>()?;
+    let mut sorted = keys.clone();
+    sorted.sort();
+    sorted.dedup();
+    if sorted.len() != keys.len() {
+        return Err(bad("must not repeat a key"));
+    }
+    Ok(keys)
+}
+
+/// The optional box `region`, inside the sprite.
+fn region_of(input: &Value, sprite: &Sprite) -> Result<Option<Region>, ToolError> {
+    let item = &input["region"];
+    if item.is_null() {
+        return Ok(None);
+    }
+    let number = |key: &str| {
+        item[key].as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| {
+            ToolError::new("bad_argument", format!("`region.{key}` must be a whole number")).with("argument", "region")
+        })
+    };
+    let region = Region { x: number("x")?, y: number("y")?, width: number("width")?, height: number("height")? };
+    if region.width == 0 || region.height == 0 {
+        return Err(ToolError::new("bad_argument", "`region.width` and `region.height` must be at least 1").with("argument", "region"));
+    }
+    if region.x as u64 + region.width as u64 > sprite.width as u64 || region.y as u64 + region.height as u64 > sprite.height as u64 {
+        return Err(ToolError::new(
+            "out_of_range",
+            format!("the region is not inside the {}x{} sprite", sprite.width, sprite.height),
+        )
+        .with("width", sprite.width)
+        .with("height", sprite.height));
+    }
+    Ok(Some(region))
+}
+
+fn auto_shade(ctx: &Ctx, input: &Value) -> ToolResult {
+    let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
+    let light_text = args::required_str(input, "light")?.to_string();
+    let base_text = args::required_str(input, "base")?.to_string();
+    let light = Light::parse(&light_text).ok_or_else(|| {
+        ToolError::new("bad_argument", format!("`light` is {light_text:?}; it must be one of: {}", Light::NAMES.join(", ")))
+            .with("argument", "light")
+    })?;
+    write(ctx, input, |session| {
+        let project = &session.project;
+        let target = args::sprite(project, input)?;
+        let sprite = project.find_sprite(&target).expect("just found");
+        check_frame(sprite, frame)?;
+        let valid = valid_keys(project, sprite);
+        let base = opaque_key(&base_text, &valid, "base")?;
+        let keys = ramp_of(input, &valid)?;
+        if !keys.contains(&base) {
+            return Err(ToolError::new("bad_argument", "`keys` must include `base`").with("argument", "keys"));
+        }
+        let region = region_of(input, sprite)?;
+        let shade = analysis::auto_shade(view_of(sprite, frame), &ShadeOptions { light, base, keys: &keys, region });
+        let (count, lit, shadow) = (shade.changes.len(), shade.lit, shade.shadow);
+        let ops = set_ops(&target, frame, shade.changes);
+        Ok(Plan::new(ops, json!({ "pixels_changed": count, "lit": lit, "shadow": shadow })).preview().busy(&target, frame))
     })
 }

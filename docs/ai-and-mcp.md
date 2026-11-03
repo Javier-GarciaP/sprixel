@@ -135,6 +135,7 @@ description tells the AI the rules, so it does not need this page.
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`). Returns an image of the edited frame |
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
 | `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). Returns an image of the edited frame |
+| `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |

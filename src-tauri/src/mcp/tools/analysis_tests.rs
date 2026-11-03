@@ -119,3 +119,102 @@ fn auto_outline_needs_the_edit_permission() {
     assert_eq!(error["permission"], "edit");
     assert_eq!(entries(&host), 0);
 }
+
+/// Adds the colors D (dark) and L (light) to the palette, and draws a filled
+/// 6x6 square of G at (1,1) in `slime`, as setup (the history is cleared).
+fn shaded_setup(host: &crate::mcp::testing::TestHost, core: &crate::mcp::Core, session: &str) {
+    for (key, hex) in [("D", "#004400"), ("L", "#88FF88")] {
+        call(core, session, "set_palette_color", json!({ "key": key, "hex": hex })).unwrap();
+    }
+    let square = json!({ "name": "slime", "shape": "rectangle", "key": "G", "x": 1, "y": 1, "width": 6, "height": 6, "filled": true });
+    call(core, session, "draw_shape", square).unwrap();
+    project::edit(&host.project, |s| s.history.clear()).unwrap();
+}
+
+// Checks "Square lit from the top left": the result is the one of the rule, the
+// counts say how many pixels went lighter and darker, and it is ONE history
+// entry by the client.
+#[test]
+fn auto_shade_shades_a_square_in_one_history_entry() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    shaded_setup(&host, &core, &session);
+    let before = revision(&host);
+
+    let done = call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top-left", "base": "G", "keys": ["D", "G", "L"] })).unwrap();
+
+    assert_eq!(
+        rows(&host, &[], "slime", 1),
+        "......../.LLLLLG./.LGGGGD./.LGGGGD./.LGGGGD./.LGGGGD./.GDDDDD./........"
+    );
+    assert_eq!((done["pixels_changed"].as_u64(), done["lit"].as_u64(), done["shadow"].as_u64()), (Some(18), Some(9), Some(9)));
+    assert_eq!(revision(&host), before + 1);
+    assert_eq!(entries(&host), 1);
+}
+
+// Checks that the ramp can be a text, and that `region` limits the change to
+// the box (here the left half of the square only).
+#[test]
+fn auto_shade_accepts_a_text_ramp_and_a_region() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    shaded_setup(&host, &core, &session);
+    let input = json!({
+        "name": "slime", "light": "left", "base": "G", "keys": "DGL",
+        "region": { "x": 0, "y": 0, "width": 4, "height": 8 },
+    });
+
+    call(&core, &session, "auto_shade", input).unwrap();
+
+    // Only the lit left column is inside the box; the dark right column is not.
+    assert_eq!(
+        rows(&host, &[], "slime", 1),
+        "......../.LGGGGG./.LGGGGG./.LGGGGG./.LGGGGG./.LGGGGG./.LGGGGG./........"
+    );
+}
+
+// Checks the argument errors: each says how to fix it and nothing changes.
+#[test]
+fn auto_shade_errors_change_nothing() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    shaded_setup(&host, &core, &session);
+    let before = revision(&host);
+    let shape = rows(&host, &[], "slime", 1);
+    let ok = json!({ "name": "slime", "light": "top", "base": "G", "keys": ["D", "G", "L"] });
+    let with = |key: &str, value: serde_json::Value| {
+        let mut input = ok.clone();
+        input[key] = value;
+        input
+    };
+    let code = |input| call(&core, &session, "auto_shade", input).unwrap_err();
+
+    assert_eq!(code(with("light", json!("up")))["code"], "bad_argument");
+    assert!(code(with("light", json!("up")))["message"].as_str().unwrap().contains("top-left"));
+    assert_eq!(code(with("base", json!("R")))["code"], "bad_argument", "base is not in the ramp");
+    assert_eq!(code(with("keys", json!(["D", "G", "Z"])))["code"], "unknown_key");
+    assert_eq!(code(with("keys", json!(["G"])))["code"], "bad_argument");
+    assert_eq!(code(with("keys", json!(["D", "G", "D"])))["code"], "bad_argument");
+    assert_eq!(code(with("base", json!(".")))["code"], "bad_argument");
+    assert_eq!(code(with("frame", json!(3)))["code"], "bad_frame");
+    let outside = json!({ "x": 6, "y": 0, "width": 4, "height": 1 });
+    assert_eq!(code(with("region", outside))["code"], "out_of_range");
+    assert_eq!(code(with("base_revision", json!(before - 1)))["code"], "stale_revision");
+
+    assert_eq!(rows(&host, &[], "slime", 1), shape);
+    assert_eq!(revision(&host), before);
+    assert_eq!(entries(&host), 0);
+}
+
+// Checks that `auto_shade` needs the "Edit pixels" permission.
+#[test]
+fn auto_shade_needs_the_edit_permission() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    shaded_setup(&host, &core, &session);
+    core.set_permissions(Permissions { edit: false, ..Permissions::default() }).unwrap();
+
+    let error = call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top", "base": "G", "keys": "DGL" })).unwrap_err();
+
+    assert_eq!(error["code"], "permission_denied");
+}
