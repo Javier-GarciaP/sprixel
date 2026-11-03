@@ -12,7 +12,7 @@ Writes a text grid into a sprite. One character is one pixel and each character 
 Read the palette first (get_palette) and use only its keys.\n\
 \n\
 Format (keywords are English):\n\
-palette: main            (optional)\n\
+palette: main            (optional; it must be the palette of the sprite)\n\
 legend                   (optional; `<key> <name> [#RRGGBB]`)\n\
   Q teal #1FB5A8         a legend line with a #hex ADDS the color Q if the palette has no Q, in the same step\n\
 frame 1                  (frame numbers start at 1)\n\
@@ -25,6 +25,8 @@ A `.` erases the pixel unless `skip_transparent` is true. Keys are case sensitiv
 \n\
 It is atomic: if anything is wrong nothing changes, and `errors` lists every problem with its `line`, `row` and `column` \
 (codes: row_length, row_count, unknown_key, no_frame, bad_frame, too_big, region_out, palette_full, bad_legend). \
+A `palette:` line is never ignored: another existing palette is `palette_mismatch` (use `set_sprite_palette` or drop the line) and an unknown one is `palette_not_found`. \
+If a legend line gives an existing key a different color, the old color stays, the pixels move to a free key and the answer has `remapped` and `warnings`. \
 The answer has the new `revision`; pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. The person can undo the call. The answer has an image of the edited frame: LOOK at it and fix what is wrong (send `preview` false to skip it).";
 
 /// The steps every agent follows. The same text is in the server instructions
@@ -35,8 +37,8 @@ macro_rules! workflow {
         "\
 1. `get_project`: read the project. If it says no project is open, call `list_projects` and then `open_project`.\n\
 2. `get_guide` with the topic `design` (and `animation` for a sprite that moves). Follow it.\n\
-3. `get_palette`: read the colors. Draw with the keys of the palette only; a `legend` line in `apply_grid` adds a new color.\n\
-4. `create_sprite` for a new sprite, or `get_sprite` to read an existing one.\n\
+3. `get_palette`: read the colors. Draw with the keys of the palette only; a `legend` line in `apply_grid` adds a new color. If a legend line gives a used key another color, the pixels move to a free key and the answer says so.\n\
+4. `create_sprite` for a new sprite (`own_palette: true` gives it a palette of its own), or `get_sprite` to read an existing one.\n\
 5. Draw: `apply_grid` for a whole frame or a region, `set_pixels` and `draw_shape` for details and fixes.\n\
 6. LOOK at the image every write returns (or call `render_preview`). If something looks wrong, fix it and look again. Do not say you are done before you have seen the result and it looks right."
     };
@@ -156,7 +158,9 @@ Design guide: how to make a sprite that looks good\n\
 6. Selective outline. Outline the outside of the shape with a dark tone of the material (not black everywhere). Inside the shape use no lines, or lines lighter than the outer outline.\n\
 7. No stray pixels. Every pixel must belong to a shape. Remove single pixels that touch nothing, and keep lines clean, with steady steps.\n\
 8. Look at the result. Every pixel write (`apply_grid`, `set_pixels`, `draw_shape`) returns an image of the edited frame. LOOK at it; if you have no image, call `render_preview`. If something looks wrong, fix it and look again. Do not say you are done before you have seen the image and it looks right.\n\
-9. Big sprites (more than 32x32): work region by region. Write one part at a time (head, body, legs) with `apply_grid` and `x` and `y`, look at the image after each part, then go on.";
+9. Big sprites (more than 32x32): work region by region. Write one part at a time (head, body, legs) with `apply_grid` and `x` and `y`, look at the image after each part, then go on. Read a part with `get_sprite` (`frame`, `region`, `include_palette` false) instead of the whole sprite.\n\
+10. Edit without redrawing. `transform_region` flips, mirrors, moves or rotates a region; `copy_region` copies a region to another place, frame or sprite; `symmetry` on `set_pixels`, `draw_shape` and `apply_grid` draws both sides at once; `only_over` changes only the pixels that have one key (shade a color without touching the outline). `import_reference` draws a PNG from the folder `references/` of the project, reduced to the palette.\n\
+11. Let the server finish the sprite. When the shape is done, call `auto_outline` (the outline) and `auto_shade` (lit and shadow tones from one light direction), then `analyze_sprite` to find loose pixels, gaps in the outline, unused colors and, for animations, frames where the feet (`ground_kept`) moved. Fix what it reports.";
 
 /// How to animate. Also available as the topic `animation`.
 pub const ANIMATION_GUIDE: &str = "\
@@ -167,7 +171,7 @@ Animation guide: how to make a sprite move\n\
 3. Keep the size and the ground line. The body must not grow or jump by accident between frames: feet stay on the same row unless the pose is a jump.\n\
 4. Change little. Start a new frame with `add_frame` and `copy_of`, then change only what moves, with `set_pixels` or `apply_grid` and `x` and `y`.\n\
 5. The loop closes. The last frame must lead back to the first without a jump. Then make the animation with `create_tag` (mode loop, 6 to 12 fps).\n\
-6. Look at every frame with `render_preview` (argument `frame`) and fix what looks wrong before you say you are done.\n\
+6. Look at the whole animation with `render_frames` (all frames in one image, `labels` true shows the numbers) and at the movement with `render_onion` (earlier frames tinted red under the last one). Fix what looks wrong before you say you are done. All previews take a `background` (checker, light, dark or transparent).\n\
 7. Game data. Give a frame its own time with `set_frame_duration` (milliseconds) when it must last longer, like a hit or a pause. Mark the points the game needs (feet, hand) with `set_anchor`, and keep them on the same pixel when the pose does not move.";
 
 /// How to choose and build the colors. Also available as the topic `palette`.
@@ -179,7 +183,9 @@ Palette guide: how to choose colors\n\
 3. Build ramps. For each hue make 3 tones: shadow, base and light. Make the shadow a little cooler and the light a little warmer, not just darker and lighter.\n\
 4. Avoid pure black and pure white. Use a very dark tone of the material for the outline.\n\
 5. Add colors with a `legend` line in `apply_grid` (`<key> <name> #RRGGBB`) or with `set_palette_color`. Give related colors related keys, for example `G` base green, `D` dark green, `L` light green.\n\
-6. Changing a color with `set_palette_color` recolors every pixel that uses its key, so you can fix a tone at the end without redrawing.";
+6. Changing a color with `set_palette_color` recolors every pixel that uses its key, so you can fix a tone at the end without redrawing.\n\
+7. Make a ramp for you: `generate_ramp` adds 3 to 9 tones of one color (use `hue_shift` for cooler shadows and warmer lights). `remove_unused_colors` cleans a palette at the end.\n\
+8. A sprite can have its own palette: `create_sprite` with `own_palette: true`, or `create_palette` and then `set_sprite_palette`. Check the palette of a sprite with `get_palette` before you write a grid for it.";
 
 /// The text of a guide topic, or `None` when it is not a topic.
 pub fn guide(topic: &str) -> Option<&'static str> {

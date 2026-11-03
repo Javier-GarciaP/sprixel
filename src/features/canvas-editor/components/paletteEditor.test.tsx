@@ -40,6 +40,19 @@ describe("Palette editor in the editor", () => {
     expect(await screen.findByRole("button", { name: /^R R$/ })).toBeTruthy();
   });
 
+  // Checks that a sprite with its own palette shows THAT palette: its colors
+  // are in the panel and the Edit button opens the editor with its name.
+  it("shows and edits the own palette of the sprite", async () => {
+    const api = new FakeEditorApi(16, 16, 1, [{ key: "S", hex: "#FFCC99" }]);
+    api.paletteName = "orc";
+    renderEditor(api);
+    await screen.findByText("1800%");
+    expect(await screen.findByRole("button", { name: "#FFCC99" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.getAttribute("aria-label")).toBe("Edit palette · orc");
+  });
+
   // Checks that Done applies the edit and the editor reads the sprite again,
   // so the new colors show at once; and that Cancel does neither.
   it("reads the sprite again after Done, and not after Cancel", async () => {

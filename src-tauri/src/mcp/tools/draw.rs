@@ -4,10 +4,11 @@
 
 use super::args;
 use super::create::base_revision;
+use super::edit::{finish_pixels, only_over_arg, only_over_schema, symmetry_arg, symmetry_schema};
 use super::read::check_frame;
 use super::shapes;
 use super::write::{Plan, write};
-use crate::document::{GridError, GridOptions, Operation, PixelChange, Project, Sprite, SpriteRef, TRANSPARENT};
+use crate::document::{Grid, GridError, GridOptions, Operation, PixelChange, Project, Sprite, SpriteRef, TRANSPARENT, same_name};
 use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
@@ -25,7 +26,9 @@ pub fn tools() -> Vec<Tool> {
                 "y": { "type": "integer", "minimum": 0 },
                 "skip_transparent": { "type": "boolean", "description": "A `.` in the grid keeps the pixel that is there, instead of erasing it." },
                 "preview": preview_arg(),
+                "background": super::read::background_arg(),
                 "base_revision": base_revision(),
+                "only_over": only_over_schema(), "symmetry": symmetry_schema().0, "axis": symmetry_schema().1,
             }}),
             need: Need::Edit,
             run: apply_grid,
@@ -43,7 +46,9 @@ pub fn tools() -> Vec<Tool> {
                     "key": { "type": "string", "description": "One palette key, or `.` for transparent." },
                 }}},
                 "preview": preview_arg(),
+                "background": super::read::background_arg(),
                 "base_revision": base_revision(),
+                "only_over": only_over_schema(), "symmetry": symmetry_schema().0, "axis": symmetry_schema().1,
             }}),
             need: Need::Edit,
             run: set_pixels,
@@ -63,7 +68,9 @@ pub fn tools() -> Vec<Tool> {
                 "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
                 "filled": { "type": "boolean", "description": "For rectangle and ellipse. Default false (outline)." },
                 "preview": preview_arg(),
+                "background": super::read::background_arg(),
                 "base_revision": base_revision(),
+                "only_over": only_over_schema(), "symmetry": symmetry_schema().0, "axis": symmetry_schema().1,
             }}),
             need: Need::Edit,
             run: draw_shape,
@@ -72,12 +79,12 @@ pub fn tools() -> Vec<Tool> {
 }
 
 /// The `preview` argument of the three drawing tools.
-fn preview_arg() -> Value {
+pub(super) fn preview_arg() -> Value {
     json!({ "type": "boolean", "description": "Default true: the result carries an image of the edited frame (at most 512 pixels on a side). LOOK at it and fix what is wrong. Set false to skip it." })
 }
 
 /// The keys a sprite accepts: those of its palette and `.`.
-fn valid_keys(project: &Project, sprite: &Sprite) -> Vec<String> {
+pub(super) fn valid_keys(project: &Project, sprite: &Sprite) -> Vec<String> {
     let mut keys: Vec<String> = project
         .palette(&sprite.palette)
         .map(|p| p.colors.iter().map(|c| c.key.to_string()).collect())
@@ -97,7 +104,7 @@ fn unknown_key(key: &str, valid: &[String]) -> ToolError {
 }
 
 /// One palette key from a text argument.
-fn key_of(text: &str, valid: &[String]) -> Result<char, ToolError> {
+pub(super) fn key_of(text: &str, valid: &[String]) -> Result<char, ToolError> {
     let mut chars = text.chars();
     match (chars.next(), chars.next()) {
         (Some(key), None) if valid.iter().any(|k| *k == text) => Ok(key),
@@ -155,6 +162,35 @@ fn with_frame_line(text: &str, frame: u32) -> String {
     out
 }
 
+/// A `palette:` line is never ignored: it must name the palette of the sprite.
+fn check_palette_line(project: &Project, target: &SpriteRef, sprite: &Sprite, text: &str) -> Result<(), ToolError> {
+    let Some(named) = Grid::parse(text).0.palette else { return Ok(()) };
+    if same_name(&named, &sprite.palette) {
+        return Ok(());
+    }
+    if project.palette(&named).is_none() {
+        let names: Vec<String> = project.palettes.iter().map(|p| p.name.clone()).collect();
+        return Err(ToolError::new(
+            "palette_not_found",
+            format!(
+                "the grid says `palette: {named}` but there is no such palette; the palettes are: {}. Create it with create_palette, or remove the `palette:` line",
+                names.join(", ")
+            ),
+        )
+        .with("palette", named)
+        .with("palettes", names));
+    }
+    Err(ToolError::new(
+        "palette_mismatch",
+        format!(
+            "the grid says `palette: {named}` but sprite {:?} uses the palette {:?}. Remove the `palette:` line to use {:?}, or call set_sprite_palette to make the sprite use {named:?}, or create the sprite with `own_palette: true`",
+            target.name, sprite.palette, sprite.palette
+        ),
+    )
+    .with("sprite_palette", sprite.palette.clone())
+    .with("grid_palette", named))
+}
+
 fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
     let text = args::required_str(input, "grid")?.to_string();
     let frame = args::optional_u32(input, "frame")?;
@@ -168,13 +204,38 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
             check_frame(sprite, frame)?;
         }
         let text = frame.map_or(text.clone(), |frame| with_frame_line(&text, frame));
+        check_palette_line(project, &target, sprite, &text)?;
         let region = match (x, y) {
             (None, None) => None,
             (x, y) => Some((x.unwrap_or(0), y.unwrap_or(0))),
         };
-        let ops = project
-            .grid_operations(&target, &text, &GridOptions { region, skip_transparent })
+        let plan = project
+            .grid_plan(&target, &text, &GridOptions { region, skip_transparent })
             .map_err(|errors| grid_failure(errors, &valid_keys(project, sprite)))?;
+        let (ops, remap) = (plan.ops, plan.remap);
+        let (symmetry, only_over) = (
+            symmetry_arg(input, sprite.width, sprite.height)?,
+            only_over_arg(input, &valid_keys(project, sprite))?,
+        );
+        let ops = if symmetry.is_none() && only_over.is_none() {
+            ops
+        } else {
+            let mut changed = Vec::new();
+            for op in ops {
+                match op {
+                    Operation::SetPixels { sprite: s, layer, frame, pixels } => {
+                        let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
+                        let wanted = pixels.iter().map(|p| (i64::from(p.x), i64::from(p.y), p.key)).collect();
+                        let pixels = finish_pixels(current, sprite.width, sprite.height, wanted, symmetry, only_over)?;
+                        if !pixels.is_empty() {
+                            changed.push(Operation::SetPixels { sprite: s, layer, frame, pixels });
+                        }
+                    }
+                    other => changed.push(other),
+                }
+            }
+            changed
+        };
         let (mut pixels, mut colors, mut busy) = (0, 0, None);
         for op in &ops {
             match op {
@@ -186,7 +247,15 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
                 _ => {}
             }
         }
-        let plan = Plan::new(ops, json!({ "pixels_changed": pixels, "colors_added": colors })).preview();
+        let mut extra = json!({ "pixels_changed": pixels, "colors_added": colors });
+        if !remap.keys.is_empty() {
+            // {"P": "Z"}: the legend key P conflicted, the pixels use Z.
+            let moved: serde_json::Map<String, Value> =
+                remap.keys.iter().map(|(from, to)| (from.to_string(), to.to_string().into())).collect();
+            extra["remapped"] = moved.into();
+            extra["warnings"] = remap.warnings.into();
+        }
+        let plan = Plan::new(ops, extra).preview();
         Ok(match busy {
             Some(frame) => plan.busy(&target, frame),
             None => plan,
@@ -216,7 +285,8 @@ fn set_pixels(ctx: &Ctx, input: &Value) -> ToolResult {
         let sprite = project.find_sprite(&target).expect("just found");
         check_frame(sprite, frame)?;
         let valid = valid_keys(project, sprite);
-        let mut pixels = Vec::with_capacity(list.len());
+        let (symmetry, only_over) = (symmetry_arg(input, sprite.width, sprite.height)?, only_over_arg(input, &valid)?);
+        let mut wanted = Vec::with_capacity(list.len());
         for (index, item) in list.iter().enumerate() {
             let (x, y) = (coordinate(item, "x", index)?, coordinate(item, "y", index)?);
             let text = item["key"].as_str().unwrap_or("");
@@ -224,8 +294,10 @@ fn set_pixels(ctx: &Ctx, input: &Value) -> ToolResult {
             if x >= sprite.width || y >= sprite.height {
                 return Err(out_of_range(index, x as i64, y as i64, sprite));
             }
-            pixels.push(PixelChange { x, y, key });
+            wanted.push((i64::from(x), i64::from(y), key));
         }
+        let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
+        let pixels = finish_pixels(current, sprite.width, sprite.height, wanted, symmetry, only_over)?;
         let count = pixels.len();
         let ops = if pixels.is_empty() {
             Vec::new()
@@ -262,7 +334,9 @@ fn draw_shape(ctx: &Ctx, input: &Value) -> ToolResult {
         let target = args::sprite(project, input)?;
         let sprite = project.find_sprite(&target).expect("just found");
         check_frame(sprite, frame)?;
-        let key = key_of(&key_text, &valid_keys(project, sprite))?;
+        let valid = valid_keys(project, sprite);
+        let key = key_of(&key_text, &valid)?;
+        let (symmetry, only_over) = (symmetry_arg(input, sprite.width, sprite.height)?, only_over_arg(input, &valid)?);
         let (width, height) = (sprite.width as i64, sprite.height as i64);
         let area = match shape.as_str() {
             "line" => {
@@ -293,12 +367,8 @@ fn draw_shape(ctx: &Ctx, input: &Value) -> ToolResult {
             }
         };
         let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
-        // Only the pixels that really change.
-        let pixels: Vec<PixelChange> = area
-            .iter()
-            .filter(|&&(x, y)| current[(y * width + x) as usize] != key as u8)
-            .map(|&(x, y)| PixelChange { x: x as u32, y: y as u32, key })
-            .collect();
+        let wanted = area.iter().map(|&(x, y)| (x, y, key)).collect();
+        let pixels = finish_pixels(current, sprite.width, sprite.height, wanted, symmetry, only_over)?;
         let count = pixels.len();
         let ops = if pixels.is_empty() {
             Vec::new()

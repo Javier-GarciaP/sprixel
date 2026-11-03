@@ -14,6 +14,29 @@ and the project follows [Semantic Versioning](https://semver.org/).
   `check_tile` and `render_tiled` for seamless tiles. The sheet JSON lists the
   anchors of every frame, and `docs/export-format.md` explains how to use it
   in Godot and Unity.
+- Finishing tools for the AI: `auto_outline` draws a one pixel outline (4 or 8
+  neighbors, outside only or inner), `auto_shade` shades a region with a ramp
+  of tones for a light direction, and `analyze_sprite` reports loose pixels,
+  gaps in the outline, unused colors and how each frame differs from the next
+  (changed pixels, box, ground kept).
+- Edit tools for agents: `transform_region` (flip, mirror, move with `wrap`,
+  rotate) and `copy_region` (inside a sprite or to another frame or sprite),
+  `only_over` and `symmetry` on `set_pixels`, `draw_shape` and `apply_grid`,
+  and `region` and `include_palette` on `get_sprite` to read big sprites cheaply.
+- `import_reference` draws a PNG from the `references/` folder of the project
+  into a frame, reduced to the sprite palette (optionally adding colors).
+- Palettes for the AI: `create_palette`, `set_sprite_palette`, `remove_unused_colors`
+  and `generate_ramp` (color ramps with an optional hue shift), and
+  `own_palette` in `create_sprite`. A sprite can now have a palette of its own.
+- `apply_grid` never ignores a `palette:` line (`palette_mismatch`,
+  `palette_not_found`). A legend color that conflicts with a palette key moves
+  to a free key and is reported in `remapped` and `warnings`.
+- Previews for the AI: `render_preview` and the image of every write now sit on a
+  gray checkerboard by default (so white pixels are visible); the `background`
+  option can be `checker`, `light`, `dark` or `transparent`. New tools
+  `render_frames` (all frames in one grid, with optional numbers) and
+  `render_onion` (frames over each other, earlier ones tinted). `sprixel tool`
+  saves their images as files too.
 - Watch the AI draw: the editor replays each agent write (at most 8 seconds)
   with a cursor that carries the agent name, keeps the frame busy until the
   replay ends, and follows the agent to its sprite and frame when you are free.

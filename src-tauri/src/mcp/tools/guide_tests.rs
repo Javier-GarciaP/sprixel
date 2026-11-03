@@ -127,7 +127,7 @@ fn known_names() -> BTreeSet<String> {
     }
     known.extend(["legend", "loop", "frame"].map(String::from));
     // Fields of the answers and of the errors.
-    known.extend(["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors"].map(String::from));
+    known.extend(["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors", "ground_kept"].map(String::from));
     // The topics of `get_guide`.
     known.extend(super::docs::GUIDE_TOPICS.map(String::from));
     known

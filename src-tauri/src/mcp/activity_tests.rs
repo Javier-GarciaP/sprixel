@@ -46,6 +46,10 @@ fn every_action_has_a_description_and_the_list_is_newest_first() {
         ("apply_grid", json!({ "name": "orc", "frame": 1, "grid": "RRRR\n....\n....\n....\n" })),
         ("create_tag", json!({ "sprite": "orc", "name": "idle", "from": 1, "to": 2, "fps": 6 })),
         ("set_palette_color", json!({ "key": "B", "hex": "#0000FF" })),
+        ("create_palette", json!({ "name": "skin", "colors": [{ "key": "R", "hex": "#FFCC99" }, { "key": "G", "hex": "#99CC66" }] })),
+        ("set_sprite_palette", json!({ "name": "orc", "palette": "skin" })),
+        ("generate_ramp", json!({ "palette": "skin", "base": "#FFCC99", "steps": 3 })),
+        ("remove_unused_colors", json!({ "palette": "main" })),
         ("delete_frame", json!({ "name": "orc", "frame": 2 })),
         ("export", json!({ "scope": "sprites", "sprites": ["orc"] })),
         ("delete_sprite", json!({ "name": "orc" })),
@@ -60,6 +64,10 @@ fn every_action_has_a_description_and_the_list_is_newest_first() {
             "Deleted the sprite orc",
             "Exported 2 files to assets/sprites",
             "Deleted frame 2 of Enemigos/orc",
+            "Removed 1 unused colors from palette main",
+            "Made a ramp of 3 tones in palette skin",
+            "Pointed Enemigos/orc to the palette skin",
+            "Created the palette skin",
             "Added the color B in palette main",
             "Created the animation idle on Enemigos/orc",
             "Applied a grid to Enemigos/orc",
@@ -70,7 +78,7 @@ fn every_action_has_a_description_and_the_list_is_newest_first() {
             "Created the folder Enemigos",
         ]
     );
-    assert_eq!(rows(&core)[3].entry.sprite, None, "a palette color is not about a sprite");
+    assert_eq!(rows(&core)[7].entry.sprite, None, "a palette color is not about a sprite");
 }
 
 // Checks that failed calls are logged with their error code (a denied
@@ -173,4 +181,18 @@ fn a_client_cannot_use_the_name_of_the_person() {
 
     let author = project::read(&host.project, |s| s.history.entries()[0].author.clone()).unwrap();
     assert_eq!(author, "USER (agent)");
+}
+
+// Checks the descriptions of the two automatic finishing tools.
+#[test]
+fn outline_and_shade_have_a_description() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "draw_shape", json!({ "name": "slime", "shape": "rectangle", "key": "G", "x": 1, "y": 1, "width": 4, "height": 4, "filled": true })).unwrap();
+    call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R" })).unwrap();
+    call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top-left", "base": "G", "keys": "RG" })).unwrap();
+
+    let summaries: Vec<String> = rows(&core).iter().take(2).map(|r| r.entry.summary.clone()).collect();
+
+    assert_eq!(summaries, ["Shaded slime from the top-left", "Outlined slime"]);
 }

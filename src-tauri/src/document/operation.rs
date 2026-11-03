@@ -1,5 +1,5 @@
 use super::error::DocError;
-use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, Tag};
+use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, TRANSPARENT, Tag};
 use super::names::{same_name, validate_name};
 
 /// Where a sprite is: the folders from the project root, then its name.
@@ -126,6 +126,13 @@ pub enum Operation {
     DuplicateSprite {
         sprite: SpriteRef,
         name: String,
+    },
+    /// Points a sprite to another palette. It fails with `keys_missing` if the
+    /// sprite has a pixel key that the palette does not have. No pixel is
+    /// rewritten. The inverse points back to the old palette.
+    SetSpritePalette {
+        sprite: SpriteRef,
+        palette: String,
     },
     SetPixels {
         sprite: SpriteRef,
@@ -402,6 +409,38 @@ impl Project {
                 colors,
                 pixels,
             } => self.set_palette(palette, colors, pixels),
+            Operation::SetSpritePalette { sprite, palette } => {
+                let target = self.palette(palette).ok_or_else(|| not_found("palette", palette))?.clone();
+                let (folder, index) = self.locate(sprite)?;
+                let found = &self.folder(&folder).sprites[index];
+                let missing: Vec<char> = found
+                    .layers
+                    .iter()
+                    .flat_map(|l| l.frames.iter())
+                    .flat_map(|f| f.pixels.iter().map(|k| *k as char))
+                    .filter(|k| *k != TRANSPARENT && !target.colors.iter().any(|c| c.key == *k))
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .into_iter()
+                    .collect();
+                if !missing.is_empty() {
+                    let list: Vec<String> = missing.iter().map(|k| format!("{k:?}")).collect();
+                    return Err(DocError::new(
+                        "keys_missing",
+                        format!(
+                            "sprite {:?} uses the keys {} but palette {:?} does not have them",
+                            found.name,
+                            list.join(", "),
+                            target.name
+                        ),
+                    ));
+                }
+                let target_ref = SpriteRef { folder: folder.clone(), name: found.name.clone() };
+                let old = std::mem::replace(&mut self.folder_mut(&folder).sprites[index].palette, target.name);
+                Ok(Applied {
+                    inverse: Operation::SetSpritePalette { sprite: target_ref.clone(), palette: old },
+                    touched: vec![Target::Sprite(target_ref)],
+                })
+            }
             Operation::CreateFolder { parent, name } => {
                 validate_name(name)?;
                 let parent = self.canonical_folder(parent)?;

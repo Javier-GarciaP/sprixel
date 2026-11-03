@@ -281,3 +281,55 @@ fn every_frame_and_layer_is_rewritten() {
     let sprite = p.find_sprite(&goblin).unwrap();
     assert_eq!(sprite.layers[0].frames[1].pixels[0], b'H');
 }
+
+// Checks `SetSpritePalette`: the sprite points to another palette when all
+// its pixel keys exist there, and the inverse gives back the old one.
+#[test]
+fn a_sprite_can_point_to_another_palette_and_undo() {
+    let mut project = project();
+    project
+        .apply(&Operation::AddColor {
+            palette: "second".to_string(),
+            color: color('B', "blue", "#0000FF"),
+            index: None,
+        })
+        .unwrap();
+    project
+        .apply(&Operation::AddColor {
+            palette: "second".to_string(),
+            color: color('G', "green", "#00FF00"),
+            index: None,
+        })
+        .unwrap();
+    let goblin = SpriteRef::new(&[], "goblin");
+
+    let applied = project
+        .apply(&Operation::SetSpritePalette { sprite: goblin.clone(), palette: "SECOND".to_string() })
+        .unwrap();
+
+    assert_eq!(project.find_sprite(&goblin).unwrap().palette, "second", "the real name is stored");
+    assert_eq!(applied.touched, vec![Target::Sprite(goblin.clone())]);
+    project.apply(&applied.inverse).unwrap();
+    assert_eq!(project.find_sprite(&goblin).unwrap().palette, "main");
+}
+
+// Checks that a palette that lacks a key the sprite uses is refused, and that
+// an unknown palette is `not_found`. Nothing changes, not even the revision.
+#[test]
+fn a_sprite_cannot_point_to_a_palette_that_lacks_its_keys() {
+    let mut project = project();
+    let goblin = SpriteRef::new(&[], "goblin");
+    let before = project.clone();
+
+    // `second` only has R, but the goblin uses R, B and G.
+    let error = project
+        .apply(&Operation::SetSpritePalette { sprite: goblin.clone(), palette: "second".to_string() })
+        .unwrap_err();
+    assert_eq!(error.code, "keys_missing");
+    assert!(error.message.contains('B') && error.message.contains('G'), "{}", error.message);
+    let error = project
+        .apply(&Operation::SetSpritePalette { sprite: goblin, palette: "ghost".to_string() })
+        .unwrap_err();
+    assert_eq!(error.code, "not_found");
+    assert_eq!(project, before);
+}

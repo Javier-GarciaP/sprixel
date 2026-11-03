@@ -2,10 +2,10 @@
 //! the revision.
 
 use super::args;
-use crate::document::{Project, SpriteRef, Tag, write_grid};
+use crate::document::{Project, SpriteRef, Tag, write_grid_part};
 use crate::ipc::project;
 use crate::mcp::{Ctx, Need, Output, Tool, ToolError, ToolResult};
-use crate::render::render_frame;
+use crate::render::{Background, checker_cell, flatten, render_frame};
 use serde_json::{Value, json};
 
 /// The event that asks the UI to show a sprite in the editor.
@@ -13,7 +13,7 @@ pub const OPEN_SPRITE_EVENT: &str = "mcp://open-sprite";
 
 /// The largest preview, in pixels per side. Bigger images cost the AI many
 /// tokens and tell it nothing more.
-const MAX_PREVIEW_SIDE: u32 = 1024;
+pub(super) const MAX_PREVIEW_SIDE: u32 = 1024;
 const DEFAULT_SCALE: u32 = 8;
 
 pub fn tools() -> Vec<Tool> {
@@ -36,11 +36,16 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "get_sprite",
-            description: "Reads one sprite: size, palette name, animations, the duration of each frame (`frame_durations`, ms), the anchors and its frames as a text grid.",
+            description: "Reads one sprite: size, palette name, animations, the duration of each frame (`frame_durations`, ms), the anchors and its frames as a text grid. For a big sprite read one `frame` and a `region`, and send `include_palette` false after the first read.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string", "description": "The sprite name, or a path like \"Characters/goblin\"." },
                 "folder": { "type": "string", "description": "The folder of the sprite, if two sprites share the name." },
-                "frame": { "type": "integer", "minimum": 1, "description": "Read only this frame (from 1). Omit for all frames." }
+                "frame": { "type": "integer", "minimum": 1, "description": "Read only this frame (from 1). Omit for all frames." },
+                "region": { "type": "object", "required": ["x", "y", "width", "height"], "description": "Read only this rectangle. The grid then has only its rows and columns (write it back with apply_grid `x` and `y`).", "properties": {
+                    "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
+                    "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+                }},
+                "include_palette": { "type": "boolean", "description": "Default true. false leaves out the color legend (the grid keeps the line `palette: <name>`), which saves tokens when you already know the palette." }
             }}),
             need: Need::Nothing,
             run: get_sprite,
@@ -63,7 +68,8 @@ pub fn tools() -> Vec<Tool> {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
                 "frame": { "type": "integer", "minimum": 1, "description": "The frame, from 1. Default 1." },
-                "scale": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Each pixel becomes scale x scale pixels. Default 8. The image is at most 1024 pixels on a side." }
+                "scale": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Each pixel becomes scale x scale pixels. Default 8. The image is at most 1024 pixels on a side." },
+                "background": background_arg()
             }}),
             need: Need::Nothing,
             run: render_preview,
@@ -183,6 +189,7 @@ pub fn check_frame(sprite: &crate::document::Sprite, frame: u32) -> Result<(), T
 
 fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::optional_u32(input, "frame")?;
+    let legend = args::optional_bool(input, "include_palette")?.unwrap_or(true);
     read(ctx, |session| {
         let project = &session.project;
         let target = args::sprite(project, input)?;
@@ -190,6 +197,7 @@ fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         if let Some(frame) = frame {
             check_frame(sprite, frame)?;
         }
+        let region = args::region(input, "region", sprite.width, sprite.height)?;
         let palette = project.palette(&sprite.palette).ok_or_else(|| {
             ToolError::new("palette_not_found", format!("the palette {:?} of this sprite does not exist", sprite.palette))
         })?;
@@ -197,7 +205,10 @@ fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         summary["revision"] = json!(project.revision);
         summary["frame_durations"] = json!(sprite.frame_durations);
         summary["anchors"] = json!(sprite.anchors.iter().map(anchor_json).collect::<Vec<_>>());
-        summary["grid"] = json!(write_grid(sprite, palette, frame));
+        summary["grid"] = json!(write_grid_part(sprite, palette, frame, region, legend));
+        if let Some((x, y, width, height)) = region {
+            summary["region"] = json!({ "x": x, "y": y, "width": width, "height": height });
+        }
         Ok(Output::Json(summary))
     })
 }
@@ -232,6 +243,23 @@ fn get_palette(ctx: &Ctx, input: &Value) -> ToolResult {
     })
 }
 
+/// The `background` argument of every tool that returns an image.
+pub fn background_arg() -> Value {
+    json!({ "type": "string", "enum": ["checker", "light", "dark", "transparent"],
+        "description": "What is behind transparent pixels. Default `checker` (a gray checkerboard, so white pixels are visible). `transparent` keeps alpha 0." })
+}
+
+/// Reads `background`; a wrong value is `bad_argument`.
+pub fn background_of(input: &Value) -> Result<Background, ToolError> {
+    match args::optional_str(input, "background")? {
+        None => Ok(Background::Checker),
+        Some(name) => Background::parse(name).ok_or_else(|| {
+            ToolError::new("bad_argument", format!("`background` must be one of: {}", Background::NAMES))
+                .with("argument", "background")
+        }),
+    }
+}
+
 /// The largest side of the preview a write tool returns with its result.
 pub const WRITE_PREVIEW_SIDE: u32 = 512;
 /// Small sprites are not blown up more than this.
@@ -240,18 +268,19 @@ const WRITE_PREVIEW_MAX_SCALE: u32 = 32;
 /// The picture of the frame an agent just wrote, scaled up with sharp pixels
 /// so its side is at most `WRITE_PREVIEW_SIDE`. `None` if it cannot be drawn
 /// (the write itself already worked, so this is never an error).
-pub fn write_preview(project: &Project, target: &SpriteRef, frame: u32) -> Option<crate::render::Image> {
+pub fn write_preview(project: &Project, target: &SpriteRef, frame: u32, background: Background) -> Option<crate::render::Image> {
     let sprite = project.find_sprite(target)?;
     check_frame(sprite, frame).ok()?;
     let palette = project.palette(&sprite.palette)?;
     let side = sprite.width.max(sprite.height).max(1);
     let scale = (WRITE_PREVIEW_SIDE / side).clamp(1, WRITE_PREVIEW_MAX_SCALE);
-    Some(render_frame(sprite, palette, frame as usize - 1, scale))
+    Some(flatten(&render_frame(sprite, palette, frame as usize - 1, scale), background, checker_cell(scale)))
 }
 
 fn render_preview(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
     let scale = args::optional_u32(input, "scale")?.unwrap_or(DEFAULT_SCALE);
+    let background = background_of(input)?;
     if !(1..=64).contains(&scale) {
         return Err(ToolError::new("bad_argument", "`scale` must be from 1 to 64").with("argument", "scale"));
     }
@@ -273,7 +302,7 @@ fn render_preview(ctx: &Ctx, input: &Value) -> ToolResult {
         let palette = project.palette(&sprite.palette).ok_or_else(|| {
             ToolError::new("palette_not_found", format!("the palette {:?} of this sprite does not exist", sprite.palette))
         })?;
-        let image = render_frame(sprite, palette, frame as usize - 1, scale);
+        let image = flatten(&render_frame(sprite, palette, frame as usize - 1, scale), background, checker_cell(scale));
         let info = json!({
             "name": sprite.name, "folder": args::join(&target.folder), "frame": frame, "scale": scale,
             "width": image.width, "height": image.height, "revision": project.revision,

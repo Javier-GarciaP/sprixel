@@ -106,9 +106,12 @@ description tells the AI the rules, so it does not need this page.
 | --- | --- |
 | `get_project` | Project name, revision, folders, palettes and number of sprites |
 | `list_sprites` | Sprites with size, frames, palette, animations and who edited them last |
-| `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations |
+| `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations. For a big sprite, `frame` and `region` (`x`, `y`, `width`, `height`) read only a part, and `include_palette` false leaves out the color legend; the part is still a valid grid |
 | `get_palette` | The colors with their one-letter keys |
-| `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
+| `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side). `background`: `checker` (default, gray checkerboard), `light`, `dark` or `transparent`; the images of `apply_grid`, `set_pixels` and `draw_shape` take it too |
+| `render_frames` | One PNG with several frames in a grid (`from`, `to`, `columns`, `scale`, `labels`, `background`), at most 1024 pixels on a side |
+| `render_onion` | One PNG with several frames drawn over each other (`frames`, `scale`, `background`): earlier frames are tinted and see-through, the last one is normal |
+| `analyze_sprite` | Checks a sprite: loose pixels, gaps in the outline (`outline_key`), unused colors, and how each frame differs from the next (`changed_pixels`, `bbox`, `ground_kept`). Changes nothing |
 | `check_tile` | Checks if a frame repeats without seams: compares opposite edges and lists the pixels that differ |
 | `render_tiled` | Returns a PNG of a frame repeated 3x3 on a checkerboard, to see the seams of a tile (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
@@ -136,12 +139,21 @@ description tells the AI the rules, so it does not need this page.
 | `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet. Returns an image of the edited frame |
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`). Returns an image of the edited frame |
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
+| `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). Returns an image of the edited frame |
+| `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns an image of the edited frame |
+| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. Returns an image of the edited frame |
+| `copy_region` | Copies a region inside a sprite, or to another frame or sprite (same palette), with an offset and `skip_transparent`. Returns an image of the edited frame |
+| `import_reference` | Draws a PNG from the project folder `references/` into a frame, using the nearest colors of the palette (`width`, `height` scale it down, `max_colors` adds colors). Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000) |
 | `set_anchor` | Adds or moves a named point of a sprite (`feet`, `hand`...), for the whole sprite or one `frame` |
 | `remove_anchor` | Removes an anchor by name |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
+| `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
+| `set_sprite_palette` | Makes a sprite use another palette; fails with `keys_missing` if the sprite uses a key the palette lacks |
+| `remove_unused_colors` | Removes the colors of a palette that no sprite uses, and returns their keys |
+| `generate_ramp` | Adds 3 to 9 darker and lighter tones of one color to a palette, and returns their keys |
 | `undo_last_ai_action` | Takes back the last action of this agent, if nothing happened after it |
 
 **Delete and export**
@@ -155,11 +167,36 @@ Every write tool is **atomic**: it is applied whole or not at all, as one entry
 of the history by the agent. Every write returns the new `revision` and takes
 an optional `base_revision`.
 
-The three pixel tools (`apply_grid`, `set_pixels`, `draw_shape`) return a PNG
+The pixel tools (`apply_grid`, `set_pixels`, `draw_shape`, `transform_region`,
+`copy_region` and `import_reference`) return a PNG
 of the frame they edited, at most 512 pixels on a side, next to their usual
 answer. The AI must look at it and fix what is wrong. Pass `preview` false to
 skip the image. With `sprixel tool` the image is saved to a file and its path
 is printed.
+
+`apply_grid` (with `x` and `y`), `set_pixels` and `draw_shape` also take two
+optional arguments:
+
+- `only_over`: one palette key. Only the pixels that have that key before the
+  call change; the others stay. Use it to shade or recolor one material.
+- `symmetry`: `horizontal` (left to right), `vertical` (top to bottom) or
+  `both`. Every pixel is also written at its mirrored place. The mirror line is
+  the center of the sprite, or `axis` (`{x, y}`, whole or half numbers). If a
+  mirrored pixel would fall outside the sprite the call fails with
+  `out_of_range` and nothing changes.
+
+`transform_region` works on a `region` (default: the whole frame) with the
+operations `flip_horizontal`, `flip_vertical`, `mirror` (`direction`), `move`
+(`dx`, `dy`, `wrap`) and `rotate` (`degrees` 90, 180 or 270; 90 and 270 need a
+square). `copy_region` copies a `region` to `to_x`, `to_y` of the same or
+another frame (`to_frame`) or sprite (`to_sprite`, `to_folder`; same palette).
+
+`import_reference` reads a PNG only from the folder `references/` of the open
+project. The file path must be relative with no `..`, must not be (or go
+through) a symbolic link, must end with `.png`, and is limited to 2 MB and 512
+pixels on a side. Colors become the nearest palette color; alpha under 128 is
+transparent; `max_colors` allows new colors to be added to the palette, and
+`width` and `height` scale the picture down.
 
 ### Errors
 
@@ -177,9 +214,13 @@ The most common codes:
 | `unknown_topic` | `get_guide` got a topic that is not `design`, `animation` or `palette` |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
+| `palette_mismatch`, `palette_not_found` | The `palette:` line of a grid names a palette that is not the one of the sprite, or that does not exist (the message says how to fix it) |
+| `keys_missing` | `set_sprite_palette` to a palette that lacks a key the sprite uses |
 | `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
 | `out_of_range`, `unknown_key` | A pixel outside the sprite, or a key that is not in the palette (`valid_keys` lists the ones that are) |
-| `invalid_path`, `outside_project` | A path that is not allowed |
+| `region_out`, `palette_mismatch` | A region that does not fit in the sprite, or a copy between sprites with different palettes |
+| `bad_image` | `import_reference` got a file that is not a valid PNG |
+| `invalid_path`, `outside_project` | A path that is not allowed (also a reference file outside `references/`) |
 | `limit_exceeded` | A limit was passed (see [Security](#security)) |
 
 The same tools can be called from a terminal with the `sprixel` command:
@@ -280,7 +321,7 @@ Any MCP client can connect to the running app:
 
 The server speaks `initialize`, `ping`, `tools/list` and `tools/call`, with
 the protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Images from
-`render_preview` come as MCP image content.
+`render_preview`, `render_frames` and `render_onion` come as MCP image content.
 
 ## Security
 
@@ -334,8 +375,10 @@ with an error.
 finish, so many calls never fill the limit of clients. `sprixel mcp` runs the
 `tools/call` messages of an AI one after another, in the order they arrived.
 
-When a tool returns an image (`render_preview`), `sprixel tool` saves it as a
-PNG in `~/.sprixel/previews/<sprite>-<frame>-<revision>.png` (readable only by
+When a tool returns an image (`render_preview`, `render_frames`, `render_onion`),
+`sprixel tool` saves it as a PNG in
+`~/.sprixel/previews/<sprite>-<frame>-<revision>.png` (or
+`<sprite>-<frames|onion>-<revision>-<hash>.png` for the two new tools; readable only by
 you), keeps the 20 newest files and prints `image saved: <path>`, so an AI that
 only has a shell can open the file and see its work. With `--json` each image
 keeps its `data` (base64) and has a `path` too.
