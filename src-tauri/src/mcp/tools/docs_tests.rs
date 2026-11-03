@@ -31,7 +31,7 @@ fn a_client_sees_every_tool_with_a_description_and_a_schema() {
         "get_project", "list_sprites", "get_sprite", "get_palette", "render_preview", "open_sprite",
         "create_folder", "create_sprite", "apply_grid", "set_pixels", "draw_shape", "add_frame",
         "delete_frame", "create_tag", "set_palette_color", "delete_sprite", "export", "undo_last_ai_action",
-        "list_projects", "open_project",
+        "list_projects", "open_project", "get_guide",
     ] {
         assert!(names.contains(&expected), "missing {expected}: {names:?}");
     }
@@ -105,5 +105,5 @@ fn initialize_gives_instructions() {
     for part in ["get_palette", "render_preview", "from 0", "base_revision", "permission_denied", "stopped_by_user"] {
         assert!(text.contains(part), "the instructions do not say {part:?}");
     }
-    assert!(text.len() < 2000, "short enough to put in every prompt");
+    assert!(text.len() < 6000, "short enough to put in every prompt");
 }

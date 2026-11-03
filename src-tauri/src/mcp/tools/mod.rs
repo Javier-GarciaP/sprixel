@@ -30,6 +30,7 @@ pub use read::OPEN_SPRITE_EVENT;
 pub fn all() -> Vec<Tool> {
     let mut tools = Vec::new();
     tools.extend(read::tools());
+    tools.extend(docs::tools());
     tools.extend(projects::tools());
     tools.extend(create::tools());
     tools.extend(draw::tools());
@@ -65,3 +66,12 @@ mod docs_tests;
 
 #[cfg(test)]
 mod undo_tests;
+
+#[cfg(test)]
+mod live_tests;
+
+#[cfg(test)]
+mod guide_tests;
+
+#[cfg(test)]
+mod preview_tests;

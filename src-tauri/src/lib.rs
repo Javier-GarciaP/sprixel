@@ -53,6 +53,7 @@ pub fn run() {
             ipc::editor::editor_history,
             ipc::editor::agent_activity,
             ipc::editor::agent_stop,
+            ipc::editor::agent_playback_done,
             ipc::editor::debug_agent_write,
             ipc::mcp::mcp_clients,
             ipc::mcp::mcp_answer_client,

@@ -78,13 +78,13 @@ pub fn now_ms() -> u64 {
 /// The entry for a finished call of `tool` by `client`.
 pub fn entry_for(client: &str, tool: &str, args: &Value, outcome: &ToolResult) -> Entry {
     let (summary, sprite, result, error, revision) = match outcome {
-        Ok(super::tool::Output::Json(answer)) => {
+        // A write with a preview has its answer as the text next to the image.
+        Ok(super::tool::Output::Json(answer)) | Ok(super::tool::Output::Image { info: answer, .. }) => {
             let (summary, sprite) = describe(tool, args, answer);
             // Only a call that changed the project has a revision to undo.
             let revision = if answer["changed"] == true { answer["revision"].as_u64() } else { None };
             (summary, sprite, "ok", None, revision)
         }
-        Ok(super::tool::Output::Image { .. }) => (tool.to_string(), None, "ok", None, None),
         Err(error) => (failed(tool, error), sprite_of(args), "error", Some(error.code.clone()), None),
     };
     // Names and paths come from the client: keep them short and clean, so a

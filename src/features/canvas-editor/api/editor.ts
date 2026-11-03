@@ -4,6 +4,7 @@
 
 import type {
   AgentActivity,
+  AgentOps,
   ApplyResult,
   EditorApi,
   EditorFailure,
@@ -52,6 +53,12 @@ export const coreEditorApi: EditorApi = {
   },
   agentActivity: () => call<AgentActivity | null>("agent_activity"),
   stopAgent: () => call<void>("agent_stop"),
+  playbackDone: (id: number) => call<void>("agent_playback_done", { id }),
+  async onAgentOps(callback) {
+    if (!insideApp()) return () => {};
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<AgentOps>("agent-ops", (event) => callback(event.payload));
+  },
   async onAgentActivity(callback) {
     if (!insideApp()) return () => {};
     const { listen } = await import("@tauri-apps/api/event");

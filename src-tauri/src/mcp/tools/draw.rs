@@ -24,6 +24,7 @@ pub fn tools() -> Vec<Tool> {
                 "x": { "type": "integer", "minimum": 0, "description": "With `x` and `y` the grid is written as a region whose top left pixel is (x, y). Without them it is a whole frame." },
                 "y": { "type": "integer", "minimum": 0 },
                 "skip_transparent": { "type": "boolean", "description": "A `.` in the grid keeps the pixel that is there, instead of erasing it." },
+                "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
             need: Need::Edit,
@@ -41,6 +42,7 @@ pub fn tools() -> Vec<Tool> {
                     "y": { "type": "integer", "minimum": 0 },
                     "key": { "type": "string", "description": "One palette key, or `.` for transparent." },
                 }}},
+                "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
             need: Need::Edit,
@@ -60,12 +62,18 @@ pub fn tools() -> Vec<Tool> {
                 "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
                 "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
                 "filled": { "type": "boolean", "description": "For rectangle and ellipse. Default false (outline)." },
+                "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
             need: Need::Edit,
             run: draw_shape,
         },
     ]
+}
+
+/// The `preview` argument of the three drawing tools.
+fn preview_arg() -> Value {
+    json!({ "type": "boolean", "description": "Default true: the result carries an image of the edited frame (at most 512 pixels on a side). LOOK at it and fix what is wrong. Set false to skip it." })
 }
 
 /// The keys a sprite accepts: those of its palette and `.`.
@@ -178,7 +186,7 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
                 _ => {}
             }
         }
-        let plan = Plan::new(ops, json!({ "pixels_changed": pixels, "colors_added": colors }));
+        let plan = Plan::new(ops, json!({ "pixels_changed": pixels, "colors_added": colors })).preview();
         Ok(match busy {
             Some(frame) => plan.busy(&target, frame),
             None => plan,
@@ -224,7 +232,7 @@ fn set_pixels(ctx: &Ctx, input: &Value) -> ToolResult {
         } else {
             vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame, pixels }]
         };
-        Ok(Plan::new(ops, json!({ "pixels_set": count })).busy(&target, frame))
+        Ok(Plan::new(ops, json!({ "pixels_set": count })).preview().busy(&target, frame))
     })
 }
 
@@ -297,7 +305,7 @@ fn draw_shape(ctx: &Ctx, input: &Value) -> ToolResult {
         } else {
             vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame, pixels }]
         };
-        Ok(Plan::new(ops, json!({ "pixels_changed": count })).busy(&target, frame))
+        Ok(Plan::new(ops, json!({ "pixels_changed": count })).preview().busy(&target, frame))
     })
 }
 

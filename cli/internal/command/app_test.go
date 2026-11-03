@@ -305,6 +305,25 @@ func previewFiles(t *testing.T, home string) []string {
 	return names
 }
 
+// Checks the scenario "Through the command line" of the spec agent-live-design:
+// a write tool (set_pixels) returns an image with its answer; the command saves
+// the image as a PNG file, prints its path, and still prints the JSON answer
+// with the new revision.
+func TestToolSavesTheImageOfAWrite(t *testing.T) {
+	home, _ := appHome(t)
+
+	r := appRun(t, home, "tool", "set_pixels", "name=goblin", "preview=true")
+
+	path := filepath.Join(home, ".sprixel", "previews", "goblin-1-9.png")
+	if r.code != ExitOK || !strings.Contains(r.stdout, "image saved: "+path) || !strings.Contains(r.stdout, `"revision": 9`) {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || !strings.HasPrefix(string(data), "\x89PNG") {
+		t.Fatalf("the file is not a PNG: %v", err)
+	}
+}
+
 // Checks the scenario "Preview from the shell": the image of render_preview is
 // saved as a real PNG named after the sprite, frame and revision, in
 // ~/.sprixel/previews, only the user can read it, and the output prints its path.

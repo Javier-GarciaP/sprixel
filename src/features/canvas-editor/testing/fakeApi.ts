@@ -9,6 +9,7 @@ import type {
 import type { ChangedEvent, FrameData } from "@/shared/lib/core";
 import type {
   AgentActivity,
+  AgentOps,
   ApplyResult,
   EditorApi,
   HistoryState,
@@ -171,6 +172,35 @@ export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
 
   async agentActivity() {
     return this.activity;
+  }
+
+  // The ops of agent writes and the numbers the editor said it finished.
+  private opsListeners = new Set<(ops: AgentOps) => void>();
+  playbackDones: number[] = [];
+
+  async onAgentOps(callback: (ops: AgentOps) => void) {
+    this.opsListeners.add(callback);
+    return () => {
+      this.opsListeners.delete(callback);
+    };
+  }
+
+  get listeningToOps() {
+    return this.opsListeners.size > 0;
+  }
+
+  // Simulates the event of an agent write.
+  emitOps(ops: AgentOps) {
+    this.latestWrite = ops.id;
+    this.opsListeners.forEach((listener) => listener(ops));
+  }
+
+  // Like the core: the frame is free when the editor says the replay of the
+  // newest write is done. `latestWrite` is the id of that write.
+  latestWrite = 0;
+  async playbackDone(id: number) {
+    this.playbackDones.push(id);
+    if (id === this.latestWrite && this.activity) this.emit(null);
   }
 
   async stopAgent() {

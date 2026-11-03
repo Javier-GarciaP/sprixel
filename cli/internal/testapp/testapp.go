@@ -317,6 +317,19 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 		}
 		return text(map[string]any{"name": "goblin", "frame": args["frame"], "client": client}, false)
 	case "set_pixels":
+		// With preview=true it answers like the real app: the image of the
+		// edited frame, then the JSON answer as text.
+		if args["preview"] == true {
+			var png bytes.Buffer
+			pixel := image.NewRGBA(image.Rect(0, 0, 1, 1))
+			pixel.Set(0, 0, color.RGBA{G: 255, A: 255})
+			pngEncode(&png, pixel)
+			info, _ := json.Marshal(map[string]any{"name": args["name"], "frame": 1, "revision": 9, "pixels_set": 1, "changed": true})
+			return map[string]any{"isError": false, "content": []any{
+				map[string]any{"type": "image", "data": base64.StdEncoding.EncodeToString(png.Bytes()), "mimeType": "image/png"},
+				map[string]any{"type": "text", "text": string(info)},
+			}}
+		}
 		// wait_ms lets a test make early calls slower than late ones.
 		if ms, ok := args["wait_ms"].(float64); ok {
 			time.Sleep(time.Duration(ms) * time.Millisecond)

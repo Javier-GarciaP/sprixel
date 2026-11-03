@@ -175,7 +175,7 @@ impl Core {
             let names: Vec<&str> = self.tools.iter().map(|t| t.name).collect();
             ToolError::new("unknown_tool", format!("there is no tool {name:?}; the tools are {}", names.join(", ")))
         })?;
-        let ctx = super::tool::Ctx { core: self, client: &client.name };
+        let ctx = super::tool::Ctx { core: self, client: &client.name, tool: tool.name };
         let outcome = tool.need_check(&self.permissions()).and_then(|()| {
             // A stopped client cannot write until the person lets it continue.
             if tool.need != super::Need::Nothing && self.host.agents().is_stopped(&client.name) {

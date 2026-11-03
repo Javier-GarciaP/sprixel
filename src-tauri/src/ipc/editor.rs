@@ -125,13 +125,30 @@ struct Agents {
     /// The agents the user stopped. Their write calls fail with
     /// `stopped_by_user` until the user lets them continue.
     stopped: std::collections::HashSet<String>,
+    /// Grows with every `begin`. A replay of the editor and a timer say which
+    /// write they mean with it, so an old one never frees a newer write.
+    generation: u64,
 }
 
 impl EditorState {
-    pub fn begin(&self, write: AgentWrite) {
+    /// Marks the frame as busy. Returns the number of this write.
+    pub fn begin(&self, write: AgentWrite) -> u64 {
         let mut agents = self.0.lock().unwrap();
         agents.stop_requested = false;
         agents.writing = Some(write);
+        agents.generation += 1;
+        agents.generation
+    }
+
+    /// Frees the frame, but only if write number `id` is still the current one.
+    /// Returns true when it did free it.
+    pub fn end_if(&self, id: u64) -> bool {
+        let mut agents = self.0.lock().unwrap();
+        if agents.generation == id && agents.writing.is_some() {
+            agents.writing = None;
+            return true;
+        }
+        false
     }
 
     pub fn end(&self) {
@@ -344,6 +361,13 @@ pub fn editor_history(state: tauri::State<ProjectState>) -> Result<HistoryState,
 #[tauri::command]
 pub fn agent_activity(agents: tauri::State<EditorState>) -> Option<AgentWrite> {
     agents.writing()
+}
+
+/// The editor finished showing the pixels of write number `id` (event
+/// `agent-ops`), so the frame is free again.
+#[tauri::command]
+pub fn agent_playback_done(app: tauri::AppHandle, id: u64) {
+    crate::mcp::playback_done(&crate::mcp::TauriHost { app }, id);
 }
 
 /// The Stop button.

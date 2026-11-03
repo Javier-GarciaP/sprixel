@@ -30,6 +30,7 @@ pub use host::{Host, TauriHost};
 pub use rpc::Reply;
 pub use server::Server;
 pub use sessions::{MAX_SESSIONS, Session};
+pub use tools::write::playback_done;
 pub use tool::{Ctx, Need, Output, Tool, ToolError, ToolResult};
 
 use std::path::PathBuf;
@@ -56,6 +57,9 @@ pub struct Core {
     /// that is slow or a user who presses Stop at that moment.
     #[cfg(test)]
     pub(crate) pause: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
+    /// How long a frame stays busy after a write if the editor never says the
+    /// replay is done (the window may be closed).
+    pub(crate) playback_timeout: std::time::Duration,
     pub(crate) limits: limits::Limits,
     pub(crate) rate: Mutex<limits::RateLimiter>,
     /// Connections being served now.
@@ -80,6 +84,7 @@ impl Core {
             activity: Mutex::default(),
             #[cfg(test)]
             pause: Mutex::new(None),
+            playback_timeout: std::time::Duration::from_secs(10),
             limits: limits::Limits::default(),
             rate: Mutex::default(),
             connections: AtomicUsize::new(0),
