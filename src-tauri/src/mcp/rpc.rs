@@ -90,7 +90,7 @@ impl Core {
         let Some(session) = self.sessions.lock().unwrap().start(client) else {
             return error(id, -32000, "limit_exceeded: too many clients are connected");
         };
-        let (_, asked) = self.clients.lock().unwrap().request(&client_name, &client_version, true);
+        let (_, asked) = self.clients.lock().unwrap().request(&client_name, &client_version, self.permissions().ask_on_connect);
         if asked {
             // The user answers in the app; a system notification is sent when
             // the app is in the background.
@@ -165,6 +165,7 @@ impl Core {
             let names: Vec<&str> = self.tools.iter().map(|t| t.name).collect();
             ToolError::new("unknown_tool", format!("there is no tool {name:?}; the tools are {}", names.join(", ")))
         })?;
+        tool.need_check(&self.permissions())?;
         let ctx = super::tool::Ctx { core: self, client: &client.name };
         (tool.run)(&ctx, arguments)
     }

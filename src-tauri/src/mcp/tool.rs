@@ -68,3 +68,10 @@ pub struct Tool {
     pub need: Need,
     pub run: fn(&Ctx, &Value) -> ToolResult,
 }
+
+impl Tool {
+    /// Checks the permission this tool needs.
+    pub(super) fn need_check(&self, permissions: &super::Permissions) -> Result<(), ToolError> {
+        permissions.check(self.need)
+    }
+}

@@ -10,6 +10,7 @@ mod clients;
 mod host;
 mod http;
 mod limits;
+mod policy;
 mod random;
 mod rpc;
 mod server;
@@ -22,6 +23,7 @@ mod tools;
 mod testing;
 
 pub use clients::{ClientInfo, Standing};
+pub use policy::Permissions;
 pub use host::{Host, TauriHost};
 pub use rpc::Reply;
 pub use server::Server;
@@ -43,6 +45,7 @@ pub struct Core {
     pub(crate) tools: Vec<Tool>,
     pub(crate) sessions: Mutex<sessions::Sessions>,
     pub(crate) clients: Mutex<clients::Clients>,
+    pub(crate) permissions: Mutex<Permissions>,
     pub(crate) limits: limits::Limits,
     pub(crate) rate: Mutex<limits::RateLimiter>,
     /// Connections being served now.
@@ -62,6 +65,7 @@ impl Core {
             tools,
             sessions: Mutex::default(),
             clients: Mutex::new(clients::Clients::load(&data_dir)),
+            permissions: Mutex::new(Permissions::load(&data_dir)),
             limits: limits::Limits::default(),
             rate: Mutex::default(),
             connections: AtomicUsize::new(0),
@@ -87,8 +91,23 @@ pub fn start(app: tauri::AppHandle) -> std::io::Result<(Arc<Core>, Server)> {
 pub const CLIENT_PENDING_EVENT: &str = "mcp://client-pending";
 /// The event sent when the list of clients changes.
 pub const CLIENTS_EVENT: &str = "mcp://clients-changed";
+/// The event sent when the permissions change.
+pub const PERMISSIONS_EVENT: &str = "mcp://permissions-changed";
 
 impl Core {
+    pub fn permissions(&self) -> Permissions {
+        *self.permissions.lock().unwrap()
+    }
+
+    /// Changes the permissions. They apply to the next call of every client,
+    /// with no reconnecting.
+    pub fn set_permissions(&self, permissions: Permissions) -> std::io::Result<()> {
+        permissions.save(&self.data_dir)?;
+        *self.permissions.lock().unwrap() = permissions;
+        self.host.emit(PERMISSIONS_EVENT, serde_json::to_value(permissions).unwrap_or_default());
+        Ok(())
+    }
+
     /// The clients and their state, for the Agents tab.
     pub fn clients(&self) -> Vec<ClientInfo> {
         self.clients.lock().unwrap().list()
@@ -140,3 +159,6 @@ mod http_tests;
 
 #[cfg(test)]
 mod approval_tests;
+
+#[cfg(test)]
+mod policy_tests;

@@ -2,7 +2,7 @@
 //! approval. The server decides; these commands only pass the answers of the
 //! person to it.
 
-use crate::mcp::{ClientInfo, Core};
+use crate::mcp::{ClientInfo, Core, Permissions};
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -34,4 +34,16 @@ pub fn mcp_answer_client(
 #[tauri::command]
 pub fn mcp_remove_client(app: tauri::AppHandle, name: String, version: String) -> Result<bool, String> {
     core(&app)?.remove_client(&name, &version).map_err(|e| e.to_string())
+}
+
+/// The permissions agents have now.
+#[tauri::command]
+pub fn mcp_permissions(app: tauri::AppHandle) -> Result<Permissions, String> {
+    Ok(core(&app)?.permissions())
+}
+
+/// Saves the permissions. They apply to the next call of every agent.
+#[tauri::command]
+pub fn mcp_set_permissions(app: tauri::AppHandle, permissions: Permissions) -> Result<(), String> {
+    core(&app)?.set_permissions(permissions).map_err(|e| e.to_string())
 }
