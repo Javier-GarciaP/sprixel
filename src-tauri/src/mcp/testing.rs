@@ -67,3 +67,97 @@ pub fn connect_allowed(core: &Core, name: &str) -> String {
     assert!(core.answer_client(name, "1.0", true).unwrap());
     session
 }
+
+/// A core with every real tool, and a client "Claude Code" that is allowed.
+pub fn setup() -> (Arc<TestHost>, Core, String) {
+    let (host, core) = core_with(super::tools::all());
+    let session = connect_allowed(&core, "Claude Code");
+    (host, core, session)
+}
+
+/// Opens a project in the host with: the palette `main` (R red, G green), the
+/// folder `Characters` and in it the 4x4 sprite `goblin` with 2 frames and
+/// the animation `walk` (frames 1 to 2), and the 8x8 sprite `slime` in the
+/// root. The setup is not an action of the user, so the history is empty.
+pub fn open_demo_project(host: &TestHost) {
+    use crate::document::{Color, Operation, Palette, PixelChange, SpriteRef, Tag, TagMode};
+    let state = &host.project;
+    crate::ipc::project::create_project(state, host.dir.path(), "Kit").unwrap();
+    crate::ipc::project::edit(state, |session| {
+        let goblin = SpriteRef::new(&["Characters"], "goblin");
+        let color = |key: char, name: &str, hex: &str| Color { key, name: name.to_string(), hex: hex.to_string() };
+        session
+            .apply(
+                "user",
+                vec![
+                    Operation::CreatePalette {
+                        palette: Palette {
+                            name: "main".to_string(),
+                            colors: vec![color('R', "red", "#FF0000"), color('G', "green", "#00FF00")],
+                        },
+                        index: None,
+                    },
+                    Operation::CreateFolder { parent: vec![], name: "Characters".to_string() },
+                    Operation::CreateSprite {
+                        folder: vec!["Characters".to_string()],
+                        name: "goblin".to_string(),
+                        width: 4,
+                        height: 4,
+                        palette: "main".to_string(),
+                    },
+                    Operation::CreateSprite {
+                        folder: vec![],
+                        name: "slime".to_string(),
+                        width: 8,
+                        height: 8,
+                        palette: "main".to_string(),
+                    },
+                    Operation::SetPixels {
+                        sprite: goblin.clone(),
+                        layer: 0,
+                        frame: 1,
+                        pixels: vec![PixelChange { x: 0, y: 0, key: 'R' }, PixelChange { x: 3, y: 3, key: 'G' }],
+                    },
+                    Operation::AddFrame { sprite: goblin.clone(), duration_ms: 100 },
+                    Operation::AddTag {
+                        sprite: goblin,
+                        tag: Tag { name: "walk".to_string(), from: 1, to: 2, fps: 12, mode: TagMode::Loop },
+                        index: None,
+                    },
+                ],
+            )
+            .unwrap();
+        session.history.clear();
+    })
+    .unwrap();
+}
+
+/// Calls a tool. `Ok` is the JSON the tool gave, `Err` the JSON of its error.
+pub fn call(core: &Core, session: &str, tool: &str, arguments: Value) -> Result<Value, Value> {
+    let reply = rpc(core, Some(session), "tools/call", json!({ "name": tool, "arguments": arguments }));
+    let result = &reply["result"];
+    let text = result["content"][0]["text"].as_str().unwrap_or("null");
+    let value: Value = serde_json::from_str(text).unwrap_or(Value::Null);
+    if result["isError"] == true { Err(value) } else { Ok(value) }
+}
+
+/// The revision of the open project.
+pub fn revision(host: &TestHost) -> u64 {
+    crate::ipc::project::read(&host.project, |s| s.project.revision).unwrap()
+}
+
+/// The pixels of a frame of the sprite as text rows, with `/` between rows.
+pub fn rows(host: &TestHost, folder: &[&str], name: &str, frame: usize) -> String {
+    use crate::document::SpriteRef;
+    crate::ipc::project::read(&host.project, |s| {
+        let sprite = s.project.find_sprite(&SpriteRef::new(folder, name)).unwrap();
+        let width = sprite.width as usize;
+        sprite.layers[0].frames[frame - 1]
+            .pixels
+            .chunks(width)
+            .map(|r| String::from_utf8_lossy(r).into_owned())
+            .collect::<Vec<_>>()
+            .join("/")
+    })
+    .unwrap()
+}

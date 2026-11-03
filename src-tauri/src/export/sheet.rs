@@ -67,7 +67,7 @@ struct JsonAnimation {
 }
 
 /// Encodes RGBA pixels as a PNG.
-pub(super) fn encode_png(image: &Image) -> Result<Vec<u8>, ExportError> {
+pub fn encode_png(image: &Image) -> Result<Vec<u8>, ExportError> {
     let mut bytes = Vec::new();
     PngEncoder::new(&mut bytes)
         .write_image(&image.rgba, image.width, image.height, ExtendedColorType::Rgba8)

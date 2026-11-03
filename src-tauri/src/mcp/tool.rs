@@ -2,6 +2,7 @@
 //! function that runs it, plus the shared result and error types.
 
 use super::Core;
+use crate::document::DocError;
 use serde_json::{Map, Value, json};
 
 /// The permission a tool needs (see `policy`). Read tools need none.
@@ -73,5 +74,17 @@ impl Tool {
     /// Checks the permission this tool needs.
     pub(super) fn need_check(&self, permissions: &super::Permissions) -> Result<(), ToolError> {
         permissions.check(self.need)
+    }
+}
+
+impl From<DocError> for ToolError {
+    fn from(error: DocError) -> Self {
+        ToolError::new(error.code, error.message)
+    }
+}
+
+impl ToolError {
+    pub fn no_project() -> ToolError {
+        ToolError::new("no_project", "no project is open in Sprixel; ask the user to open or create one")
     }
 }
