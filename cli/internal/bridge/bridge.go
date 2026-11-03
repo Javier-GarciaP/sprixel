@@ -243,25 +243,15 @@ func (b *Bridge) reinitialize(ctx context.Context, stale string) error {
 	return nil
 }
 
-// reachable says whether something listens where runtime.json says.
-func reachable(info runtime.Info) bool {
-	conn, err := net.DialTimeout("tcp", info.Addr(), time.Second)
-	if err != nil {
-		return false
-	}
-	conn.Close()
-	return true
-}
-
 // ensureApp makes sure the app server is reachable. If not, it starts the app
 // and waits for the server (StartTimeout). Only one start happens at a time.
 func (b *Bridge) ensureApp(ctx context.Context) error {
-	if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && reachable(info) {
+	if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && runtime.Reachable(info) {
 		return nil
 	}
 	b.startMu.Lock()
 	defer b.startMu.Unlock()
-	if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && reachable(info) {
+	if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && runtime.Reachable(info) {
 		return nil // another call started it while this one waited
 	}
 	if b.cfg.Start == nil {
@@ -272,29 +262,8 @@ func (b *Bridge) ensureApp(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	deadline := time.NewTimer(b.cfg.StartTimeout)
-	defer deadline.Stop()
-	poll := time.NewTicker(b.cfg.PollEvery)
-	defer poll.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.New("the call was cancelled while the Sprixel app was starting")
-		case err := <-exited:
-			// An app that ended well may have handed over to another process
-			// (macOS `open`), so only a failure stops the wait.
-			if err != nil {
-				return err
-			}
-			exited = nil
-		case <-deadline.C:
-			return fmt.Errorf("the Sprixel app did not start in %d seconds. Start it by hand with `sprixel start`", int(b.cfg.StartTimeout.Seconds()))
-		case <-poll.C:
-			if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && reachable(info) {
-				return nil
-			}
-		}
-	}
+	_, err = runtime.WaitReady(ctx, b.cfg.Dir, exited, b.cfg.StartTimeout, b.cfg.PollEvery)
+	return err
 }
 
 // answerFor turns what the app answered into a line for the AI tool.

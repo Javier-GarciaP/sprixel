@@ -19,7 +19,7 @@
 
 - [x] 3.1 Verify the Claude Code and OpenCode configuration shapes against their documentation and record them in `docs/ai-and-mcp.md`
 - [x] 3.2 Implement `mcp add`, `mcp remove` and `mcp list` for both clients, idempotent, and verify with fixture configs
-- [ ] 3.3 Implement `doctor` with all checks and fix hints, and verify a passing and a failing run
+- [x] 3.3 Implement `doctor` with all checks and fix hints, and verify a passing and a failing run
 
 ### 4. Other commands
 

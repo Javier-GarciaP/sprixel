@@ -4,13 +4,16 @@
 package runtime
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ErrNotRunning means there is no runtime.json: the app is closed.
@@ -80,4 +83,51 @@ func ReadToken(dir string) (string, error) {
 // false when the system cannot tell (Windows keeps access lists, not modes).
 func TokenIsOpen(dir string) (open bool, known bool, err error) {
 	return tokenIsOpen(tokenPath(dir))
+}
+
+// Reachable says whether something listens on the port of runtime.json. A
+// runtime.json left behind by an app that crashed is not reachable.
+func Reachable(info Info) bool {
+	conn, err := net.DialTimeout("tcp", info.Addr(), time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+// Running reads runtime.json and checks that the server answers.
+func Running(dir string) (Info, bool) {
+	info, err := ReadInfo(dir)
+	if err != nil || !Reachable(info) {
+		return Info{}, false
+	}
+	return info, true
+}
+
+// WaitReady waits until the app server is reachable. exited is the channel of
+// the app process (it may be nil): a failure stops the wait at once, a clean
+// exit does not (on macOS `open` ends well and the app goes on).
+func WaitReady(ctx context.Context, dir string, exited <-chan error, timeout, every time.Duration) (Info, error) {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	poll := time.NewTicker(every)
+	defer poll.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return Info{}, errors.New("cancelled while the Sprixel app was starting")
+		case err := <-exited:
+			if err != nil {
+				return Info{}, err
+			}
+			exited = nil
+		case <-deadline.C:
+			return Info{}, fmt.Errorf("the Sprixel app did not start in %d seconds. Start it by hand with `sprixel start`", int(timeout.Seconds()))
+		case <-poll.C:
+			if info, ok := Running(dir); ok {
+				return info, nil
+			}
+		}
+	}
 }
