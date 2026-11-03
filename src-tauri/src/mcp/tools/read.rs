@@ -2,7 +2,7 @@
 //! the revision.
 
 use super::args;
-use crate::document::{Project, SpriteRef, Tag, write_grid};
+use crate::document::{Project, SpriteRef, Tag, write_grid_part};
 use crate::ipc::project;
 use crate::mcp::{Ctx, Need, Output, Tool, ToolError, ToolResult};
 use crate::render::{Background, checker_cell, flatten, render_frame};
@@ -36,11 +36,16 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "get_sprite",
-            description: "Reads one sprite: size, palette name, animations and its frames as a text grid.",
+            description: "Reads one sprite: size, palette name, animations and its frames as a text grid. For a big sprite read one `frame` and a `region`, and send `include_palette` false after the first read.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string", "description": "The sprite name, or a path like \"Characters/goblin\"." },
                 "folder": { "type": "string", "description": "The folder of the sprite, if two sprites share the name." },
-                "frame": { "type": "integer", "minimum": 1, "description": "Read only this frame (from 1). Omit for all frames." }
+                "frame": { "type": "integer", "minimum": 1, "description": "Read only this frame (from 1). Omit for all frames." },
+                "region": { "type": "object", "required": ["x", "y", "width", "height"], "description": "Read only this rectangle. The grid then has only its rows and columns (write it back with apply_grid `x` and `y`).", "properties": {
+                    "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
+                    "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+                }},
+                "include_palette": { "type": "boolean", "description": "Default true. false leaves out the color legend (the grid keeps the line `palette: <name>`), which saves tokens when you already know the palette." }
             }}),
             need: Need::Nothing,
             run: get_sprite,
@@ -176,6 +181,7 @@ pub fn check_frame(sprite: &crate::document::Sprite, frame: u32) -> Result<(), T
 
 fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::optional_u32(input, "frame")?;
+    let legend = args::optional_bool(input, "include_palette")?.unwrap_or(true);
     read(ctx, |session| {
         let project = &session.project;
         let target = args::sprite(project, input)?;
@@ -183,12 +189,16 @@ fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         if let Some(frame) = frame {
             check_frame(sprite, frame)?;
         }
+        let region = args::region(input, "region", sprite.width, sprite.height)?;
         let palette = project.palette(&sprite.palette).ok_or_else(|| {
             ToolError::new("palette_not_found", format!("the palette {:?} of this sprite does not exist", sprite.palette))
         })?;
         let mut summary = sprite_summary(session, &target.folder, sprite);
         summary["revision"] = json!(project.revision);
-        summary["grid"] = json!(write_grid(sprite, palette, frame));
+        summary["grid"] = json!(write_grid_part(sprite, palette, frame, region, legend));
+        if let Some((x, y, width, height)) = region {
+            summary["region"] = json!({ "x": x, "y": y, "width": width, "height": height });
+        }
         Ok(Output::Json(summary))
     })
 }

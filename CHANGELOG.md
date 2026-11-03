@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Edit tools for agents: `transform_region` (flip, mirror, move with `wrap`,
+  rotate) and `copy_region` (inside a sprite or to another frame or sprite),
+  `only_over` and `symmetry` on `set_pixels`, `draw_shape` and `apply_grid`,
+  and `region` and `include_palette` on `get_sprite` to read big sprites cheaply.
+- `import_reference` draws a PNG from the `references/` folder of the project
+  into a frame, reduced to the sprite palette (optionally adding colors).
 - Palettes for the AI: `create_palette`, `set_sprite_palette`, `remove_unused_colors`
   and `generate_ramp` (color ramps with an optional hue shift), and
   `own_palette` in `create_sprite`. A sprite can now have a palette of its own.

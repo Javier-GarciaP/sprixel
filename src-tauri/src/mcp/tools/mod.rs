@@ -12,10 +12,13 @@ mod args;
 mod create;
 mod docs;
 mod draw;
+mod edit;
 mod export;
 mod palettes;
 mod projects;
 mod read;
+mod reference;
+mod region;
 mod shapes;
 mod structure;
 mod undo;
@@ -37,6 +40,8 @@ pub fn all() -> Vec<Tool> {
     tools.extend(projects::tools());
     tools.extend(create::tools());
     tools.extend(draw::tools());
+    tools.extend(region::tools());
+    tools.extend(reference::tools());
     tools.extend(structure::tools());
     tools.extend(palettes::tools());
     tools.extend(export::tools());
@@ -58,6 +63,15 @@ mod draw_tests;
 
 #[cfg(test)]
 mod structure_tests;
+
+#[cfg(test)]
+mod edit_tests;
+
+#[cfg(test)]
+mod region_tests;
+
+#[cfg(test)]
+mod reference_tests;
 
 #[cfg(test)]
 mod palettes_tests;

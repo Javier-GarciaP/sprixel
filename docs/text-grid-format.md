@@ -162,3 +162,11 @@ one undo step, and a grid that changes nothing makes no undo step.
 - Keep rows aligned (use a monospace font).
 - Read the palette first and reuse the same keys everywhere.
 - For big sprites, write one region at a time.
+
+## A part of a sprite
+
+`get_sprite` can return only a rectangle (`region`) and can leave out the
+legend (`include_palette` false). The text is still a grid: it has the line
+`palette: <name>`, optionally a legend, and `frame N` with the rows of the
+region only. To write it back, send the rows to `apply_grid` with `x` and `y`
+set to the top left corner of the region.

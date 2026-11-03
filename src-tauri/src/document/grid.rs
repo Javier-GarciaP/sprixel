@@ -483,12 +483,30 @@ fn legend_line(number: usize, line: &str) -> Result<LegendLine, GridError> {
 /// (from 1), or `None` for all the frames. Only the first layer is written
 /// (version 1 shows one layer).
 pub fn write_grid(sprite: &Sprite, palette: &Palette, frame: Option<u32>) -> String {
-    let mut out = format!("palette: {}\n\nlegend\n  {TRANSPARENT} transparent\n", palette.name);
-    let width = palette.colors.iter().map(|c| c.name.chars().count()).max().unwrap_or(0) + 2;
-    for color in &palette.colors {
-        let pad = width - color.name.chars().count();
-        out.push_str(&format!("  {} {}{}{}\n", color.key, color.name, " ".repeat(pad), color.hex));
+    write_grid_part(sprite, palette, frame, None, true)
+}
+
+/// Like `write_grid`, for a part of the sprite. `region` is `(x, y, width,
+/// height)`; the caller checks that it fits. Without `legend` only the line
+/// `palette: <name>` is written. The text is still a valid grid: the rows of
+/// a region can be written back with `x` and `y`.
+pub fn write_grid_part(
+    sprite: &Sprite,
+    palette: &Palette,
+    frame: Option<u32>,
+    region: Option<(u32, u32, u32, u32)>,
+    legend: bool,
+) -> String {
+    let mut out = format!("palette: {}\n", palette.name);
+    if legend {
+        out.push_str(&format!("\nlegend\n  {TRANSPARENT} transparent\n"));
+        let width = palette.colors.iter().map(|c| c.name.chars().count()).max().unwrap_or(0) + 2;
+        for color in &palette.colors {
+            let pad = width - color.name.chars().count();
+            out.push_str(&format!("  {} {}{}{}\n", color.key, color.name, " ".repeat(pad), color.hex));
+        }
     }
+    let (left, top, w, h) = region.unwrap_or((0, 0, sprite.width, sprite.height));
     let frames = &sprite.layers[0].frames;
     for (index, pixels) in frames.iter().enumerate() {
         let number = index as u32 + 1;
@@ -496,8 +514,9 @@ pub fn write_grid(sprite: &Sprite, palette: &Palette, frame: Option<u32>) -> Str
             continue;
         }
         out.push_str(&format!("\nframe {number}\n"));
-        for row in pixels.pixels.chunks(sprite.width as usize) {
-            out.push_str(&String::from_utf8_lossy(row));
+        for row in top..top + h {
+            let start = (row * sprite.width + left) as usize;
+            out.push_str(&String::from_utf8_lossy(&pixels.pixels[start..start + w as usize]));
             out.push('\n');
         }
     }
