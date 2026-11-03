@@ -53,6 +53,15 @@ type App struct {
 // Start starts a fake app that writes its files in dir.
 func Start(t *testing.T, dir string) *App {
 	t.Helper()
+	a := Prepare(t, dir)
+	a.Open()
+	return a
+}
+
+// Prepare makes a fake app that is closed: the token file exists (the app was
+// run once) but nothing listens and there is no runtime.json. Open opens it.
+func Prepare(t *testing.T, dir string) *App {
+	t.Helper()
 	a := &App{Dir: dir, Approved: true}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -60,10 +69,12 @@ func Start(t *testing.T, dir string) *App {
 	if err := os.WriteFile(filepath.Join(dir, "token"), []byte(Token), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	a.listen()
 	t.Cleanup(a.Stop)
 	return a
 }
+
+// Open starts the server and writes runtime.json, like the app starting.
+func (a *App) Open() { a.listen() }
 
 func (a *App) listen() {
 	a.mu.Lock()

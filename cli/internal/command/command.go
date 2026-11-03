@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/runtime"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
 )
@@ -17,6 +18,9 @@ type Env struct {
 	Stderr io.Writer
 	// Home is the home folder of the user. The data folder is inside it.
 	Home string
+	// StartApp starts the Sprixel app with the given arguments. When it is
+	// nil the real launcher is used. Tests replace it.
+	StartApp func(args ...string) (<-chan error, error)
 }
 
 // invocation is what a command receives.
@@ -62,6 +66,23 @@ func Run(args []string, env Env) int {
 		return ExitOK
 	}
 	return cmd.run(c, args[1:])
+}
+
+// startApp starts the app: it checks that there is a screen, finds the app
+// and runs it.
+func (c *invocation) startApp(args ...string) (<-chan error, error) {
+	if c.env.StartApp != nil {
+		return c.env.StartApp(args...)
+	}
+	e := launcher.System(c.env.Home)
+	if err := launcher.CheckDisplay(e); err != nil {
+		return nil, err
+	}
+	path, err := launcher.Find(e)
+	if err != nil {
+		return nil, err
+	}
+	return launcher.Start(path, args...)
 }
 
 func find(name string) *command {

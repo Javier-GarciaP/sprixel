@@ -12,7 +12,7 @@
 ### 2. Bridge
 
 - [x] 2.1 Implement the stdio to HTTP proxy with the token and client name, and verify a test client lists and calls a tool
-- [ ] 2.2 Implement app start, waiting, reconnect and the no-display error, and verify each scenario
+- [x] 2.2 Implement app start, waiting, reconnect and the no-display error, and verify each scenario
 - [ ] 2.3 Add the test that fails if non-protocol data reaches stdout and verify it passes
 
 ### 3. Setup commands

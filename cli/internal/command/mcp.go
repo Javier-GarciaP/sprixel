@@ -22,10 +22,11 @@ func runMCP(c *invocation, args []string) int {
 		return c.p.Fail(ExitUsage, "usage", "unexpected argument: "+args[0], "usage: sprixel mcp")
 	}
 	b := bridge.New(bridge.Config{
-		Dir: c.dir,
-		In:  c.env.Stdin,
-		Out: c.env.Stdout,
-		Log: c.env.Stderr,
+		Dir:   c.dir,
+		In:    c.env.Stdin,
+		Out:   c.env.Stdout,
+		Log:   c.env.Stderr,
+		Start: func() (<-chan error, error) { return c.startApp() },
 	})
 	if err := b.Run(context.Background()); err != nil {
 		return c.p.Fail(ExitFailure, "bridge", err.Error(), "")

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/testapp"
 )
 
@@ -234,5 +235,223 @@ func TestHTTPRefusalBecomesAnMCPError(t *testing.T) {
 	}
 	if strings.Contains(e["message"].(string), "wrong") {
 		t.Error("the message repeats the token")
+	}
+}
+
+// startWith starts a bridge with a Start function and short waits.
+func startWith(t *testing.T, dir string, start func() (<-chan error, error), timeout time.Duration) *session {
+	t.Helper()
+	inReader, inWriter := io.Pipe()
+	outReader, outWriter := io.Pipe()
+	logs := &strings.Builder{}
+	s := &session{t: t, in: inWriter, lines: make(chan string, 64), done: make(chan error, 1), log: logs}
+	b := New(Config{Dir: dir, In: inReader, Out: outWriter, Log: logs, RequestTimeout: 10 * time.Second,
+		Start: start, StartTimeout: timeout, PollEvery: 5 * time.Millisecond})
+	go func() {
+		s.done <- b.Run(context.Background())
+		outWriter.Close()
+	}()
+	go func() {
+		scanner := bufio.NewScanner(outReader)
+		for scanner.Scan() {
+			s.lines <- scanner.Text()
+		}
+		close(s.lines)
+	}()
+	t.Cleanup(func() { inWriter.Close() })
+	return s
+}
+
+func errorText(t *testing.T, m map[string]any) string {
+	t.Helper()
+	e, ok := m["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected an error, got %v", m)
+	}
+	return e["message"].(string)
+}
+
+// Checks the scenario "App not running": the app is closed, the bridge
+// starts it, waits for the server, and the first tool call works.
+func TestBridgeStartsTheAppWhenClosed(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir())
+	starts := 0
+	s := startWith(t, app.Dir, func() (<-chan error, error) {
+		starts++
+		app.Open() // the app takes a moment to open its server
+		return make(chan error), nil
+	}, 10*time.Second)
+
+	s.send(initialize)
+	s.reply()
+	s.send(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_sprites","arguments":{}}}`)
+	got := s.reply()
+
+	if starts != 1 {
+		t.Errorf("the app was started %d times, want 1", starts)
+	}
+	if got["result"] == nil {
+		t.Errorf("the first tool call failed: %v", got)
+	}
+}
+
+// Checks that two calls that arrive together start the app only once.
+func TestTwoCallsStartTheAppOnce(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir())
+	starts := 0
+	s := startWith(t, app.Dir, func() (<-chan error, error) {
+		starts++
+		app.Open()
+		return make(chan error), nil
+	}, 10*time.Second)
+	s.send(initialize)
+	s.reply()
+	s.send(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
+	s.send(`{"jsonrpc":"2.0","id":3,"method":"tools/list"}`)
+	s.reply()
+	s.reply()
+	if starts != 1 {
+		t.Errorf("started %d times", starts)
+	}
+}
+
+// Checks the scenario "No desktop session": the start fails because there is
+// no display and the MCP error says Sprixel needs a desktop session.
+func TestNoDesktopSessionErrorSaysWhy(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir())
+	s := startWith(t, app.Dir, func() (<-chan error, error) {
+		return nil, launcher.ErrNoDisplay
+	}, time.Second)
+
+	s.send(initialize)
+	text := errorText(t, s.reply())
+
+	if !strings.Contains(text, "desktop session") {
+		t.Errorf("message = %q", text)
+	}
+}
+
+// Checks that an app that starts and then crashes (for example because
+// there is no display) is reported at once, not after the 20 seconds.
+func TestAppThatEndsWithAnErrorStopsTheWait(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir())
+	s := startWith(t, app.Dir, func() (<-chan error, error) {
+		exited := make(chan error, 1)
+		exited <- launcher.ErrNoDisplay
+		return exited, nil
+	}, time.Minute)
+
+	s.send(initialize)
+	if text := errorText(t, s.reply()); !strings.Contains(text, "desktop session") {
+		t.Errorf("message = %q", text)
+	}
+}
+
+// Checks that an app that never opens its server gives a clear timeout
+// error that names the fallback command, instead of waiting forever.
+func TestAppThatNeverOpensTimesOut(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir())
+	s := startWith(t, app.Dir, func() (<-chan error, error) { return make(chan error), nil }, 50*time.Millisecond)
+
+	s.send(initialize)
+	if text := errorText(t, s.reply()); !strings.Contains(text, "did not start") || !strings.Contains(text, "sprixel start") {
+		t.Errorf("message = %q", text)
+	}
+}
+
+// Checks that without a Start function a closed app is reported as closed.
+func TestClosedAppWithoutStarterIsReported(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir())
+	s := startBridge(t, app.Dir)
+	s.send(initialize)
+	if text := errorText(t, s.reply()); !strings.Contains(text, "not running") {
+		t.Errorf("message = %q", text)
+	}
+}
+
+// Checks that a stale runtime.json (the app crashed and left it) is treated
+// as a closed app: the bridge starts the app and uses the new port.
+func TestStaleRuntimeFileStartsTheApp(t *testing.T) {
+	app := testapp.Start(t, t.TempDir())
+	app.Stop() // removes runtime.json
+	if err := writeFile(app.Dir+"/runtime.json", `{"port": 1, "pid": 1}`); err != nil {
+		t.Fatal(err)
+	}
+	s := startWith(t, app.Dir, func() (<-chan error, error) {
+		app.Open()
+		return make(chan error), nil
+	}, 10*time.Second)
+
+	s.send(initialize)
+	if s.reply()["result"] == nil {
+		t.Error("the bridge did not recover from a stale runtime file")
+	}
+}
+
+// Checks the scenario "App restarts": the app restarts in the middle of a
+// session (new port, old sessions gone) and the next tool call succeeds
+// after the bridge reconnects with the same client identity.
+func TestNextCallSucceedsAfterTheAppRestarts(t *testing.T) {
+	app := testapp.Start(t, t.TempDir())
+	s := startBridge(t, app.Dir)
+	s.send(initialize)
+	s.reply()
+	oldPort := app.Port()
+
+	app.Restart()
+	s.send(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_sprites","arguments":{}}}`)
+	got := s.reply()
+
+	if app.Port() == oldPort {
+		t.Log("the new app got the same port; the session check still applies")
+	}
+	if got["result"] == nil {
+		t.Fatalf("the call after the restart failed: %v", got)
+	}
+	names := app.Clients()
+	if len(names) != 2 || names[1] != "Claude Code" {
+		t.Errorf("initialize calls: %v, want a second one as Claude Code", names)
+	}
+}
+
+// Checks that a tool that was running when the app stopped fails with a
+// clear error instead of hanging.
+func TestRunningToolFailsWhenTheAppStops(t *testing.T) {
+	app := testapp.Start(t, t.TempDir())
+	s := startBridge(t, app.Dir)
+	s.send(initialize)
+	s.reply()
+
+	s.send(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"slow","arguments":{}}}`)
+	waitFor(t, func() bool {
+		for _, c := range app.Calls() {
+			if strings.Contains(c.Body, `"slow"`) {
+				return true
+			}
+		}
+		return false
+	})
+	app.Stop()
+	got := s.reply()
+
+	if got["id"] != float64(2) {
+		t.Fatalf("answer: %v", got)
+	}
+	if _, isError := got["error"]; !isError {
+		if result, _ := got["result"].(map[string]any); result == nil || result["isError"] != true {
+			t.Errorf("expected an error, got %v", got)
+		}
+	}
+}
+
+// waitFor polls a condition until it is true (no fixed sleeps).
+func waitFor(t *testing.T, condition func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for !condition() {
+		if time.Now().After(deadline) {
+			t.Fatal("condition not reached")
+		}
+		time.Sleep(time.Millisecond)
 	}
 }

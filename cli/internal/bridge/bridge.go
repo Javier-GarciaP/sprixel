@@ -37,6 +37,15 @@ type Config struct {
 	Log io.Writer
 	// RequestTimeout is how long one call may take (default 5 minutes).
 	RequestTimeout time.Duration
+	// Start starts the app when it is not running. It returns a channel that
+	// gets one value when the app process ends (nil if it ended well). When
+	// Start is nil the bridge only reports that the app is closed.
+	Start func() (exited <-chan error, err error)
+	// StartTimeout is how long to wait for the server of a new app (default
+	// 20 seconds). PollEvery is how often runtime.json is checked (default
+	// 100 milliseconds).
+	StartTimeout time.Duration
+	PollEvery    time.Duration
 }
 
 // Bridge is one running bridge.
@@ -47,6 +56,7 @@ type Bridge struct {
 
 	mu         sync.Mutex
 	session    string          // Mcp-Session-Id of the app
+	startMu    sync.Mutex      // one start of the app at a time
 	initParams json.RawMessage // the initialize params, to start again after a restart
 }
 
@@ -54,6 +64,12 @@ type Bridge struct {
 func New(cfg Config) *Bridge {
 	if cfg.RequestTimeout == 0 {
 		cfg.RequestTimeout = 5 * time.Minute
+	}
+	if cfg.StartTimeout == 0 {
+		cfg.StartTimeout = 20 * time.Second
+	}
+	if cfg.PollEvery == 0 {
+		cfg.PollEvery = 100 * time.Millisecond
 	}
 	if cfg.Log == nil {
 		cfg.Log = io.Discard
@@ -145,17 +161,140 @@ const (
 )
 
 // forward sends one message to the app and returns the answer as one line.
+// If the app is closed it is started first. If the app was restarted since
+// `initialize`, the session is started again and the message is sent once more
+// (the app never ran it, so nothing is repeated).
 func (b *Bridge) forward(ctx context.Context, m message, line []byte) ([]byte, error) {
-	status, session, body, err := b.post(ctx, line, b.currentSession())
+	if err := b.ensureApp(ctx); err != nil {
+		return nil, err
+	}
+	session := b.currentSession()
+	status, newSession, body, err := b.post(ctx, line, session)
 	if err != nil {
 		return nil, err
 	}
-	if m.Method == "initialize" && session != "" {
+	if m.Method != "initialize" && isNoSession(status, body) && b.hasInitialize() {
+		b.logf("the app restarted, starting a new session")
+		if err := b.reinitialize(ctx, session); err != nil {
+			return nil, err
+		}
+		status, newSession, body, err = b.post(ctx, line, b.currentSession())
+		if err != nil {
+			return nil, err
+		}
+	}
+	if m.Method == "initialize" && newSession != "" {
 		b.mu.Lock()
-		b.session = session
+		b.session = newSession
 		b.mu.Unlock()
 	}
 	return answerFor(m, status, body)
+}
+
+// isNoSession tells the app's answer "send initialize first": it was given a
+// session id it does not know (the app restarted) and ran nothing.
+func isNoSession(status int, body []byte) bool {
+	if status != http.StatusBadRequest {
+		return false
+	}
+	var parsed struct {
+		Error struct {
+			Code int `json:"code"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &parsed) == nil && parsed.Error.Code == -32002
+}
+
+func (b *Bridge) hasInitialize() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.initParams != nil
+}
+
+// reinitialize starts a new session with the first initialize of the AI tool.
+// stale is the session that failed: if another call already replaced it,
+// nothing is done.
+func (b *Bridge) reinitialize(ctx context.Context, stale string) error {
+	b.startMu.Lock()
+	defer b.startMu.Unlock()
+	if b.currentSession() != stale {
+		return nil
+	}
+	b.mu.Lock()
+	params := b.initParams
+	b.mu.Unlock()
+	request, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": "sprixel-reconnect", "method": "initialize", "params": params})
+	status, session, body, err := b.post(ctx, request, "")
+	if err != nil {
+		return err
+	}
+	if session == "" {
+		_, err := answerFor(message{ID: json.RawMessage(`"sprixel-reconnect"`)}, status, body)
+		if err == nil {
+			err = errors.New("the Sprixel app did not start a new session")
+		}
+		return err
+	}
+	b.mu.Lock()
+	b.session = session
+	b.mu.Unlock()
+	notice, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "notifications/initialized"})
+	b.post(ctx, notice, session)
+	return nil
+}
+
+// reachable says whether something listens where runtime.json says.
+func reachable(info runtime.Info) bool {
+	conn, err := net.DialTimeout("tcp", info.Addr(), time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+// ensureApp makes sure the app server is reachable. If not, it starts the app
+// and waits for the server (StartTimeout). Only one start happens at a time.
+func (b *Bridge) ensureApp(ctx context.Context) error {
+	if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && reachable(info) {
+		return nil
+	}
+	b.startMu.Lock()
+	defer b.startMu.Unlock()
+	if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && reachable(info) {
+		return nil // another call started it while this one waited
+	}
+	if b.cfg.Start == nil {
+		return runtime.ErrNotRunning
+	}
+	b.logf("the Sprixel app is not running, starting it")
+	exited, err := b.cfg.Start()
+	if err != nil {
+		return err
+	}
+	deadline := time.NewTimer(b.cfg.StartTimeout)
+	defer deadline.Stop()
+	poll := time.NewTicker(b.cfg.PollEvery)
+	defer poll.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("the call was cancelled while the Sprixel app was starting")
+		case err := <-exited:
+			// An app that ended well may have handed over to another process
+			// (macOS `open`), so only a failure stops the wait.
+			if err != nil {
+				return err
+			}
+			exited = nil
+		case <-deadline.C:
+			return fmt.Errorf("the Sprixel app did not start in %d seconds. Start it by hand with `sprixel start`", int(b.cfg.StartTimeout.Seconds()))
+		case <-poll.C:
+			if info, err := runtime.ReadInfo(b.cfg.Dir); err == nil && reachable(info) {
+				return nil
+			}
+		}
+	}
 }
 
 // answerFor turns what the app answered into a line for the AI tool.

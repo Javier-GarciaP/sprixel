@@ -27,3 +27,24 @@ func TestMCPBridgeNeedsNoArguments(t *testing.T) {
 		t.Errorf("stdout = %q", out.String())
 	}
 }
+
+// Checks that "sprixel mcp" starts the app when it is closed, using the
+// launcher of the command, and the first call works.
+func TestMCPStartsTheAppWhenClosed(t *testing.T) {
+	app := testapp.Prepare(t, t.TempDir()+"/.sprixel")
+	home := strings.TrimSuffix(app.Dir, "/.sprixel")
+	started := 0
+	input := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}` + "\n"
+
+	var out, errOut bytes.Buffer
+	code := Run([]string{"mcp"}, Env{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errOut, Home: home,
+		StartApp: func(args ...string) (<-chan error, error) {
+			started++
+			app.Open()
+			return make(chan error), nil
+		}})
+
+	if code != ExitOK || started != 1 || !strings.Contains(out.String(), `"result"`) {
+		t.Errorf("code = %d, started = %d, stdout = %q, stderr = %q", code, started, out.String(), errOut.String())
+	}
+}
