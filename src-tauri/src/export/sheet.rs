@@ -1,6 +1,6 @@
 use super::plan::{self, ExportFile, Item, Options, Scope};
 use super::ExportError;
-use crate::document::Project;
+use crate::document::{Anchor, Project, Sprite};
 use crate::render::{FRAMES_PER_ROW, Image, Placement, pack_rows, render_frame};
 use image::{ExtendedColorType, ImageEncoder, codecs::png::PngEncoder};
 use serde::Serialize;
@@ -53,6 +53,16 @@ struct JsonFrame {
     /// Milliseconds.
     duration: u32,
     pivot: Pivot,
+    /// The anchors of this frame, by name; coordinates in pixels of the
+    /// sheet from the top left corner of the frame.
+    anchors: Vec<JsonAnchor>,
+}
+
+#[derive(Serialize)]
+struct JsonAnchor {
+    name: String,
+    x: u32,
+    y: u32,
 }
 
 #[derive(Serialize)]
@@ -64,6 +74,26 @@ struct JsonAnimation {
     to: usize,
     mode: &'static str,
     fps: u32,
+}
+
+/// The anchors a frame has: those of the whole sprite, where a frame anchor
+/// of the same name (ignoring case) takes their place. Sorted by name.
+fn frame_anchors(sprite: &Sprite, index: usize, scale: u32) -> Vec<JsonAnchor> {
+    let frame = index as u32 + 1;
+    let mut found: Vec<&Anchor> = Vec::new();
+    for anchor in sprite.anchors.iter().filter(|a| a.frame == Some(frame)) {
+        found.push(anchor);
+    }
+    for anchor in sprite.anchors.iter().filter(|a| a.frame.is_none()) {
+        if !found.iter().any(|f| f.name.to_lowercase() == anchor.name.to_lowercase()) {
+            found.push(anchor);
+        }
+    }
+    found.sort_by_key(|a| (a.name.to_lowercase(), a.name.clone()));
+    found
+        .into_iter()
+        .map(|a| JsonAnchor { name: a.name.clone(), x: a.x * scale, y: a.y * scale })
+        .collect()
 }
 
 /// Encodes RGBA pixels as a PNG.
@@ -123,6 +153,7 @@ pub fn build(
             frame: Rect { x: at.x, y: at.y, w: at.w, h: at.h },
             duration: item.duration_ms,
             pivot: Pivot { x: 0, y: 0 },
+            anchors: frame_anchors(item.sprite, item.index, options.scale),
         })
         .collect();
     let mut animations = Vec::new();

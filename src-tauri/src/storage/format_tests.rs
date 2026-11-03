@@ -55,6 +55,7 @@ fn goblin() -> Sprite {
             fps: 12,
             mode: TagMode::Loop,
         }],
+        anchors: Vec::new(),
     }
 }
 
@@ -207,4 +208,35 @@ fn reading_a_missing_file_names_the_path() {
     let dir = tempfile::tempdir().unwrap();
     let error = read_manifest(dir.path()).unwrap_err().to_string();
     assert!(error.contains("sprixel.json"), "{error}");
+}
+
+// Checks that anchors are saved and read back (with and without a frame),
+// that they are written after the tags, and that an anchor outside the sprite
+// in a file is refused.
+#[test]
+fn anchors_are_saved_and_read_back() {
+    use crate::document::Anchor;
+    let mut sprite = goblin();
+    sprite.anchors = vec![
+        Anchor { name: "feet".to_string(), x: 1, y: 3, frame: None },
+        Anchor { name: "hand".to_string(), x: 2, y: 1, frame: Some(2) },
+    ];
+    let text = sprite_to_text(&sprite);
+    assert!(text.contains("\"anchors\""));
+    assert!(text.find("\"tags\"").unwrap() < text.find("\"anchors\"").unwrap());
+    assert_eq!(sprite_from_text("goblin", &text, &dungeon16()).unwrap(), sprite);
+
+    let outside = text.replace("\"x\": 1", "\"x\": 9");
+    assert!(sprite_from_text("goblin", &outside, &dungeon16()).is_err());
+}
+
+// Checks that a sprite with no anchors has no `anchors` field (so old files
+// and new files without anchors are the same), and that an old file opens
+// with no anchors.
+#[test]
+fn a_sprite_without_anchors_has_no_field() {
+    let text = sprite_to_text(&goblin());
+    assert!(!text.contains("anchors"));
+    let old = testdata("sprites/Personajes/goblin.sprite.json");
+    assert!(sprite_from_text("goblin", &old, &dungeon16()).unwrap().anchors.is_empty());
 }

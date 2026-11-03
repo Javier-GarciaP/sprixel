@@ -184,6 +184,19 @@ stores layers.
 }
 ```
 
+A sprite can also have an optional `anchors` list: named points for a game
+engine, each with `name`, `x`, `y` (a pixel inside the sprite) and an optional
+`frame` (from 1). Without `frame` the anchor is for the whole sprite. The
+field is written only when the sprite has anchors, and files without it open
+normally, so the format version stays `1`.
+
+```json
+"anchors": [
+  { "name": "feet", "x": 1, "y": 3 },
+  { "name": "hand", "x": 2, "y": 1, "frame": 2 }
+]
+```
+
 The examples above are checked by a test: it saves this project with the real
 code and compares the files with these blocks.
 

@@ -138,6 +138,9 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "copy_region" => format!("Copied a region of {name}"),
         "import_reference" => format!("Imported a reference picture into {name}"),
         "delete_frame" => format!("Deleted frame {} of {name}", answer["deleted_frame"]),
+        "set_frame_duration" => format!("Set frame {} of {name} to {} ms", answer["frame"], answer["milliseconds"]),
+        "set_anchor" => format!("Set the anchor {} on {name}", text(answer, "anchor")),
+        "remove_anchor" => format!("Removed the anchor {} from {name}", text(answer, "removed")),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
         "set_palette_color" => format!(
             "{} the color {} in palette {}",

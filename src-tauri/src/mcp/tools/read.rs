@@ -36,7 +36,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "get_sprite",
-            description: "Reads one sprite: size, palette name, animations and its frames as a text grid. For a big sprite read one `frame` and a `region`, and send `include_palette` false after the first read.",
+            description: "Reads one sprite: size, palette name, animations, the duration of each frame (`frame_durations`, ms), the anchors and its frames as a text grid. For a big sprite read one `frame` and a `region`, and send `include_palette` false after the first read.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string", "description": "The sprite name, or a path like \"Characters/goblin\"." },
                 "folder": { "type": "string", "description": "The folder of the sprite, if two sprites share the name." },
@@ -94,6 +94,14 @@ pub(super) fn read<R>(ctx: &Ctx, look: impl FnOnce(&crate::storage::Session) -> 
 
 fn tag_json(tag: &Tag) -> Value {
     json!({ "name": tag.name, "from": tag.from, "to": tag.to, "fps": tag.fps, "mode": tag.mode.as_str() })
+}
+
+/// An anchor as JSON; `frame` is there only for an anchor of one frame.
+pub fn anchor_json(anchor: &crate::document::Anchor) -> Value {
+    match anchor.frame {
+        Some(frame) => json!({ "name": anchor.name, "x": anchor.x, "y": anchor.y, "frame": frame }),
+        None => json!({ "name": anchor.name, "x": anchor.x, "y": anchor.y }),
+    }
 }
 
 fn folders_of(folder: &crate::document::Folder, path: &mut Vec<String>, out: &mut Vec<String>) {
@@ -195,6 +203,8 @@ fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         })?;
         let mut summary = sprite_summary(session, &target.folder, sprite);
         summary["revision"] = json!(project.revision);
+        summary["frame_durations"] = json!(sprite.frame_durations);
+        summary["anchors"] = json!(sprite.anchors.iter().map(anchor_json).collect::<Vec<_>>());
         summary["grid"] = json!(write_grid_part(sprite, palette, frame, region, legend));
         if let Some((x, y, width, height)) = region {
             summary["region"] = json!({ "x": x, "y": y, "width": width, "height": height });

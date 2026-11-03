@@ -84,6 +84,18 @@ fn the_animation_guide_has_the_rules() {
     }
 }
 
+// Checks that the animation guide and the skill tell an agent about the data a
+// game needs: frame times, anchors and tiles (spec `game-data`).
+#[test]
+fn the_guide_and_the_skill_teach_the_game_data() {
+    for tool in ["set_frame_duration", "set_anchor"] {
+        assert!(ANIMATION_GUIDE.contains(tool), "{tool} is not in the animation guide");
+    }
+    for tool in ["set_frame_duration", "set_anchor", "remove_anchor", "check_tile", "render_tiled"] {
+        assert!(skill().contains(tool), "{tool} is not in the skill");
+    }
+}
+
 /// The codes of the table of errors in the page.
 fn documented_codes() -> BTreeSet<String> {
     let text = DOC.replace("\r\n", "\n");
@@ -115,7 +127,7 @@ fn known_names() -> BTreeSet<String> {
     }
     known.extend(["legend", "loop", "frame"].map(String::from));
     // Fields of the answers and of the errors.
-    known.extend(["revision", "code", "message", "errors", "line", "row", "column", "ground_kept"].map(String::from));
+    known.extend(["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors", "ground_kept"].map(String::from));
     // The topics of `get_guide`.
     known.extend(super::docs::GUIDE_TOPICS.map(String::from));
     known

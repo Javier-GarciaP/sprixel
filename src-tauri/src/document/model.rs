@@ -52,6 +52,52 @@ pub struct Sprite {
     pub frame_durations: Vec<u32>,
     pub layers: Vec<Layer>,
     pub tags: Vec<Tag>,
+    /// Named points (`feet`, `hand`...) for a game engine.
+    pub anchors: Vec<Anchor>,
+}
+
+/// A named point inside a sprite. With `frame` it belongs to that frame
+/// (numbered from 1); without it, to the whole sprite. A name is unique per
+/// frame (ignoring case). The anchor of a frame wins over the one of the
+/// same name for the whole sprite.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Anchor {
+    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub frame: Option<u32>,
+}
+
+impl Anchor {
+    /// Checks the anchor against a sprite with this size and `frame_count`.
+    pub fn validate(&self, width: u32, height: u32, frame_count: usize) -> Result<(), DocError> {
+        if self.name.trim().is_empty() || self.name.chars().count() > 64 || self.name.chars().any(char::is_control) {
+            return Err(DocError::new(
+                "bad_anchor",
+                "an anchor name has 1 to 64 characters and no control characters",
+            ));
+        }
+        if self.x >= width || self.y >= height {
+            return Err(DocError::new(
+                "bad_anchor",
+                format!("anchor {:?} at {},{} is outside the sprite ({width}x{height})", self.name, self.x, self.y),
+            ));
+        }
+        if let Some(frame) = self.frame {
+            if frame < 1 || frame as usize > frame_count {
+                return Err(DocError::new(
+                    "bad_frame",
+                    format!("anchor {:?} is on frame {frame}, the sprite has {frame_count} frames", self.name),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// True when `name` and `frame` name this anchor (the name ignores case).
+    pub fn is(&self, name: &str, frame: Option<u32>) -> bool {
+        self.frame == frame && self.name.to_lowercase() == name.to_lowercase()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -239,6 +285,7 @@ impl Sprite {
                 frames: vec![Frame::blank(width, height)],
             }],
             tags: Vec::new(),
+            anchors: Vec::new(),
         })
     }
 
@@ -284,6 +331,15 @@ impl Sprite {
                         ),
                     ));
                 }
+            }
+        }
+        for (i, anchor) in self.anchors.iter().enumerate() {
+            anchor.validate(self.width, self.height, self.frame_count())?;
+            if self.anchors[..i].iter().any(|a| a.is(&anchor.name, anchor.frame)) {
+                return Err(DocError::new(
+                    "bad_anchor",
+                    format!("anchor {:?} is used twice", anchor.name),
+                ));
             }
         }
         for (i, tag) in self.tags.iter().enumerate() {

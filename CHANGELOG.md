@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Game data for the AI: `set_frame_duration`, anchor points (`set_anchor`,
+  `remove_anchor`, saved in the sprite file as an optional `anchors` list),
+  `check_tile` and `render_tiled` for seamless tiles. The sheet JSON lists the
+  anchors of every frame, and `docs/export-format.md` explains how to use it
+  in Godot and Unity.
 - Finishing tools for the AI: `auto_outline` draws a one pixel outline (4 or 8
   neighbors, outside only or inner), `auto_shade` shades a region with a ramp
   of tones for a light direction, and `analyze_sprite` reports loose pixels,

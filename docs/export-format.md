@@ -55,7 +55,8 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": []
     },
     {
       "name": "hero_walk_1",
@@ -70,7 +71,14 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        }
+      ]
     },
     {
       "name": "hero_walk_2",
@@ -85,7 +93,19 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "name": "hand",
+          "x": 1,
+          "y": 0
+        }
+      ]
     },
     {
       "name": "hero_3",
@@ -100,7 +120,14 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "Feet",
+          "x": 1,
+          "y": 1
+        }
+      ]
     }
   ],
   "animations": [
@@ -128,11 +155,21 @@ example `personajes.png` and `personajes.json`).
 | `frames[].frame` | The rectangle of the frame in the PNG, in pixels (`x`, `y`, `w`, `h`). |
 | `frames[].duration` | How long the frame lasts, in milliseconds. |
 | `frames[].pivot` | The pivot point in pixels, from the top left corner of the frame. Now always `0, 0`. |
+| `frames[].anchors` | The anchor points of the frame (see [Anchors](#anchors)): a list of `name`, `x`, `y`. Empty when there are none. |
 | `animations[].name` | The name of the animation. |
 | `animations[].sprite` | The sprite it belongs to. Two sprites can have an animation with the same name. |
 | `animations[].from`, `to` | The first and last frame, as positions in `frames` **counted from 0**, both included. |
 | `animations[].mode` | `loop`, `once` or `pingpong`. |
 | `animations[].fps` | Frames per second, 1 to 60. |
+
+### Anchors
+
+An anchor is a named point of a sprite (`feet`, `hand`, `muzzle`) that the
+person or an AI set in the editor. `x` and `y` are in pixels of the sheet, from
+the top left corner of the frame, so with the scale 2x an anchor at pixel
+3,5 is written as `6`, `10`. A frame lists the anchors of its sprite; an
+anchor set for one frame replaces the one of the whole sprite with the same
+name. The list is sorted by name.
 
 ### Order
 
@@ -147,6 +184,72 @@ The duration of a frame is the one the person set for it. A frame that has none
 of its own (100 ms is the value of a new frame) and is inside an animation
 lasts `1000 / fps` of that animation, rounded (12 fps gives 83 ms). A frame in
 more than one animation uses the first one.
+
+## Using the JSON in a game engine
+
+The JSON has what an engine needs: the rectangle of each frame, how long it
+lasts, its anchor points and the animations. The mapping below is the
+intended one. It was **not** tested with the engines themselves; it is a
+guide to write a small import script.
+
+Take the example above (the sprite `hero`, animation `walk`, positions 1 to 2 in
+`frames`, 12 fps, `loop`).
+
+### Godot 4 (`SpriteFrames`)
+
+| Sprixel | Godot |
+| --- | --- |
+| `meta.image` | One `Texture2D`. |
+| `frames[].frame` | An `AtlasTexture` with `atlas` = the texture and `region` = `Rect2(x, y, w, h)`. |
+| `animations[]` | One animation of the `SpriteFrames` per entry. Use `sprite + "_" + name` as the name when several sprites share the sheet. |
+| `animations[].fps` | `set_animation_speed(name, fps)`. |
+| `animations[].mode` | `loop` is `set_animation_loop(name, true)`; `once` is `false`. `pingpong` does not exist in `SpriteFrames`: add the frames again in reverse order (without the first and last) and loop. |
+| `frames[].duration` | The `duration` argument of `add_frame`. In Godot it is **relative**: a frame lasts `duration / fps` seconds, so use `duration_ms / (1000.0 / fps)` (1.0 is a normal frame). |
+| `frames[].anchors` | A `Marker2D` child with that name. Its `position` is `Vector2(x, y)` minus half the frame size when the `AnimatedSprite2D` is `centered`. To follow frame anchors, change the marker in the `frame_changed` signal. |
+
+```gdscript
+var data = JSON.parse_string(FileAccess.get_file_as_string("res://kit.json"))
+var texture: Texture2D = load("res://" + data.meta.image)
+var frames := SpriteFrames.new()
+for anim in data.animations:
+    var name = anim.sprite + "_" + anim.name
+    frames.add_animation(name)
+    frames.set_animation_speed(name, anim.fps)
+    frames.set_animation_loop(name, anim.mode == "loop")
+    for i in range(anim.from, anim.to + 1):
+        var f = data.frames[i]
+        var atlas := AtlasTexture.new()
+        atlas.atlas = texture
+        atlas.region = Rect2(f.frame.x, f.frame.y, f.frame.w, f.frame.h)
+        frames.add_frame(name, atlas, f.duration / (1000.0 / anim.fps))
+```
+
+### Unity
+
+| Sprixel | Unity |
+| --- | --- |
+| `meta.image` | A texture with Sprite Mode **Multiple** and **Filter Mode: Point (no filter)**. |
+| `frames[].frame` | One sprite rectangle per frame. Unity counts `y` from the **bottom**: `y_unity = meta.size.h - y - h`. |
+| `frames[].anchors` | A custom pivot (normalized: `x / w`, `1 - y / h`), or a child `Transform` per anchor at `((x - w / 2) / pixelsPerUnit, (h / 2 - y) / pixelsPerUnit)`. |
+| `animations[]` | One `AnimationClip` per entry with a sprite curve (`ObjectReferenceKeyframe`). |
+| `frames[].duration` | The time of each keyframe is the sum of the durations before it, divided by 1000. |
+| `animations[].mode` | `loop` is `clip.wrapMode = Loop` (`loopTime` in the clip settings); `once` is `Once`; `pingpong` is `PingPong`. |
+| `animations[].fps` | Not needed: the durations already hold the time. Set `clip.frameRate` to `fps` if you like. |
+
+```csharp
+// Editor script: build the keyframes of one animation.
+var keys = new List<ObjectReferenceKeyframe>();
+float time = 0f;
+for (int i = anim.from; i <= anim.to; i++) {
+    keys.Add(new ObjectReferenceKeyframe { time = time, value = sprites[i] });
+    time += data.frames[i].duration / 1000f;
+}
+var binding = EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite");
+AnimationUtility.SetObjectReferenceCurve(clip, binding, keys.ToArray());
+```
+
+In both engines `frames[].duration` is already final: a frame without its own
+duration uses `1000 / fps` (see [Durations](#durations)).
 
 ## PNG files
 
