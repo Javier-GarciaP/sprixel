@@ -8,11 +8,12 @@ use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
 /// A host with no window. It records what the app would send to the UI.
-#[derive(Default)]
 pub struct TestHost {
     pub project: ProjectState,
     pub agents: EditorState,
     pub events: Mutex<Vec<(String, Value)>>,
+    /// The data folder of the server (token, runtime.json...).
+    pub dir: tempfile::TempDir,
 }
 
 impl Host for TestHost {
@@ -29,9 +30,20 @@ impl Host for TestHost {
     }
 }
 
+impl Default for TestHost {
+    fn default() -> Self {
+        TestHost {
+            project: ProjectState::default(),
+            agents: EditorState::default(),
+            events: Mutex::default(),
+            dir: tempfile::tempdir().unwrap(),
+        }
+    }
+}
+
 pub fn core_with(tools: Vec<Tool>) -> (Arc<TestHost>, Core) {
     let host = Arc::new(TestHost::default());
-    let core = Core::new(host.clone(), tools);
+    let core = Core::new(host.clone(), tools, host.dir.path().join(".sprixel")).unwrap();
     (host, core)
 }
 

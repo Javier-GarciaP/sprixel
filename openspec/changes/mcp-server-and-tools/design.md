@@ -34,6 +34,11 @@ tool calls to operations.
   schemas and image results. The approved dependencies for task 1.1 are
   `tiny_http` (the loopback server), `getrandom` (the token) and `png`
   (`render_preview` and the export). The `gif` crate comes after the demo.
+  **Built as:** only `getrandom` was added. `tiny_http` cannot set a read
+  timeout on a connection, and the spec asks for a time limit per request, so
+  the small HTTP layer is written on `std::net` (one request per connection,
+  `Content-Length` only). `render_preview` reuses the PNG encoder of the
+  export (the `image` crate), so `png` was not needed.
 - **Permissions in one place** (a policy checked before a tool runs).
 - **Writes through the core** as grouped operations, so undo, revisions and
   attribution come for free.
