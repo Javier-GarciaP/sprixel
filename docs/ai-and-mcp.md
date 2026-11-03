@@ -108,7 +108,9 @@ description tells the AI the rules, so it does not need this page.
 | `list_sprites` | Sprites with size, frames, palette, animations and who edited them last |
 | `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations |
 | `get_palette` | The colors with their one-letter keys |
-| `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
+| `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side). `background`: `checker` (default, gray checkerboard), `light`, `dark` or `transparent`; the images of `apply_grid`, `set_pixels` and `draw_shape` take it too |
+| `render_frames` | One PNG with several frames in a grid (`from`, `to`, `columns`, `scale`, `labels`, `background`), at most 1024 pixels on a side |
+| `render_onion` | One PNG with several frames drawn over each other (`frames`, `scale`, `background`): earlier frames are tinted and see-through, the last one is normal |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
 | `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |
@@ -281,7 +283,7 @@ Any MCP client can connect to the running app:
 
 The server speaks `initialize`, `ping`, `tools/list` and `tools/call`, with
 the protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Images from
-`render_preview` come as MCP image content.
+`render_preview`, `render_frames` and `render_onion` come as MCP image content.
 
 ## Security
 
@@ -335,8 +337,10 @@ with an error.
 finish, so many calls never fill the limit of clients. `sprixel mcp` runs the
 `tools/call` messages of an AI one after another, in the order they arrived.
 
-When a tool returns an image (`render_preview`), `sprixel tool` saves it as a
-PNG in `~/.sprixel/previews/<sprite>-<frame>-<revision>.png` (readable only by
+When a tool returns an image (`render_preview`, `render_frames`, `render_onion`),
+`sprixel tool` saves it as a PNG in
+`~/.sprixel/previews/<sprite>-<frame>-<revision>.png` (or
+`<sprite>-<frames|onion>-<revision>-<hash>.png` for the two new tools; readable only by
 you), keeps the 20 newest files and prints `image saved: <path>`, so an AI that
 only has a shell can open the file and see its work. With `--json` each image
 keeps its `data` (base64) and has a `path` too.

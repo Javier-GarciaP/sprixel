@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -349,6 +350,37 @@ func TestToolSavesTheImageToAFile(t *testing.T) {
 	}
 	if len(previewFiles(t, home)) != 1 {
 		t.Errorf("files = %v (no temporary file may stay)", previewFiles(t, home))
+	}
+}
+
+// Checks task 2.4 of the spec agent-previews: render_frames and render_onion
+// images are saved too. The file name has the sprite, the kind, the revision
+// and a hash of the image, so two different ranges never share a file, and the
+// same request twice gives the same file.
+func TestToolSavesFramesAndOnionImages(t *testing.T) {
+	home, _ := appHome(t)
+
+	a := appRun(t, home, "tool", "render_frames", "name=goblin", "from=1", "to=2")
+	b := appRun(t, home, "tool", "render_frames", "name=goblin", "from=1", "to=3")
+	c := appRun(t, home, "tool", "render_onion", "name=goblin")
+	again := appRun(t, home, "tool", "render_frames", "name=goblin", "from=1", "to=2")
+
+	for _, r := range []result{a, b, c} {
+		if r.code != ExitOK || !strings.Contains(r.stdout, "image saved: ") {
+			t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+		}
+	}
+	files := previewFiles(t, home)
+	if len(files) != 3 {
+		t.Fatalf("files = %v, want 3 different files", files)
+	}
+	for _, f := range files {
+		if !regexp.MustCompile(`^goblin-(frames|onion)-7-[0-9a-f]{8}\.png$`).MatchString(f) {
+			t.Errorf("unexpected file name %q", f)
+		}
+	}
+	if a.stdout != again.stdout {
+		t.Errorf("same request, different output: %q and %q", a.stdout, again.stdout)
 	}
 }
 
