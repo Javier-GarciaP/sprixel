@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/appclient"
+	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/runtime"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
 )
@@ -81,9 +82,7 @@ func runStart(c *invocation, args []string) int {
 		appArgs = append(appArgs, path)
 	}
 	if info, ok := runtime.Running(c.dir); ok {
-		c.p.Print(fmt.Sprintf("Sprixel is already running (port %d).\n", info.Port),
-			map[string]any{"running": true, "started": false, "port": info.Port})
-		return ExitOK
+		return c.printStart("Sprixel is already running", false, info)
 	}
 	exited, err := c.startApp(appArgs...)
 	if err != nil {
@@ -93,8 +92,33 @@ func runStart(c *invocation, args []string) int {
 	if err != nil {
 		return c.p.Fail(ExitFailure, "start", err.Error(), "")
 	}
-	c.p.Print(fmt.Sprintf("Sprixel started (port %d).\n", info.Port),
-		map[string]any{"running": true, "started": true, "port": info.Port})
+	return c.printStart("Sprixel started", true, info)
+}
+
+// printStart tells which build runs: the path of the app (when this command
+// can find it), its version, and a warning when the version is not the one of
+// this command. An old build left in another place is the usual reason.
+func (c *invocation) printStart(headline string, started bool, info runtime.Info) int {
+	app, err := launcher.Find(launcher.System(c.env.Home))
+	if err != nil {
+		app = ""
+	}
+	v := info.Version
+	if v == "" {
+		v = "unknown"
+	}
+	text := fmt.Sprintf("%s (port %d, version %s).\n", headline, info.Port, v)
+	data := map[string]any{"running": true, "started": started, "port": info.Port, "version": info.Version}
+	if app != "" {
+		text += "  app: " + app + "\n"
+		data["path"] = app
+	}
+	if info.Version != "" && info.Version != version.Version {
+		warning := fmt.Sprintf("the app is version %s but this command is %s. It may be an old build: install the same version of both, or set SPRIXEL_APP to the path of the app you want", info.Version, version.Version)
+		text += "warning: " + warning + "\n"
+		data["warning"] = warning
+	}
+	c.p.Print(text, data)
 	return ExitOK
 }
 

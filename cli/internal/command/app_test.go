@@ -9,6 +9,7 @@ import (
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/testapp"
+	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
 )
 
 // appHome starts a fake app in a new home folder.
@@ -232,5 +233,53 @@ func TestCommandsCloseTheirSession(t *testing.T) {
 	appRun(t, home, "tool", "no_such_tool")
 	if n := app.OpenSessions(); n != 0 {
 		t.Errorf("open sessions = %d, want 0", n)
+	}
+}
+
+// Checks the scenario "Old build": `sprixel start` prints the path and the
+// version of the app; when the version differs from the command it warns and
+// names SPRIXEL_APP. With the same version there is no warning. It also works
+// when the app was already running, and --json carries the same facts.
+func TestStartPrintsPathAndVersion(t *testing.T) {
+	home := t.TempDir()
+	app := testapp.Start(t, filepath.Join(home, ".sprixel"))
+	_ = app
+	fake := filepath.Join(home, "my-sprixel-app")
+	os.WriteFile(fake, []byte("x"), 0o755)
+	t.Setenv("SPRIXEL_APP", fake)
+	old := version.Version
+	t.Cleanup(func() { version.Version = old })
+
+	version.Version = "1.0.0"
+	r := appRun(t, home, "start")
+	for _, want := range []string{"version " + testapp.Version, "app: " + fake, "warning:", "1.0.0", "SPRIXEL_APP"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("missing %q in %q", want, r.stdout)
+		}
+	}
+	r = appRun(t, home, "start", "--json")
+	var data map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &data); err != nil || data["path"] != fake || data["version"] != testapp.Version || data["warning"] == nil {
+		t.Errorf("json = %q, %v", r.stdout, err)
+	}
+
+	version.Version = testapp.Version
+	if r := appRun(t, home, "start"); strings.Contains(r.stdout, "warning") || !strings.Contains(r.stdout, "app: "+fake) {
+		t.Errorf("same version: %q", r.stdout)
+	}
+}
+
+// Checks the same facts when the command itself starts the app.
+func TestStartedAppIsDescribedToo(t *testing.T) {
+	home := t.TempDir()
+	app := testapp.Prepare(t, filepath.Join(home, ".sprixel"))
+	fake := filepath.Join(home, "my-sprixel-app")
+	os.WriteFile(fake, []byte("x"), 0o755)
+	t.Setenv("SPRIXEL_APP", fake)
+	var out, errOut strings.Builder
+	code := Run([]string{"start"}, Env{Stdout: &out, Stderr: &errOut, Home: home,
+		StartApp: func(...string) (<-chan error, error) { app.Open(); return make(chan error), nil }})
+	if code != ExitOK || !strings.Contains(out.String(), "Sprixel started (port") || !strings.Contains(out.String(), "app: "+fake) {
+		t.Errorf("code = %d, stdout = %q, stderr = %q", code, out.String(), errOut.String())
 	}
 }

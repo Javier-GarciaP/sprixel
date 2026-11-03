@@ -21,7 +21,7 @@
 
 ## 5. Launcher
 
-- [ ] 5.1 Print path and version in `sprixel start`, warn on a different version and document `SPRIXEL_APP`; verify with the test app
+- [x] 5.1 Print path and version in `sprixel start`, warn on a different version and document `SPRIXEL_APP`; verify with the test app
 - [ ] 5.2 Check if the app reads a project path argument and make the command honest about it; verify
 
 ## 6. Docs
