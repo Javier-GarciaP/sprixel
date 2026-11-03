@@ -181,3 +181,65 @@ fn the_mismatch_list_is_capped() {
     assert_eq!(result["mismatches"].as_array().unwrap().len(), 50);
     assert_eq!(result["truncated"], true);
 }
+
+// ---- render_tiled ----
+
+fn run(core: &crate::mcp::Core, arguments: serde_json::Value) -> Result<crate::mcp::Output, crate::mcp::ToolError> {
+    let tool = core.tools.iter().find(|t| t.name == "render_tiled").unwrap();
+    (tool.run)(&crate::mcp::Ctx { core, client: "Claude Code", tool: tool.name }, &arguments)
+}
+
+fn image_of(output: crate::mcp::Output) -> (image::RgbaImage, serde_json::Value) {
+    match output {
+        crate::mcp::Output::Image { png, info } => (image::load_from_memory(&png).unwrap().to_rgba8(), info),
+        crate::mcp::Output::Json(json) => panic!("no image in {json}"),
+    }
+}
+
+// Checks the "Tiled image" scenario: a 4x4 goblin at the default scale is
+// shown 3 times wide and 3 times high, and the red pixel of the sprite
+// is repeated in the 9 tiles. Reading changes nothing.
+#[test]
+fn render_tiled_repeats_the_sprite_3x3() {
+    let (host, core, _session) = setup();
+    open_demo_project(&host);
+    let before = revision(&host);
+
+    let (image, info) = image_of(run(&core, json!({ "name": "goblin" })).unwrap());
+
+    // 4 pixels * scale 8 * 3 tiles.
+    assert_eq!((image.width(), image.height()), (96, 96));
+    assert_eq!(info["scale"], 8);
+    assert_eq!(info["tiles"], 3);
+    for (tx, ty) in [(0, 0), (1, 1), (2, 2), (0, 2)] {
+        assert_eq!(image.get_pixel(tx * 32 + 1, ty * 32 + 1).0, [255, 0, 0, 255], "tile {tx},{ty}");
+    }
+    // A transparent pixel shows the checkerboard: opaque gray, not transparent.
+    let behind = image.get_pixel(20, 4).0;
+    assert_eq!(behind[3], 255);
+    assert_eq!(behind[0], behind[1]);
+    assert_eq!(revision(&host), before);
+}
+
+// Checks the size cap: the image is at most 1024 pixels on a side. The default
+// scale is lowered to fit, a scale that is too big is `too_big` with the
+// largest valid scale, and a sprite too big even at scale 1 is refused.
+#[test]
+fn render_tiled_respects_the_size_cap() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "create_sprite", json!({ "name": "big", "width": 100, "height": 60 })).unwrap();
+
+    // 100 * 3 = 300 per scale unit: the default 8 would be 2400, so it is 3.
+    let (image, info) = image_of(run(&core, json!({ "name": "big" })).unwrap());
+    assert_eq!((image.width(), image.height()), (900, 540));
+    assert_eq!(info["scale"], 3);
+
+    let error = run(&core, json!({ "name": "big", "scale": 4 })).unwrap_err();
+    assert_eq!(error.code, "too_big");
+    let error = run(&core, json!({ "name": "goblin", "scale": 65 })).unwrap_err();
+    assert_eq!(error.code, "bad_argument");
+
+    call(&core, &session, "create_sprite", json!({ "name": "huge", "width": 400, "height": 400 })).unwrap();
+    assert_eq!(run(&core, json!({ "name": "huge" })).unwrap_err().code, "too_big");
+}

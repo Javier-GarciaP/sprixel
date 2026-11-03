@@ -63,8 +63,25 @@ pub fn tools() -> Vec<Tool> {
             need: Need::Nothing,
             run: check_tile,
         },
+        Tool {
+            name: "render_tiled",
+            description: "Returns a PNG image of one frame of a sprite repeated 3 times wide and 3 times high, on a gray checkerboard, so you can see the seams of a tile. The pixels are scaled up sharp. The image is at most 1024 pixels on a side. Only reads.",
+            schema: json!({ "type": "object", "required": ["name"], "properties": {
+                "name": { "type": "string" },
+                "folder": { "type": "string" },
+                "frame": { "type": "integer", "minimum": 1, "description": "The frame, from 1. Default 1." },
+                "scale": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Each pixel becomes scale x scale pixels. Default: the biggest of 8 or less that fits in 1024 pixels." },
+            }}),
+            need: Need::Nothing,
+            run: render_tiled,
+        },
     ]
 }
+
+/// The largest image, in pixels per side (the same cap as `render_preview`).
+const MAX_SIDE: u32 = 1024;
+const DEFAULT_SCALE: u32 = 8;
+const TILES: u32 = 3;
 
 /// The most mismatching pairs that `check_tile` lists.
 const MAX_LISTED: usize = 50;
@@ -162,4 +179,64 @@ fn check_tile(ctx: &Ctx, input: &Value) -> ToolResult {
             "truncated": count > MAX_LISTED, "mismatches": found,
         })))
     })
+}
+
+fn render_tiled(ctx: &Ctx, input: &Value) -> ToolResult {
+    let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
+    let wanted = args::optional_u32(input, "scale")?;
+    if wanted.is_some_and(|scale| !(1..=64).contains(&scale)) {
+        return Err(ToolError::new("bad_argument", "`scale` must be from 1 to 64").with("argument", "scale"));
+    }
+    let (image, info) = read(ctx, |session| {
+        let project = &session.project;
+        let target = args::sprite(project, input)?;
+        let sprite = project.find_sprite(&target).expect("just found");
+        check_frame(sprite, frame)?;
+        let side = sprite.width.max(sprite.height) * TILES;
+        // The biggest scale that keeps the image inside the cap.
+        let largest = MAX_SIDE / side;
+        let scale = wanted.unwrap_or_else(|| DEFAULT_SCALE.min(largest).max(1));
+        if scale == 0 || side * scale > MAX_SIDE {
+            return Err(ToolError::new(
+                "too_big",
+                format!("the image would be {} pixels on a side; the maximum is {MAX_SIDE}. Use scale {largest} or less", side * scale),
+            )
+            .with("limit", MAX_SIDE)
+            .with("max_scale", largest));
+        }
+        let palette = project.palette(&sprite.palette).ok_or_else(|| {
+            ToolError::new("palette_not_found", format!("the palette {:?} of this sprite does not exist", sprite.palette))
+        })?;
+        let tile = crate::render::render_frame(sprite, palette, frame as usize - 1, scale);
+        let image = tile_over_checkerboard(&tile);
+        let info = json!({
+            "name": sprite.name, "folder": args::join(&target.folder), "frame": frame, "scale": scale,
+            "tiles": TILES, "width": image.width, "height": image.height, "revision": project.revision,
+        });
+        Ok((image, info))
+    })?;
+    let png = crate::export::encode_png(&image).map_err(|e| ToolError::new(e.code, e.message))?;
+    Ok(Output::Image { png, info })
+}
+
+/// The tile repeated `TILES` x `TILES` times, over a gray checkerboard.
+fn tile_over_checkerboard(tile: &crate::render::Image) -> crate::render::Image {
+    const SQUARE: u32 = 8;
+    let (w, h) = (tile.width, tile.height);
+    let (width, height) = (w * TILES, h * TILES);
+    let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
+    for y in 0..height {
+        for x in 0..width {
+            let from = ((y % h) * w + x % w) as usize * 4;
+            let pixel = &tile.rgba[from..from + 4];
+            if pixel[3] == 255 {
+                rgba.extend_from_slice(pixel);
+            } else {
+                let light = (x / SQUARE + y / SQUARE) % 2 == 0;
+                let gray = if light { 204 } else { 153 };
+                rgba.extend_from_slice(&[gray, gray, gray, 255]);
+            }
+        }
+    }
+    crate::render::Image { width, height, rgba }
 }

@@ -110,6 +110,7 @@ description tells the AI the rules, so it does not need this page.
 | `get_palette` | The colors with their one-letter keys |
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
 | `check_tile` | Checks if a frame repeats without seams: compares opposite edges and lists the pixels that differ |
+| `render_tiled` | Returns a PNG of a frame repeated 3x3 on a checkerboard, to see the seams of a tile (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
 | `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |
