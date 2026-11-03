@@ -1,7 +1,7 @@
 //! Spec `agent-guides-v2`: the worked example of each guide is run through the
 //! real tools, so a guide cannot teach calls that do not work.
 
-use super::docs::{GEM_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE};
+use super::docs::{CAT_GRID, FACES_GUIDE, GEM_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE};
 use crate::mcp::testing::{call, open_demo_project, rows, setup};
 use serde_json::json;
 
@@ -61,4 +61,33 @@ fn the_large_sprites_example_draws_a_mushroom_part_by_part() {
 
     let part = call(&core, &session, "get_sprite", json!({ "name": "mushroom", "frame": 1, "region": { "x": 0, "y": 8, "width": 16, "height": 6 }, "include_palette": false })).unwrap();
     assert_eq!(part["grid"].as_str().unwrap().lines().filter(|l| l.len() == 16).count(), 6, "{part}");
+}
+
+// Checks the example of the `faces-and-animals` guide: the half head, the eyes
+// and the nose are written with a horizontal symmetry, so the face is equal on
+// both sides, the eyes have their light pixel at the top left, and after the
+// outline `analyze_sprite` finds no loose pixel and no gap.
+#[test]
+fn the_faces_example_draws_a_cat_head() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    assert!(FACES_GUIDE.contains(CAT_GRID));
+
+    call(&core, &session, "create_sprite", json!({ "name": "cat", "width": 16, "height": 16 })).unwrap();
+    call(&core, &session, "apply_grid", json!({ "name": "cat", "x": 0, "y": 2, "frame": 1, "symmetry": "horizontal", "grid": CAT_GRID })).unwrap();
+    let eyes = [(5, 6, "E"), (4, 7, "E"), (5, 7, "E"), (4, 6, "W")].map(|(x, y, key)| json!({ "x": x, "y": y, "key": key }));
+    call(&core, &session, "set_pixels", json!({ "name": "cat", "symmetry": "horizontal", "pixels": eyes })).unwrap();
+    call(&core, &session, "set_pixels", json!({ "name": "cat", "symmetry": "horizontal", "pixels": [{ "x": 7, "y": 9, "key": "N" }] })).unwrap();
+    call(&core, &session, "auto_outline", json!({ "name": "cat", "key": "K" })).unwrap();
+
+    let all = rows(&host, &[], "cat", 1);
+    let lines: Vec<&str> = all.split('/').collect();
+    assert_eq!(lines[6], "KOOOWEOOOOEWOOOK", "{all}");
+    assert_eq!(lines[7], "KOOOEEOOOOEEOOOK", "{all}");
+    assert_eq!(lines[9], "KOOOOOONNOOOOOOK", "{all}");
+    assert!(lines.iter().all(|line| line.chars().eq(line.chars().rev())), "both sides are equal: {all}");
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "cat", "outline_key": "K" })).unwrap();
+    assert_eq!(report["frame_reports"][0]["loose_pixels"]["count"], 0, "{report}");
+    assert_eq!(report["frame_reports"][0]["outline_gaps"]["count"], 0, "{report}");
 }

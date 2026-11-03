@@ -274,8 +274,37 @@ LOOK at the image again.\n\
 7. To check one part later, read only it: `get_sprite` with name mushroom, `frame` 1, `region` {x: 0, y: 8, width: 16, height: 6} and `include_palette` false."
 );
 
+/// The head of the cat example of the `faces-and-animals` guide: the left half
+/// (8 columns), written at x 0, y 2 with a horizontal symmetry.
+macro_rules! cat_grid {
+    () => {
+        "\
+legend\n\
+\x20\x20K outline #4A2A12\n\
+\x20\x20O fur #E08A2E\n\
+\x20\x20E eye #1B1B2F\n\
+\x20\x20W light #FFFFFF\n\
+\x20\x20N nose #E8798B\n\
+frame 1\n\
+..OO....\n\
+.OOO....\n\
+.OOOOOOO\n\
+.OOOOOOO\n\
+.OOOOOOO\n\
+.OOOOOOO\n\
+.OOOOOOO\n\
+.OOOOOOO\n\
+.OOOOOOO\n\
+..OOOOOO\n\
+...OOOOO"
+    };
+}
+
+/// The grid of the cat example, for the tests.
+pub const CAT_GRID: &str = cat_grid!();
+
 /// How to draw faces and animals. Also available as the topic `faces-and-animals`.
-pub const FACES_GUIDE: &str = "\
+pub const FACES_GUIDE: &str = concat!("\
 Faces and animals guide: heads, eyes and bodies that read well\n\
 \n\
 1. Silhouette first. An animal is known by its outline: ears, snout, tail, legs. Block the shape with one flat color and look at it with `render_preview`. If you cannot tell what it is, change the shape, not the details.\n\
@@ -285,7 +314,19 @@ Faces and animals guide: heads, eyes and bodies that read well\n\
 5. Less is more. A nose is 1 or 2 pixels on the center column (2 for an even width). A mouth is a dark line of 1 to 3 pixels under it. If the face looks busy, remove a feature.\n\
 6. Animal parts. Ears are small triangles of 2 to 4 pixels (pointed for a cat, round for a bear). The muzzle is a lighter patch under the nose. Legs and tails are 2 pixels wide at 16x16.\n\
 7. Fur is 3 tones: base, shadow and light. The belly and the muzzle are one tone lighter. Use the same palette for all animals of a game so they feel like one world.\n\
-8. Finish with `auto_outline`, then `analyze_sprite` with `outline_key`. A stray pixel near an eye is easy to make: fix every loose pixel it lists.";
+8. Finish with `auto_outline`, then `analyze_sprite` with `outline_key`. A stray pixel near an eye is easy to make: fix every loose pixel it lists.\n\
+\n\
+Worked example: a 16x16 cat head.\n\
+1. `create_sprite` with name cat, width 16 and height 16.\n\
+2. The head: `apply_grid` with name cat, `x` 0, `y` 2, `frame` 1, `symmetry` horizontal and this grid (the left half; the ears, the head and the chin):\n\
+\n",
+    cat_grid!(),
+    "\n\
+3. The eyes: `set_pixels` with name cat, `symmetry` horizontal and pixels [{x: 5, y: 6, key: E}, {x: 4, y: 7, key: E}, {x: 5, y: 7, key: E}, {x: 4, y: 6, key: W}]. Each eye is 2x2 with the light pixel at the top left, and the other eye is written by the symmetry.\n\
+4. The nose: `set_pixels` with name cat, `symmetry` horizontal and pixels [{x: 7, y: 9, key: N}]. The sprite is 16 wide, so the nose is 2 pixels, at x 7 and 8.\n\
+5. `auto_outline` with name cat and key K. LOOK at the image.\n\
+6. `analyze_sprite` with name cat and `outline_key` K: no loose pixels and no gaps."
+);
 
 /// How to make walk and attack animations. Also available as the topic `walk-and-attack-cycles`.
 pub const WALK_GUIDE: &str = "\
