@@ -69,7 +69,7 @@ describe("release workflow", () => {
   it("creates the release only after every build job passed", () => {
     const release = text.slice(text.indexOf("\n  release:"));
 
-    expect(release).toMatch(/needs: build/);
+    expect(release).toMatch(/needs: \[verify, build, smoke\]/);
   });
 
   it("marks a tag with a suffix as a pre-release", () => {
@@ -87,5 +87,43 @@ describe("release workflow", () => {
   it("takes the notes from the changelog and checks the tag exists", () => {
     expect(text).toContain('node scripts/release-notes.mjs "$TAG"');
     expect(text).toContain("--verify-tag");
+  });
+
+  // Scenarios "Tag on another branch" and "Wrong tag": the checks run first and
+  // nothing is built if they fail.
+  it("checks the branch and the tag before anything is built", () => {
+    const verify = text.slice(
+      text.indexOf("\n  verify:"),
+      text.indexOf("\n  build:"),
+    );
+
+    expect(verify).toContain("scripts/check-tag-branch.mjs");
+    expect(verify).toContain("scripts/bump-version.mjs --tag");
+    expect(verify).toContain("fetch-depth: 0");
+    const build = text.slice(
+      text.indexOf("\n  build:"),
+      text.indexOf("\n  smoke:"),
+    );
+    expect(build).toContain("needs: verify");
+  });
+
+  // Scenario "Smoke test": each system installs and runs sprixel version.
+  it("installs the release on every system and runs the smoke test", () => {
+    const smoke = text.slice(
+      text.indexOf("\n  smoke:"),
+      text.indexOf("\n  release:"),
+    );
+
+    expect(smoke).toContain("install.sh");
+    expect(smoke).toContain("install.ps1");
+    expect(smoke).toContain("scripts/smoke-test.mjs");
+    for (const runner of [
+      "ubuntu-latest",
+      "macos-latest",
+      "macos-15-intel",
+      "windows-latest",
+    ]) {
+      expect(smoke).toContain(`runner: ${runner}`);
+    }
   });
 });
