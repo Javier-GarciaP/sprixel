@@ -3,10 +3,10 @@
 
 use super::args;
 use super::create::base_revision;
-use super::read::check_frame;
+use super::read::{check_frame, read};
 use super::write::{Plan, write};
 use crate::document::{Anchor, Operation};
-use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
+use crate::mcp::{Ctx, Need, Output, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
 pub fn tools() -> Vec<Tool> {
@@ -52,8 +52,22 @@ pub fn tools() -> Vec<Tool> {
             need: Need::Edit,
             run: remove_anchor,
         },
+        Tool {
+            name: "check_tile",
+            description: "Checks if a sprite frame repeats without visible seams (as a tile). It compares the first and the last column, and the first and the last row. Two pixels match when both are transparent or have the same palette key. Returns `seamless`, the real `mismatch_count` and the first 50 `mismatches` (each with `edge`, and the two places `a` and `b` with their keys). Only reads.",
+            schema: json!({ "type": "object", "required": ["name"], "properties": {
+                "name": { "type": "string" },
+                "folder": { "type": "string" },
+                "frame": { "type": "integer", "minimum": 1, "description": "The frame, from 1. Default 1." },
+            }}),
+            need: Need::Nothing,
+            run: check_tile,
+        },
     ]
 }
+
+/// The most mismatching pairs that `check_tile` lists.
+const MAX_LISTED: usize = 50;
 
 fn set_frame_duration(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::required_u32(input, "frame")?;
@@ -103,5 +117,49 @@ fn remove_anchor(ctx: &Ctx, input: &Value) -> ToolResult {
         let target = args::sprite_at(&session.project, input, "sprite")?;
         let ops = vec![Operation::RemoveAnchor { sprite: target.clone(), name: name.clone(), frame }];
         Ok(Plan::new(ops, json!({ "removed": name, "frame": frame })).about(&target))
+    })
+}
+
+/// The keys of one frame with all layers stacked (the last layer on top).
+fn flat_keys(sprite: &crate::document::Sprite, frame: usize) -> Vec<u8> {
+    let mut flat = vec![crate::document::TRANSPARENT as u8; sprite.width as usize * sprite.height as usize];
+    for layer in &sprite.layers {
+        for (at, key) in layer.frames[frame].pixels.iter().enumerate() {
+            if *key as char != crate::document::TRANSPARENT {
+                flat[at] = *key;
+            }
+        }
+    }
+    flat
+}
+
+fn check_tile(ctx: &Ctx, input: &Value) -> ToolResult {
+    let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
+    read(ctx, |session| {
+        let target = args::sprite(&session.project, input)?;
+        let sprite = session.project.find_sprite(&target).expect("just found");
+        check_frame(sprite, frame)?;
+        let (w, h) = (sprite.width as usize, sprite.height as usize);
+        let flat = flat_keys(sprite, frame as usize - 1);
+        let at = |x: usize, y: usize| json!({ "x": x, "y": y, "key": (flat[y * w + x] as char).to_string() });
+        let mut found = Vec::new();
+        for y in 0..h {
+            if flat[y * w] != flat[y * w + w - 1] {
+                found.push(json!({ "edge": "left_right", "a": at(0, y), "b": at(w - 1, y) }));
+            }
+        }
+        for x in 0..w {
+            if flat[x] != flat[(h - 1) * w + x] {
+                found.push(json!({ "edge": "top_bottom", "a": at(x, 0), "b": at(x, h - 1) }));
+            }
+        }
+        let count = found.len();
+        found.truncate(MAX_LISTED);
+        Ok(Output::Json(json!({
+            "name": sprite.name, "folder": args::join(&target.folder), "frame": frame,
+            "width": w, "height": h, "revision": session.project.revision,
+            "seamless": count == 0, "mismatch_count": count,
+            "truncated": count > MAX_LISTED, "mismatches": found,
+        })))
     })
 }

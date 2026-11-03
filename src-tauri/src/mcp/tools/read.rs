@@ -82,7 +82,7 @@ pub fn tools() -> Vec<Tool> {
 }
 
 /// Looks at the open project.
-fn read<R>(ctx: &Ctx, look: impl FnOnce(&crate::storage::Session) -> Result<R, ToolError>) -> Result<R, ToolError> {
+pub(super) fn read<R>(ctx: &Ctx, look: impl FnOnce(&crate::storage::Session) -> Result<R, ToolError>) -> Result<R, ToolError> {
     project::read(ctx.core.host.project(), look).ok_or_else(ToolError::no_project)?
 }
 

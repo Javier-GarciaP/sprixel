@@ -119,3 +119,65 @@ fn remove_anchor_removes_one_and_is_undoable() {
     call(&core, &session, "undo_last_ai_action", json!({})).unwrap();
     assert_eq!(anchors_of(&host).len(), 2);
 }
+
+// Checks `check_tile` on a seamless sprite: the blank slime repeats without
+// seams, so no pair is listed. The call changes nothing.
+#[test]
+fn a_blank_sprite_is_seamless() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let before = revision(&host);
+    let result = call(&core, &session, "check_tile", json!({ "name": "slime" })).unwrap();
+    assert_eq!(result["seamless"], true);
+    assert_eq!(result["mismatch_count"], 0);
+    assert_eq!(result["mismatches"], json!([]));
+    assert_eq!(revision(&host), before);
+}
+
+// Checks the "Seam" scenario on the goblin (4x4): red at 0,0 and green at 3,3.
+// Left column vs right column differ in rows 0 and 3; top row vs bottom row
+// differ in columns 0 and 3. Each pair says the two places and keys.
+#[test]
+fn check_tile_lists_the_mismatching_pairs() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let result = call(&core, &session, "check_tile", json!({ "name": "goblin" })).unwrap();
+    assert_eq!(result["seamless"], false);
+    assert_eq!(result["mismatch_count"], 4);
+    let list = result["mismatches"].as_array().unwrap();
+    assert!(list.contains(&json!({ "edge": "left_right", "a": { "x": 0, "y": 0, "key": "R" }, "b": { "x": 3, "y": 0, "key": "." } })));
+    assert!(list.contains(&json!({ "edge": "left_right", "a": { "x": 0, "y": 3, "key": "." }, "b": { "x": 3, "y": 3, "key": "G" } })));
+    assert!(list.contains(&json!({ "edge": "top_bottom", "a": { "x": 0, "y": 0, "key": "R" }, "b": { "x": 0, "y": 3, "key": "." } })));
+    assert!(list.contains(&json!({ "edge": "top_bottom", "a": { "x": 3, "y": 0, "key": "." }, "b": { "x": 3, "y": 3, "key": "G" } })));
+}
+
+// Checks that matching edges with colors are seamless: the same key on both
+// sides is fine, and the frame argument picks another frame.
+#[test]
+fn equal_edges_are_seamless_and_the_frame_can_be_chosen() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    // Frame 2 of the goblin: red on the whole left and right columns.
+    let pixels: Vec<_> = (0..4).flat_map(|y| [json!({ "x": 0, "y": y, "key": "R" }), json!({ "x": 3, "y": y, "key": "R" })]).collect();
+    call(&core, &session, "set_pixels", json!({ "name": "goblin", "frame": 2, "pixels": pixels })).unwrap();
+    // The top and bottom rows then match too: both have red at the corners.
+    let result = call(&core, &session, "check_tile", json!({ "name": "goblin", "frame": 2 })).unwrap();
+    assert_eq!(result["seamless"], true, "{result}");
+    assert_eq!(result["frame"], 2);
+    let error = call(&core, &session, "check_tile", json!({ "name": "goblin", "frame": 7 })).unwrap_err();
+    assert_eq!(error["code"], "bad_frame");
+}
+
+// Checks that the list is capped at 50 pairs while the count is the real one.
+#[test]
+fn the_mismatch_list_is_capped() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "create_sprite", json!({ "name": "wall", "width": 60, "height": 60 })).unwrap();
+    let pixels: Vec<_> = (0..60).map(|y| json!({ "x": 0, "y": y, "key": "R" })).collect();
+    call(&core, &session, "set_pixels", json!({ "name": "wall", "pixels": pixels })).unwrap();
+    let result = call(&core, &session, "check_tile", json!({ "name": "wall" })).unwrap();
+    assert_eq!(result["mismatch_count"], 60);
+    assert_eq!(result["mismatches"].as_array().unwrap().len(), 50);
+    assert_eq!(result["truncated"], true);
+}

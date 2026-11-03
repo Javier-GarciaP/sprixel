@@ -17,7 +17,7 @@
 
 ## 4. Tiles
 
-- [ ] 4.1 Add `check_tile`; verify seamless, seam, transparent pairs and the mismatch cap
+- [x] 4.1 Add `check_tile`; verify seamless, seam, transparent pairs and the mismatch cap
 - [ ] 4.2 Add `render_tiled`; verify the size and the cap
 
 ## 5. Docs and finish
