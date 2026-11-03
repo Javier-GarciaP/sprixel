@@ -1,5 +1,5 @@
 use super::*;
-use crate::document::{Color, Folder, Frame, Palette, Project, Sprite, Tag, TagMode};
+use crate::document::{Anchor, Color, Folder, Frame, Palette, Project, Sprite, Tag, TagMode};
 
 fn project() -> Project {
     let mut p = Project::new("Dungeon Kit");
@@ -30,6 +30,8 @@ pub(super) fn sheet_project() -> Project {
     let mut hero = sprite("hero", 3);
     hero.tags.push(walk(1, 2));
     hero.frame_durations[2] = 250;
+    let anchor = |name: &str, x, y, frame| Anchor { name: name.to_string(), x, y, frame };
+    hero.anchors = vec![anchor("feet", 0, 1, None), anchor("hand", 1, 0, Some(2)), anchor("Feet", 1, 1, Some(3))];
     p.root.sprites.push(hero);
     p.root.sprites.push(sprite("blob", 1));
     p
@@ -125,4 +127,22 @@ fn wrong_options_are_refused() {
     let p = sheet_project();
     assert_eq!(build(&p, &Scope::Project, &options(3, 0), "kit").unwrap_err().code, "bad_options");
     assert_eq!(build(&p, &Scope::Project, &options(1, 17), "kit").unwrap_err().code, "bad_options");
+}
+
+// Checks the anchors of the JSON: a frame anchor replaces the sprite anchor of
+// the same name (ignoring case), the others stay, they are sorted by name, a
+// sprite with no anchors gets an empty list, and the scale multiplies them.
+#[test]
+fn frames_list_their_anchors() {
+    let files = build(&sheet_project(), &Scope::Project, &options(2, 0), "kit").unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json_of(&files)).unwrap();
+    let anchors = |n: usize| json["frames"][n]["anchors"].clone();
+    // frames: blob_1, hero_walk_1, hero_walk_2, hero_3
+    assert_eq!(anchors(0), serde_json::json!([]));
+    assert_eq!(anchors(1), serde_json::json!([{ "name": "feet", "x": 0, "y": 2 }]));
+    assert_eq!(anchors(2), serde_json::json!([
+        { "name": "feet", "x": 0, "y": 2 },
+        { "name": "hand", "x": 2, "y": 0 },
+    ]));
+    assert_eq!(anchors(3), serde_json::json!([{ "name": "Feet", "x": 2, "y": 2 }]));
 }

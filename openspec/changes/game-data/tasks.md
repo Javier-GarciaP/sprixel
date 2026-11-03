@@ -12,7 +12,7 @@
 
 ## 3. Export
 
-- [ ] 3.1 Add `frames[].anchors` to the sheet JSON; verify override, scale and empty list
+- [x] 3.1 Add `frames[].anchors` to the sheet JSON; verify override, scale and empty list
 - [ ] 3.2 Document the Godot and Unity mapping with an example; verify the sample equals the real JSON
 
 ## 4. Tiles

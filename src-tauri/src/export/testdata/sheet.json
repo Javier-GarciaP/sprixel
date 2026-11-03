@@ -23,7 +23,8 @@
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": []
     },
     {
       "name": "hero_walk_1",
@@ -38,7 +39,14 @@
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        }
+      ]
     },
     {
       "name": "hero_walk_2",
@@ -53,7 +61,19 @@
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "name": "hand",
+          "x": 1,
+          "y": 0
+        }
+      ]
     },
     {
       "name": "hero_3",
@@ -68,7 +88,14 @@
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "Feet",
+          "x": 1,
+          "y": 1
+        }
+      ]
     }
   ],
   "animations": [

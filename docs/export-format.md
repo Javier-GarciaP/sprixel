@@ -55,7 +55,8 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": []
     },
     {
       "name": "hero_walk_1",
@@ -70,7 +71,14 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        }
+      ]
     },
     {
       "name": "hero_walk_2",
@@ -85,7 +93,19 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "name": "hand",
+          "x": 1,
+          "y": 0
+        }
+      ]
     },
     {
       "name": "hero_3",
@@ -100,7 +120,14 @@ example `personajes.png` and `personajes.json`).
       "pivot": {
         "x": 0,
         "y": 0
-      }
+      },
+      "anchors": [
+        {
+          "name": "Feet",
+          "x": 1,
+          "y": 1
+        }
+      ]
     }
   ],
   "animations": [
@@ -128,11 +155,21 @@ example `personajes.png` and `personajes.json`).
 | `frames[].frame` | The rectangle of the frame in the PNG, in pixels (`x`, `y`, `w`, `h`). |
 | `frames[].duration` | How long the frame lasts, in milliseconds. |
 | `frames[].pivot` | The pivot point in pixels, from the top left corner of the frame. Now always `0, 0`. |
+| `frames[].anchors` | The anchor points of the frame (see [Anchors](#anchors)): a list of `name`, `x`, `y`. Empty when there are none. |
 | `animations[].name` | The name of the animation. |
 | `animations[].sprite` | The sprite it belongs to. Two sprites can have an animation with the same name. |
 | `animations[].from`, `to` | The first and last frame, as positions in `frames` **counted from 0**, both included. |
 | `animations[].mode` | `loop`, `once` or `pingpong`. |
 | `animations[].fps` | Frames per second, 1 to 60. |
+
+### Anchors
+
+An anchor is a named point of a sprite (`feet`, `hand`, `muzzle`) that the
+person or an AI set in the editor. `x` and `y` are in pixels of the sheet, from
+the top left corner of the frame, so with the scale 2x an anchor at pixel
+3,5 is written as `6`, `10`. A frame lists the anchors of its sprite; an
+anchor set for one frame replaces the one of the whole sprite with the same
+name. The list is sorted by name.
 
 ### Order
 
