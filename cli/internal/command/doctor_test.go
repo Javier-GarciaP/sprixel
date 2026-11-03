@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Javier-GarciaP/sprixel/cli/internal/clients"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/testapp"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
 )
@@ -26,10 +27,11 @@ func TestDoctorPassing(t *testing.T) {
 	os.MkdirAll(dir, 0o755)
 	os.WriteFile(filepath.Join(dir, "opencode.json"), []byte(`{"mcp":{"sprixel":{"type":"local","command":["sprixel","mcp"],"enabled":true}}}`), 0o600)
 	f := &fakeClaude{has: true}
+	(clients.Skill{Home: home}).Install()
 
 	r := setupIn(t, home, f, "doctor")
 
-	for _, line := range []string{"OK    app", "OK    version", "OK    server", "OK    claude", "OK    opencode"} {
+	for _, line := range []string{"OK    app", "OK    version", "OK    server", "OK    claude", "OK    skill", "OK    opencode"} {
 		if !strings.Contains(r.stdout, line) {
 			t.Errorf("missing %q in %q", line, r.stdout)
 		}
@@ -58,5 +60,34 @@ func TestDoctorFailing(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || report.OK || len(report.Checks) < 7 {
 		t.Errorf("json = %q, %v", r.stdout, err)
+	}
+}
+
+// Checks that doctor reports the skill: missing and old are failures with the
+// fix `sprixel mcp add claude`; current is OK; and when Sprixel is not
+// registered in Claude Code the check is skipped.
+func TestDoctorChecksTheSkill(t *testing.T) {
+	home := t.TempDir()
+	testapp.Start(t, filepath.Join(home, ".sprixel"))
+	t.Setenv("SPRIXEL_APP", os.Args[0])
+	skill := clients.Skill{Home: home}
+
+	r := setupIn(t, home, &fakeClaude{has: true}, "doctor")
+	if !strings.Contains(r.stdout, "FAIL  skill") || !strings.Contains(r.stdout, "fix: run `sprixel mcp add claude`") {
+		t.Errorf("missing skill: %q", r.stdout)
+	}
+
+	skill.Install()
+	os.WriteFile(skill.Path(), []byte("old"), 0o644)
+	if r := setupIn(t, home, &fakeClaude{has: true}, "doctor"); !strings.Contains(r.stdout, "FAIL  skill") || !strings.Contains(r.stdout, "old") {
+		t.Errorf("old skill: %q", r.stdout)
+	}
+
+	skill.Install()
+	if r := setupIn(t, home, &fakeClaude{has: true}, "doctor"); !strings.Contains(r.stdout, "OK    skill") {
+		t.Errorf("current skill: %q", r.stdout)
+	}
+	if r := setupIn(t, home, &fakeClaude{}, "doctor"); !strings.Contains(r.stdout, "SKIP  skill") {
+		t.Errorf("not registered: %q", r.stdout)
 	}
 }

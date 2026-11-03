@@ -40,6 +40,7 @@ func runDoctor(c *invocation, args []string) int {
 		Command:    c.serverCommand(),
 		FindApp:    func() (string, error) { return launcher.Find(e) },
 		Clients:    list,
+		SkillHome:  c.env.Home,
 		HasProgram: func(name string) bool { _, err := look(name); return err == nil },
 	})
 

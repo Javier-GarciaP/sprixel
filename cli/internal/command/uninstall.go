@@ -75,6 +75,9 @@ func runUninstall(c *invocation, args []string) int {
 		for _, cl := range registered {
 			fmt.Fprintln(out, "  - the Sprixel registration in "+cl.Title())
 		}
+		if c.skill().State() != clients.SkillMissing {
+			fmt.Fprintln(out, "  - the Sprixel skill in "+c.skill().Dir())
+		}
 		fmt.Fprintln(out, "Your projects are not touched.")
 		fmt.Fprintln(out)
 	}
@@ -98,6 +101,11 @@ func runUninstall(c *invocation, args []string) int {
 			continue
 		}
 		done = append(done, "registration in "+cl.Title())
+	}
+	if removed, err := c.skill().Remove(); err != nil {
+		notes = append(notes, "could not delete the skill folder "+c.skill().Dir()+": "+err.Error())
+	} else if removed {
+		done = append(done, "skill in "+c.skill().Dir())
 	}
 	// 2. The PATH entry.
 	if goos == "windows" {

@@ -118,13 +118,31 @@ func mcpRemove(c *invocation, client clients.Client) int {
 	if err != nil {
 		return clientFailure(c, client, c.serverCommand(), err)
 	}
+	// The skill goes with the registration, also when only the skill was left.
+	skillGone := false
+	if client.ID() == "claude" {
+		var err error
+		if skillGone, err = c.skill().Remove(); err != nil {
+			return c.p.Fail(ExitFailure, "skill", "could not delete the skill folder "+c.skill().Dir()+": "+err.Error(), "delete that folder by hand")
+		}
+	}
 	if result.Outcome == clients.NotRegistered {
+		if skillGone {
+			c.p.Print("Sprixel is not registered in "+client.Title()+". Deleted its skill: "+c.skill().Dir()+"\n",
+				map[string]string{"client": client.ID(), "result": "not_registered", "skill": "deleted"})
+			return ExitOK
+		}
 		c.p.Print("Sprixel is not registered in "+client.Title()+". Nothing changed.\n",
 			map[string]string{"client": client.ID(), "result": "not_registered"})
 		return ExitOK
 	}
-	c.p.Print("Removed Sprixel from "+client.Title()+".\n  changed: "+result.Where+"\n",
-		map[string]string{"client": client.ID(), "result": "removed", "changed": result.Where})
+	text := "Removed Sprixel from " + client.Title() + ".\n  changed: " + result.Where + "\n"
+	data := map[string]string{"client": client.ID(), "result": "removed", "changed": result.Where}
+	if skillGone {
+		text += "  deleted: " + c.skill().Dir() + "\n"
+		data["skill"] = "deleted"
+	}
+	c.p.Print(text, data)
 	return ExitOK
 }
 

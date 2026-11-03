@@ -114,6 +114,35 @@ func TestMCPAddClaudeInstallsTheSkill(t *testing.T) {
 	}
 }
 
+// Checks the scenario "Remove": `mcp remove claude` deletes the skill folder
+// and nothing else in ~/.claude; it also deletes a skill left behind when
+// Sprixel is no longer registered.
+func TestMCPRemoveClaudeDeletesTheSkill(t *testing.T) {
+	f := &fakeClaude{}
+	home := t.TempDir()
+	other := filepath.Join(home, ".claude", "skills", "other", "SKILL.md")
+	os.MkdirAll(filepath.Dir(other), 0o755)
+	os.WriteFile(other, []byte("x"), 0o644)
+	setupIn(t, home, f, "mcp", "add", "claude")
+	skillDir := filepath.Join(home, ".claude", "skills", "sprixel")
+
+	r := setupIn(t, home, f, "mcp", "remove", "claude")
+	if _, err := os.Stat(skillDir); r.code != ExitOK || !os.IsNotExist(err) {
+		t.Errorf("code = %d, skill folder err = %v, stdout = %q", r.code, err, r.stdout)
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Error("another skill was touched")
+	}
+
+	// Registered no more, skill left behind: remove still cleans it.
+	os.MkdirAll(skillDir, 0o755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("old"), 0o644)
+	r = setupIn(t, home, f, "mcp", "remove", "claude")
+	if _, err := os.Stat(skillDir); !os.IsNotExist(err) || !strings.Contains(r.stdout, "Deleted its skill") {
+		t.Errorf("leftover skill: err = %v, stdout = %q", err, r.stdout)
+	}
+}
+
 // Checks that OpenCode gets no skill: only Claude Code has this feature.
 func TestMCPAddOpenCodeInstallsNoSkill(t *testing.T) {
 	home := t.TempDir()
