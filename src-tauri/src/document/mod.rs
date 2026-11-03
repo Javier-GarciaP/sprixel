@@ -24,7 +24,7 @@ pub use palette::{ColorEdit, check_colors};
 pub use grid::{Grid, GridError, GridOptions, write_grid};
 pub use stroke::ColorChange;
 pub use model::{
-    Color, DEFAULT_FRAME_MS, Folder, Frame, Layer, MAX_COLORS, frame_duration_ms, MAX_SIZE, Palette, Project, Sprite, TRANSPARENT, Tag,
+    Anchor, Color, DEFAULT_FRAME_MS, Folder, Frame, Layer, MAX_COLORS, frame_duration_ms, MAX_SIZE, Palette, Project, Sprite, TRANSPARENT, Tag,
     TagMode,
 };
 
@@ -57,3 +57,6 @@ mod import_tests;
 
 #[cfg(test)]
 mod grid_tests;
+
+#[cfg(test)]
+mod anchor_tests;

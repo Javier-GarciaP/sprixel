@@ -195,6 +195,7 @@ pub fn sprite_from_text(name: &str, text: &str, palette: &Palette) -> Result<Spr
         frame_durations: file.frame_durations,
         layers,
         tags,
+        anchors: Vec::new(),
     };
     sprite.validate(palette).map_err(|e| e.to_string())?;
     Ok(sprite)

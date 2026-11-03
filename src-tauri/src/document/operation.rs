@@ -1,5 +1,5 @@
 use super::error::DocError;
-use super::model::{Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, Tag};
+use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, Tag};
 use super::names::{same_name, validate_name};
 
 /// Where a sprite is: the folders from the project root, then its name.
@@ -149,6 +149,8 @@ pub enum Operation {
         duration_ms: u32,
         /// All the tags the sprite had before the frame was deleted.
         tags: Vec<Tag>,
+        /// All the anchors the sprite had before the frame was deleted.
+        anchors: Vec<Anchor>,
     },
     /// Puts a new frame at position `at` (1 to count + 1), blank or a copy of
     /// `copy_of`. A copy has the duration of the original.
@@ -165,6 +167,8 @@ pub enum Operation {
         from: u32,
         to: u32,
         tags: Option<Vec<Tag>>,
+        /// Like `tags`: the anchors as given (used by the inverse).
+        anchors: Option<Vec<Anchor>>,
     },
     SetFrameDuration {
         sprite: SpriteRef,
@@ -186,6 +190,18 @@ pub enum Operation {
     RemoveTag {
         sprite: SpriteRef,
         name: String,
+    },
+    /// Adds an anchor, or replaces the one with the same name and frame
+    /// (it keeps its place). `index` is where a new one goes; `None` is the end.
+    SetAnchor {
+        sprite: SpriteRef,
+        anchor: Anchor,
+        index: Option<usize>,
+    },
+    RemoveAnchor {
+        sprite: SpriteRef,
+        name: String,
+        frame: Option<u32>,
     },
 }
 
@@ -729,6 +745,7 @@ impl Project {
                 }
                 let at = *frame as usize - 1;
                 let old_tags = target.tags.clone();
+                let old_anchors = target.anchors.clone();
                 let layers = target
                     .layers
                     .iter_mut()
@@ -736,6 +753,7 @@ impl Project {
                     .collect();
                 let duration_ms = target.frame_durations.remove(at);
                 shrink_tags(&mut target.tags, *frame);
+                shrink_anchors(&mut target.anchors, *frame);
                 let sprite_ref = SpriteRef {
                     folder,
                     name: target.name.clone(),
@@ -747,6 +765,7 @@ impl Project {
                         layers,
                         duration_ms,
                         tags: old_tags,
+                        anchors: old_anchors,
                     },
                     touched: vec![Target::Sprite(sprite_ref)],
                 })
@@ -757,6 +776,7 @@ impl Project {
                 layers,
                 duration_ms,
                 tags,
+                anchors,
             } => {
                 let (folder, index) = self.locate(sprite)?;
                 let target = &mut self.folder_mut(&folder).sprites[index];
@@ -774,6 +794,7 @@ impl Project {
                 }
                 target.frame_durations.insert(at, *duration_ms);
                 target.tags = tags.clone();
+                target.anchors = anchors.clone();
                 let sprite_ref = SpriteRef {
                     folder,
                     name: target.name.clone(),
@@ -819,6 +840,11 @@ impl Project {
                     .unwrap_or(*duration_ms);
                 target.frame_durations.insert(place, duration);
                 grow_tags(&mut target.tags, *at);
+                for anchor in &mut target.anchors {
+                    if anchor.frame.is_some_and(|f| f >= *at) {
+                        anchor.frame = anchor.frame.map(|f| f + 1);
+                    }
+                }
                 let sprite_ref = SpriteRef {
                     folder,
                     name: target.name.clone(),
@@ -837,12 +863,14 @@ impl Project {
                 from,
                 to,
                 tags,
+                anchors,
             } => {
                 let (folder, index) = self.locate(sprite)?;
                 let target = &mut self.folder_mut(&folder).sprites[index];
                 check_frame(target, *from)?;
                 check_frame(target, *to)?;
                 let old_tags = target.tags.clone();
+                let old_anchors = target.anchors.clone();
                 let (a, b) = (*from as usize - 1, *to as usize - 1);
                 for layer in &mut target.layers {
                     let frame = layer.frames.remove(a);
@@ -854,6 +882,20 @@ impl Project {
                     Some(given) => target.tags = given.clone(),
                     None => follow_move(&mut target.tags, target.frame_durations.len(), *from, *to),
                 }
+                match anchors {
+                    Some(given) => target.anchors = given.clone(),
+                    None => {
+                        let (from, to) = (*from, *to);
+                        for anchor in &mut target.anchors {
+                            anchor.frame = anchor.frame.map(|f| match f {
+                                f if f == from => to,
+                                f if from < to && f > from && f <= to => f - 1,
+                                f if from > to && f >= to && f < from => f + 1,
+                                f => f,
+                            });
+                        }
+                    }
+                }
                 let sprite_ref = SpriteRef {
                     folder,
                     name: target.name.clone(),
@@ -864,6 +906,7 @@ impl Project {
                         from: *to,
                         to: *from,
                         tags: Some(old_tags),
+                        anchors: Some(old_anchors),
                     },
                     touched: vec![Target::Sprite(sprite_ref)],
                 })
@@ -968,6 +1011,56 @@ impl Project {
                     inverse: Operation::AddTag {
                         sprite: sprite_ref.clone(),
                         tag,
+                        index: Some(at),
+                    },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::SetAnchor { sprite, anchor, index } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                anchor.validate(target.width, target.height, target.frame_count())?;
+                let sprite_ref = SpriteRef {
+                    folder,
+                    name: target.name.clone(),
+                };
+                let inverse = match target.anchors.iter().position(|a| a.is(&anchor.name, anchor.frame)) {
+                    Some(at) => {
+                        let old = std::mem::replace(&mut target.anchors[at], anchor.clone());
+                        Operation::SetAnchor { sprite: sprite_ref.clone(), anchor: old, index: None }
+                    }
+                    None => {
+                        let at = index.unwrap_or(target.anchors.len()).min(target.anchors.len());
+                        target.anchors.insert(at, anchor.clone());
+                        Operation::RemoveAnchor {
+                            sprite: sprite_ref.clone(),
+                            name: anchor.name.clone(),
+                            frame: anchor.frame,
+                        }
+                    }
+                };
+                Ok(Applied {
+                    inverse,
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::RemoveAnchor { sprite, name, frame } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                let at = target
+                    .anchors
+                    .iter()
+                    .position(|a| a.is(name, *frame))
+                    .ok_or_else(|| not_found("anchor", name))?;
+                let anchor = target.anchors.remove(at);
+                let sprite_ref = SpriteRef {
+                    folder,
+                    name: target.name.clone(),
+                };
+                Ok(Applied {
+                    inverse: Operation::SetAnchor {
+                        sprite: sprite_ref.clone(),
+                        anchor,
                         index: Some(at),
                     },
                     touched: vec![Target::Sprite(sprite_ref)],
@@ -1112,6 +1205,16 @@ fn shrink_tags(tags: &mut Vec<Tag>, deleted: u32) {
         }
     }
     tags.retain(|tag| tag.to >= tag.from);
+}
+
+// The anchors of a deleted frame go away; those of later frames shift.
+fn shrink_anchors(anchors: &mut Vec<Anchor>, deleted: u32) {
+    anchors.retain(|a| a.frame != Some(deleted));
+    for anchor in anchors.iter_mut() {
+        if anchor.frame.is_some_and(|f| f > deleted) {
+            anchor.frame = anchor.frame.map(|f| f - 1);
+        }
+    }
 }
 
 // A frame was inserted at `at`: tags after it move, a tag that holds frames on

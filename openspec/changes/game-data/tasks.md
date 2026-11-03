@@ -6,7 +6,7 @@
 
 ## 2. Anchors
 
-- [ ] 2.1 Add `Anchor` to the model, `SetAnchor` and `RemoveAnchor` with undo, and keep them right on frame delete, insert, move and restore; verify each
+- [x] 2.1 Add `Anchor` to the model, `SetAnchor` and `RemoveAnchor` with undo, and keep them right on frame delete, insert, move and restore; verify each
 - [ ] 2.2 Save and read `anchors` in the sprite file; verify old files open and files without anchors stay equal
 - [ ] 2.3 Add `set_anchor` and `remove_anchor` and anchors in `get_sprite`; verify errors, undo and the activity log
 

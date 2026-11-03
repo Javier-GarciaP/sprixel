@@ -121,7 +121,7 @@ pub fn move_frame(
     to: u32,
 ) -> Result<ChangedEvent, CoreError> {
     run(state, sprite, |target| {
-        vec![Operation::MoveFrame { sprite: target, from, to, tags: None }]
+        vec![Operation::MoveFrame { sprite: target, from, to, tags: None, anchors: None }]
     })
 }
 

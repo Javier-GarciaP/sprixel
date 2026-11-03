@@ -55,6 +55,7 @@ fn goblin() -> Sprite {
             fps: 12,
             mode: TagMode::Loop,
         }],
+        anchors: Vec::new(),
     }
 }
 

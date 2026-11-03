@@ -111,6 +111,7 @@ fn mv(sprite: &SpriteRef, from: u32, to: u32) -> Operation {
         from,
         to,
         tags: None,
+        anchors: None,
     }
 }
 
