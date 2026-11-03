@@ -13,6 +13,7 @@ mod create;
 mod docs;
 mod draw;
 mod export;
+mod gamedata;
 mod projects;
 mod read;
 mod shapes;
@@ -36,6 +37,7 @@ pub fn all() -> Vec<Tool> {
     tools.extend(draw::tools());
     tools.extend(structure::tools());
     tools.extend(export::tools());
+    tools.extend(gamedata::tools());
     tools.extend(undo::tools());
     tools
 }
@@ -75,3 +77,6 @@ mod guide_tests;
 
 #[cfg(test)]
 mod preview_tests;
+
+#[cfg(test)]
+mod gamedata_tests;

@@ -2,7 +2,7 @@
 
 ## 1. Frame durations
 
-- [ ] 1.1 Add `set_frame_duration` and the durations in `get_sprite`; verify range, undo, replay of the answer and that the animation preview and export use them
+- [x] 1.1 Add `set_frame_duration` and the durations in `get_sprite`; verify range, undo, replay of the answer and that the animation preview and export use them
 
 ## 2. Anchors
 

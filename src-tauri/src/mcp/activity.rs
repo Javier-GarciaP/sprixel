@@ -133,6 +133,7 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "set_pixels" => format!("Set {} pixels on {name}", answer["pixels_set"]),
         "draw_shape" => format!("Drew a {} on {name}", text(args, "shape")),
         "delete_frame" => format!("Deleted frame {} of {name}", answer["deleted_frame"]),
+        "set_frame_duration" => format!("Set frame {} of {name} to {} ms", answer["frame"], answer["milliseconds"]),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
         "set_palette_color" => format!(
             "{} the color {} in palette {}",

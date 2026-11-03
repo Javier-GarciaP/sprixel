@@ -36,7 +36,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "get_sprite",
-            description: "Reads one sprite: size, palette name, animations and its frames as a text grid.",
+            description: "Reads one sprite: size, palette name, animations, the duration of each frame (`frame_durations`, ms) and its frames as a text grid.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string", "description": "The sprite name, or a path like \"Characters/goblin\"." },
                 "folder": { "type": "string", "description": "The folder of the sprite, if two sprites share the name." },
@@ -187,6 +187,7 @@ fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         })?;
         let mut summary = sprite_summary(session, &target.folder, sprite);
         summary["revision"] = json!(project.revision);
+        summary["frame_durations"] = json!(sprite.frame_durations);
         summary["grid"] = json!(write_grid(sprite, palette, frame));
         Ok(Output::Json(summary))
     })
