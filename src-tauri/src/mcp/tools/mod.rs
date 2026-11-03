@@ -12,6 +12,7 @@ mod args;
 mod create;
 mod docs;
 mod draw;
+mod edit;
 mod export;
 mod projects;
 mod read;
@@ -54,6 +55,9 @@ mod draw_tests;
 
 #[cfg(test)]
 mod structure_tests;
+
+#[cfg(test)]
+mod edit_tests;
 
 #[cfg(test)]
 mod export_tests;

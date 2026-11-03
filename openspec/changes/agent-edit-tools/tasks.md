@@ -6,7 +6,7 @@
 
 ## 2. Shared pixel helper
 
-- [ ] 2.1 Add `finish_pixels` (symmetry, `only_over`, unchanged filter) and use it in `set_pixels`, `draw_shape` and `apply_grid`; verify each scenario of only over a color and symmetry, and that old calls give the same result
+- [x] 2.1 Add `finish_pixels` (symmetry, `only_over`, unchanged filter) and use it in `set_pixels`, `draw_shape` and `apply_grid`; verify each scenario of only over a color and symmetry, and that old calls give the same result
 
 ## 3. Region tools
 

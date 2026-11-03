@@ -4,10 +4,11 @@
 
 use super::args;
 use super::create::base_revision;
+use super::edit::{finish_pixels, only_over_arg, only_over_schema, symmetry_arg, symmetry_schema};
 use super::read::check_frame;
 use super::shapes;
 use super::write::{Plan, write};
-use crate::document::{GridError, GridOptions, Operation, PixelChange, Project, Sprite, SpriteRef, TRANSPARENT};
+use crate::document::{GridError, GridOptions, Operation, Project, Sprite, SpriteRef, TRANSPARENT};
 use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
@@ -26,6 +27,7 @@ pub fn tools() -> Vec<Tool> {
                 "skip_transparent": { "type": "boolean", "description": "A `.` in the grid keeps the pixel that is there, instead of erasing it." },
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
+                "only_over": only_over_schema(), "symmetry": symmetry_schema().0, "axis": symmetry_schema().1,
             }}),
             need: Need::Edit,
             run: apply_grid,
@@ -44,6 +46,7 @@ pub fn tools() -> Vec<Tool> {
                 }}},
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
+                "only_over": only_over_schema(), "symmetry": symmetry_schema().0, "axis": symmetry_schema().1,
             }}),
             need: Need::Edit,
             run: set_pixels,
@@ -64,6 +67,7 @@ pub fn tools() -> Vec<Tool> {
                 "filled": { "type": "boolean", "description": "For rectangle and ellipse. Default false (outline)." },
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
+                "only_over": only_over_schema(), "symmetry": symmetry_schema().0, "axis": symmetry_schema().1,
             }}),
             need: Need::Edit,
             run: draw_shape,
@@ -97,7 +101,7 @@ fn unknown_key(key: &str, valid: &[String]) -> ToolError {
 }
 
 /// One palette key from a text argument.
-fn key_of(text: &str, valid: &[String]) -> Result<char, ToolError> {
+pub(super) fn key_of(text: &str, valid: &[String]) -> Result<char, ToolError> {
     let mut chars = text.chars();
     match (chars.next(), chars.next()) {
         (Some(key), None) if valid.iter().any(|k| *k == text) => Ok(key),
@@ -175,6 +179,29 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
         let ops = project
             .grid_operations(&target, &text, &GridOptions { region, skip_transparent })
             .map_err(|errors| grid_failure(errors, &valid_keys(project, sprite)))?;
+        let (symmetry, only_over) = (
+            symmetry_arg(input, sprite.width, sprite.height)?,
+            only_over_arg(input, &valid_keys(project, sprite))?,
+        );
+        let ops = if symmetry.is_none() && only_over.is_none() {
+            ops
+        } else {
+            let mut changed = Vec::new();
+            for op in ops {
+                match op {
+                    Operation::SetPixels { sprite: s, layer, frame, pixels } => {
+                        let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
+                        let wanted = pixels.iter().map(|p| (i64::from(p.x), i64::from(p.y), p.key)).collect();
+                        let pixels = finish_pixels(current, sprite.width, sprite.height, wanted, symmetry, only_over)?;
+                        if !pixels.is_empty() {
+                            changed.push(Operation::SetPixels { sprite: s, layer, frame, pixels });
+                        }
+                    }
+                    other => changed.push(other),
+                }
+            }
+            changed
+        };
         let (mut pixels, mut colors, mut busy) = (0, 0, None);
         for op in &ops {
             match op {
@@ -216,7 +243,8 @@ fn set_pixels(ctx: &Ctx, input: &Value) -> ToolResult {
         let sprite = project.find_sprite(&target).expect("just found");
         check_frame(sprite, frame)?;
         let valid = valid_keys(project, sprite);
-        let mut pixels = Vec::with_capacity(list.len());
+        let (symmetry, only_over) = (symmetry_arg(input, sprite.width, sprite.height)?, only_over_arg(input, &valid)?);
+        let mut wanted = Vec::with_capacity(list.len());
         for (index, item) in list.iter().enumerate() {
             let (x, y) = (coordinate(item, "x", index)?, coordinate(item, "y", index)?);
             let text = item["key"].as_str().unwrap_or("");
@@ -224,8 +252,10 @@ fn set_pixels(ctx: &Ctx, input: &Value) -> ToolResult {
             if x >= sprite.width || y >= sprite.height {
                 return Err(out_of_range(index, x as i64, y as i64, sprite));
             }
-            pixels.push(PixelChange { x, y, key });
+            wanted.push((i64::from(x), i64::from(y), key));
         }
+        let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
+        let pixels = finish_pixels(current, sprite.width, sprite.height, wanted, symmetry, only_over)?;
         let count = pixels.len();
         let ops = if pixels.is_empty() {
             Vec::new()
@@ -262,7 +292,9 @@ fn draw_shape(ctx: &Ctx, input: &Value) -> ToolResult {
         let target = args::sprite(project, input)?;
         let sprite = project.find_sprite(&target).expect("just found");
         check_frame(sprite, frame)?;
-        let key = key_of(&key_text, &valid_keys(project, sprite))?;
+        let valid = valid_keys(project, sprite);
+        let key = key_of(&key_text, &valid)?;
+        let (symmetry, only_over) = (symmetry_arg(input, sprite.width, sprite.height)?, only_over_arg(input, &valid)?);
         let (width, height) = (sprite.width as i64, sprite.height as i64);
         let area = match shape.as_str() {
             "line" => {
@@ -293,12 +325,8 @@ fn draw_shape(ctx: &Ctx, input: &Value) -> ToolResult {
             }
         };
         let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
-        // Only the pixels that really change.
-        let pixels: Vec<PixelChange> = area
-            .iter()
-            .filter(|&&(x, y)| current[(y * width + x) as usize] != key as u8)
-            .map(|&(x, y)| PixelChange { x: x as u32, y: y as u32, key })
-            .collect();
+        let wanted = area.iter().map(|&(x, y)| (x, y, key)).collect();
+        let pixels = finish_pixels(current, sprite.width, sprite.height, wanted, symmetry, only_over)?;
         let count = pixels.len();
         let ops = if pixels.is_empty() {
             Vec::new()
