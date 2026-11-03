@@ -172,3 +172,97 @@ fn remove_unused_colors_errors() {
     core.set_permissions(crate::mcp::Permissions { edit: false, ..core.permissions() }).unwrap();
     assert_eq!(call(&core, &session, "remove_unused_colors", json!({ "palette": "main" })).unwrap_err()["code"], "permission_denied");
 }
+
+fn tone_hexes(answer: &serde_json::Value) -> Vec<String> {
+    answer["tones"].as_array().unwrap().iter().map(|t| t["hex"].as_str().unwrap().to_string()).collect()
+}
+
+// Checks the "Three tones" scenario through the tool: dark to light, the
+// base in the middle, new keys A, B, C (R and G are taken), names with the
+// prefix, one history entry, and undo removes the three colors.
+#[test]
+fn generate_ramp_adds_three_tones() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let before = entries(&host);
+
+    let done = call(&core, &session, "generate_ramp", json!({ "palette": "main", "base": "#ff0000", "steps": 3, "name": "fire" })).unwrap();
+
+    assert_eq!(tone_hexes(&done), ["#590000", "#FF0000", "#FFA6A6"]);
+    // The base is already `R`: it is reused and not added twice.
+    assert_eq!(done["keys"], json!(["A", "R", "B"]));
+    assert_eq!(done["tones"][0]["name"], "fire-dark1");
+    assert_eq!(done["tones"][2]["name"], "fire-light1");
+    assert_eq!(entries(&host), before + 1);
+    browser::undo(&host.project).unwrap();
+    let palette = call(&core, &session, "get_palette", json!({ "palette": "main" })).unwrap();
+    assert_eq!(palette["colors"].as_array().unwrap().len(), 2);
+}
+
+// Checks a second call with the same arguments reuses every key and changes
+// nothing, and a call with other steps never repeats a color name.
+#[test]
+fn generate_ramp_reuses_equal_colors_and_keeps_names_unique() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "generate_ramp", json!({ "palette": "main", "base": "#3366CC", "steps": 3 })).unwrap();
+    let before = entries(&host);
+
+    let again = call(&core, &session, "generate_ramp", json!({ "palette": "main", "base": "#3366CC", "steps": 3 })).unwrap();
+    assert_eq!(again["changed"], false);
+    assert_eq!(entries(&host), before);
+
+    let more = call(&core, &session, "generate_ramp", json!({ "palette": "main", "base": "#3366CC", "steps": 5 })).unwrap();
+    assert_eq!(more["changed"], true);
+    let palette = call(&core, &session, "get_palette", json!({ "palette": "main" })).unwrap();
+    let names: Vec<&str> = palette["colors"].as_array().unwrap().iter().map(|c| c["name"].as_str().unwrap()).collect();
+    let mut unique = names.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), names.len(), "{names:?}");
+}
+
+// Checks the errors: steps 2 and 10, a bad hue shift and a bad color are
+// `bad_argument`; an unknown palette is `not_found`; a palette with 92 colors
+// cannot take 3 new tones (`palette_full`). Nothing changes.
+#[test]
+fn generate_ramp_errors_change_nothing() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let run = |args| call(&core, &session, "generate_ramp", args).unwrap_err();
+    let before = revision(&host);
+
+    assert_eq!(run(json!({ "palette": "main", "base": "#FF0000", "steps": 2 }))["code"], "bad_argument");
+    assert_eq!(run(json!({ "palette": "main", "base": "#FF0000", "steps": 10 }))["code"], "bad_argument");
+    assert_eq!(run(json!({ "palette": "main", "base": "#FF0000", "hue_shift": 90 }))["code"], "bad_argument");
+    assert_eq!(run(json!({ "palette": "main", "base": "red" }))["code"], "bad_argument");
+    assert_eq!(run(json!({ "palette": "ghost", "base": "#FF0000" }))["code"], "not_found");
+    assert_eq!(revision(&host), before);
+
+    for i in 0..90 {
+        call(&core, &session, "set_palette_color", json!({ "hex": format!("#{:06X}", i + 100) })).unwrap();
+    }
+    let before = revision(&host);
+    assert_eq!(run(json!({ "palette": "main", "base": "#123456", "steps": 5 }))["code"], "palette_full");
+    assert_eq!(revision(&host), before);
+}
+
+// Checks `create_palette` with `ramp`: the colors come first, the tones follow
+// with free keys, and the answer lists the ramp keys.
+#[test]
+fn create_palette_can_add_a_ramp() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+
+    let made = call(&core, &session, "create_palette", json!({
+        "name": "fire", "colors": [{ "key": "A", "hex": "#000000" }],
+        "ramp": { "base": "#FF0000", "steps": 3 },
+    })).unwrap();
+
+    let keys: Vec<&str> = made["colors"].as_array().unwrap().iter().map(|c| c["key"].as_str().unwrap()).collect();
+    assert_eq!(keys, ["A", "B", "C", "D"]);
+    assert_eq!(made["ramp_keys"], json!(["B", "C", "D"]));
+    assert_eq!(made["colors"][2]["hex"], "#FF0000");
+    let error = call(&core, &session, "create_palette", json!({ "name": "x", "ramp": { "base": "#FF0000", "steps": 1 } })).unwrap_err();
+    assert_eq!(error["code"], "bad_argument");
+}
