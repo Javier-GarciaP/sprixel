@@ -47,6 +47,18 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Exports are the same every time, are written only inside the project folder
   and leave no partial files when they fail. The format is in
   `docs/export-format.md`.
+- Palette panel in the editor with a "Show keys" switch (the one-letter key on
+  each color) and an Edit button.
+- Palette editor: change the name, key and color (hex or RGB sliders) of a
+  color, add and remove colors, with Cancel and Done. Done applies everything
+  as one undo step, and a key change rewrites every sprite that uses the palette
+  and warns that text grids with the old key stop being valid.
+- Removing a color that sprites use asks for a replacement (a color or
+  transparent) for its pixels.
+- Key changes and removals wait while an AI agent is writing to the sprite.
+- New palette: empty, from the presets "Pocket RPG 16" and "Farm 32", or
+  imported from a `.gpl` (GIMP) or `.hex` file, from the "+" of the palettes
+  list. A palette of the list opens in the palette editor.
 
 ### Fixed
 

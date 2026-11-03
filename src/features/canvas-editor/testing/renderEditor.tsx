@@ -8,6 +8,7 @@ import {
   defaultPreferences,
 } from "@/shared/lib/preferences";
 import type { Clock, FramesApi } from "@/features/frames-animations";
+import type { PaletteApi } from "@/features/palette-editor";
 import { EditorScreen } from "../components/EditorScreen";
 import type { CommandHandlers } from "../hooks/useEditorCommands";
 import type { EditorApi, SpriteRef } from "../api/types";
@@ -113,6 +114,7 @@ function Host({
       sprite={sprite}
       api={api}
       framesApi={api as unknown as FramesApi}
+      paletteApi={api as unknown as PaletteApi}
       clock={testClock}
       onCommands={register}
       onGoToProject={onGoToProject}

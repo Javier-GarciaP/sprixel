@@ -6,6 +6,7 @@ pub mod project;
 pub mod editor;
 pub mod frames;
 pub mod export;
+pub mod palettes;
 
 use export::{FormatArg, OptionsArg, ScopeArg, SummaryInfo, WrittenInfo};
 use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { EditorScreen } from "@/features/canvas-editor";
 import { ExportScreen } from "@/features/export";
+import {
+  NewPaletteDialog,
+  PaletteEditorDialog,
+  corePaletteApi,
+  type Preset,
+} from "@/features/palette-editor";
 import { ProjectBrowser, type SpriteTarget } from "@/features/project-browser";
 import { SettingsScreen } from "@/features/settings";
 import { Toast } from "@/shared/components";
@@ -63,6 +69,10 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     selection: SpriteTarget[];
   }>({ folder: [], selection: [] });
   const [notice, setNotice] = useState<string | null>(null);
+  // The palette editor opened from the palette list of the Project tab, and
+  // the dialog to make a palette (with the presets it offers).
+  const [editingPalette, setEditingPalette] = useState<string | null>(null);
+  const [newPalette, setNewPalette] = useState<Preset[] | null>(null);
   // What the editor commands do, given by the editor while it is open.
   const [editorHandlers, setEditorHandlers] = useState<
     Record<string, () => void>
@@ -167,9 +177,12 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
           setActiveSprite(sprite);
           setTab("editor");
         }}
-        // The palette editor belongs to another spec.
-        onOpenPalette={() => setNotice(t("body.soon"))}
-        onNewPalette={() => setNotice(t("body.soon"))}
+        onOpenPalette={setEditingPalette}
+        onNewPalette={() =>
+          corePaletteApi
+            .listPresets()
+            .then(setNewPalette, () => setNewPalette([]))
+        }
       />
     );
   } else if (tab === "project") {
@@ -233,6 +246,21 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
       onSettings={() => setSettingsOpen(true)}
     >
       {body}
+      {editingPalette !== null && (
+        <PaletteEditorDialog
+          api={corePaletteApi}
+          name={editingPalette}
+          onClose={() => setEditingPalette(null)}
+          onApplied={() => {}}
+        />
+      )}
+      {newPalette !== null && (
+        <NewPaletteDialog
+          api={corePaletteApi}
+          presets={newPalette}
+          onClose={() => setNewPalette(null)}
+        />
+      )}
       {newProjectFrom !== null && (
         <NewProjectDialog
           defaultLocation={newProjectFrom}

@@ -1,4 +1,11 @@
 import type { FramesApi, FramesInfo, Tag } from "@/features/frames-animations";
+import type {
+  ColorEdit,
+  PaletteApi,
+  PaletteInfo,
+  Preset,
+  Replacement,
+} from "@/features/palette-editor";
 import type { ChangedEvent, FrameData } from "@/shared/lib/core";
 import type {
   AgentActivity,
@@ -26,7 +33,7 @@ type Entry = {
   added: PaletteColor[];
 };
 
-export class FakeEditorApi implements EditorApi, FramesApi {
+export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
   frames: string[];
   palette: PaletteColor[];
   calls: { frame: number; changes: PixelChange[] }[] = [];
@@ -79,6 +86,7 @@ export class FakeEditorApi implements EditorApi, FramesApi {
       width: this.width,
       height: this.height,
       frameCount: this.frames.length,
+      paletteName: "main",
       palette: this.palette.map((c) => ({ ...c })),
       ...this.history(),
     };
@@ -181,6 +189,45 @@ export class FakeEditorApi implements EditorApi, FramesApi {
   emit(activity: AgentActivity | null) {
     this.activity = activity;
     this.listeners.forEach((listener) => listener(activity));
+  }
+
+  // The palette editor calls (see `PaletteApi`): the edits are only recorded.
+  paletteEdits: {
+    name: string;
+    colors: ColorEdit[];
+    replacements: Replacement[];
+  }[] = [];
+
+  async loadPalette(name: string): Promise<PaletteInfo> {
+    return {
+      name,
+      colors: this.palette.map((c) => ({ ...c, name: c.key, used: false })),
+    };
+  }
+
+  async applyEdit(
+    name: string,
+    colors: ColorEdit[],
+    replacements: Replacement[],
+  ): Promise<void> {
+    this.paletteEdits.push({ name, colors, replacements });
+  }
+
+  // The editor does not make palettes; these only complete the interface.
+  async listPresets(): Promise<Preset[]> {
+    return [];
+  }
+
+  async createPalette(name: string): Promise<string> {
+    return name;
+  }
+
+  async pickPaletteFile(): Promise<string | null> {
+    return null;
+  }
+
+  async importPalette(name: string): Promise<string> {
+    return name;
   }
 
   // The frames and animations calls (see `FramesApi`).

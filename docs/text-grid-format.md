@@ -45,6 +45,11 @@ pixels, then four red ones.
 - Every key must exist in the palette, **or be defined by the grid's own
   `legend`** (see below). The palette defines the key, the name and the color.
   A palette can have up to 93 colors.
+- New colors get the next free key in this order: `A`-`Z`, `a`-`z`, `0`-`9`,
+  then the other printable characters. Color names are unique in a palette.
+- If a person changes a key in the palette editor, the pixels of the sprites
+  change with it, but a grid written earlier with the old key becomes invalid
+  (`unknown_key`). Read the palette again before writing a grid.
 
 ### Rows and size
 

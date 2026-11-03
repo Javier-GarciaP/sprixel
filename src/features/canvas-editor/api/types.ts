@@ -14,6 +14,8 @@ export type SpriteInfo = HistoryState & {
   width: number;
   height: number;
   frameCount: number;
+  // The name of the palette of the sprite, for the palette editor.
+  paletteName: string;
   palette: PaletteColor[];
 };
 
