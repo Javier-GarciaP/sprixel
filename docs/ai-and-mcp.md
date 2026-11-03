@@ -139,6 +139,10 @@ description tells the AI the rules, so it does not need this page.
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
+| `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
+| `set_sprite_palette` | Makes a sprite use another palette; fails with `keys_missing` if the sprite uses a key the palette lacks |
+| `remove_unused_colors` | Removes the colors of a palette that no sprite uses, and returns their keys |
+| `generate_ramp` | Adds 3 to 9 darker and lighter tones of one color to a palette, and returns their keys |
 | `undo_last_ai_action` | Takes back the last action of this agent, if nothing happened after it |
 
 **Delete and export**
@@ -174,6 +178,8 @@ The most common codes:
 | `unknown_topic` | `get_guide` got a topic that is not `design`, `animation` or `palette` |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
+| `palette_mismatch`, `palette_not_found` | The `palette:` line of a grid names a palette that is not the one of the sprite, or that does not exist (the message says how to fix it) |
+| `keys_missing` | `set_sprite_palette` to a palette that lacks a key the sprite uses |
 | `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
 | `out_of_range`, `unknown_key` | A pixel outside the sprite, or a key that is not in the palette (`valid_keys` lists the ones that are) |
 | `invalid_path`, `outside_project` | A path that is not allowed |

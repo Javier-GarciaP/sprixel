@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Palettes for the AI: `create_palette`, `set_sprite_palette`, `remove_unused_colors`
+  and `generate_ramp` (color ramps with an optional hue shift), and
+  `own_palette` in `create_sprite`. A sprite can now have a palette of its own.
+- `apply_grid` never ignores a `palette:` line (`palette_mismatch`,
+  `palette_not_found`). A legend color that conflicts with a palette key moves
+  to a free key and is reported in `remapped` and `warnings`.
 - Previews for the AI: `render_preview` and the image of every write now sit on a
   gray checkerboard by default (so white pixels are visible); the `background`
   option can be `checker`, `light`, `dark` or `transparent`. New tools

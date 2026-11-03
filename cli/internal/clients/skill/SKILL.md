@@ -24,8 +24,8 @@ Follow these steps in this order:
 
 1. `get_project`: read the project. If it says no project is open, call `list_projects` and then `open_project`.
 2. `get_guide` with the topic `design` (and `animation` for a sprite that moves). Follow it.
-3. `get_palette`: read the colors. Draw with the keys of the palette only; a `legend` line in `apply_grid` adds a new color.
-4. `create_sprite` for a new sprite, or `get_sprite` to read an existing one.
+3. `get_palette`: read the colors. Draw with the keys of the palette only; a `legend` line in `apply_grid` adds a new color. If a legend line gives a used key another color, the pixels move to a free key and the answer says so.
+4. `create_sprite` for a new sprite (`own_palette: true` gives it a palette of its own), or `get_sprite` to read an existing one.
 5. Draw: `apply_grid` for a whole frame or a region, `set_pixels` and `draw_shape` for details and fixes.
 6. LOOK at the image every write returns (or call `render_preview`). If something looks wrong, fix it and look again. Do not say you are done before you have seen the result and it looks right.
 

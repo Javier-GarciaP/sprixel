@@ -7,7 +7,7 @@ use super::create::base_revision;
 use super::read::check_frame;
 use super::shapes;
 use super::write::{Plan, write};
-use crate::document::{GridError, GridOptions, Operation, PixelChange, Project, Sprite, SpriteRef, TRANSPARENT};
+use crate::document::{Grid, GridError, GridOptions, Operation, PixelChange, Project, Sprite, SpriteRef, TRANSPARENT, same_name};
 use crate::mcp::{Ctx, Need, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
@@ -158,6 +158,35 @@ fn with_frame_line(text: &str, frame: u32) -> String {
     out
 }
 
+/// A `palette:` line is never ignored: it must name the palette of the sprite.
+fn check_palette_line(project: &Project, target: &SpriteRef, sprite: &Sprite, text: &str) -> Result<(), ToolError> {
+    let Some(named) = Grid::parse(text).0.palette else { return Ok(()) };
+    if same_name(&named, &sprite.palette) {
+        return Ok(());
+    }
+    if project.palette(&named).is_none() {
+        let names: Vec<String> = project.palettes.iter().map(|p| p.name.clone()).collect();
+        return Err(ToolError::new(
+            "palette_not_found",
+            format!(
+                "the grid says `palette: {named}` but there is no such palette; the palettes are: {}. Create it with create_palette, or remove the `palette:` line",
+                names.join(", ")
+            ),
+        )
+        .with("palette", named)
+        .with("palettes", names));
+    }
+    Err(ToolError::new(
+        "palette_mismatch",
+        format!(
+            "the grid says `palette: {named}` but sprite {:?} uses the palette {:?}. Remove the `palette:` line to use {:?}, or call set_sprite_palette to make the sprite use {named:?}, or create the sprite with `own_palette: true`",
+            target.name, sprite.palette, sprite.palette
+        ),
+    )
+    .with("sprite_palette", sprite.palette.clone())
+    .with("grid_palette", named))
+}
+
 fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
     let text = args::required_str(input, "grid")?.to_string();
     let frame = args::optional_u32(input, "frame")?;
@@ -171,13 +200,15 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
             check_frame(sprite, frame)?;
         }
         let text = frame.map_or(text.clone(), |frame| with_frame_line(&text, frame));
+        check_palette_line(project, &target, sprite, &text)?;
         let region = match (x, y) {
             (None, None) => None,
             (x, y) => Some((x.unwrap_or(0), y.unwrap_or(0))),
         };
-        let ops = project
-            .grid_operations(&target, &text, &GridOptions { region, skip_transparent })
+        let plan = project
+            .grid_plan(&target, &text, &GridOptions { region, skip_transparent })
             .map_err(|errors| grid_failure(errors, &valid_keys(project, sprite)))?;
+        let (ops, remap) = (plan.ops, plan.remap);
         let (mut pixels, mut colors, mut busy) = (0, 0, None);
         for op in &ops {
             match op {
@@ -189,7 +220,15 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
                 _ => {}
             }
         }
-        let plan = Plan::new(ops, json!({ "pixels_changed": pixels, "colors_added": colors })).preview();
+        let mut extra = json!({ "pixels_changed": pixels, "colors_added": colors });
+        if !remap.keys.is_empty() {
+            // {"P": "Z"}: the legend key P conflicted, the pixels use Z.
+            let moved: serde_json::Map<String, Value> =
+                remap.keys.iter().map(|(from, to)| (from.to_string(), to.to_string().into())).collect();
+            extra["remapped"] = moved.into();
+            extra["warnings"] = remap.warnings.into();
+        }
+        let plan = Plan::new(ops, extra).preview();
         Ok(match busy {
             Some(frame) => plan.busy(&target, frame),
             None => plan,
