@@ -421,6 +421,8 @@
   "agents.tool.apply_grid": "Applied a text grid to {sprite}",
   "agents.tool.set_pixels": "Set pixels on {sprite}",
   "agents.tool.draw_shape": "Drew a shape on {sprite}",
+  "agents.tool.auto_outline": "Outlined {sprite}",
+  "agents.tool.auto_shade": "Shaded {sprite}",
   "agents.tool.delete_frame": "Deleted a frame of {sprite}",
   "agents.tool.create_tag": "Created an animation on {sprite}",
   "agents.tool.set_palette_color": "Changed a palette color",

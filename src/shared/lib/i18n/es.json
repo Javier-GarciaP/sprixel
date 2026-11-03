@@ -421,6 +421,8 @@
   "agents.tool.apply_grid": "Aplicó una matriz de texto a {sprite}",
   "agents.tool.set_pixels": "Puso píxeles en {sprite}",
   "agents.tool.draw_shape": "Dibujó una forma en {sprite}",
+  "agents.tool.auto_outline": "Contorneó {sprite}",
+  "agents.tool.auto_shade": "Sombreó {sprite}",
   "agents.tool.delete_frame": "Borró un frame de {sprite}",
   "agents.tool.create_tag": "Creó una animación en {sprite}",
   "agents.tool.set_palette_color": "Cambió un color de la paleta",

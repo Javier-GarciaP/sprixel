@@ -86,6 +86,17 @@ describe("Activity list", () => {
     await waitFor(() => expect(api.calls).toContain("undo"));
   });
 
+  // Checks that the automatic outline and shading have their own text.
+  it("names the outline and shade actions", async () => {
+    const api = new FakeAgentsApi({
+      rows: [row(2, { tool: "auto_shade" }), row(1, { tool: "auto_outline" })],
+    });
+    renderWithApp(<Screen api={api} />);
+
+    await screen.findByText("Shaded goblin");
+    expect(screen.getByText("Outlined goblin")).toBeTruthy();
+  });
+
   // Checks that Undo moves with the core: when a newer action arrives, the
   // button leaves the old row.
   it("moves Undo to a newer action", async () => {
