@@ -281,6 +281,7 @@
   "export.summary": "{frames} · {files}",
   "export.export": "Exportar",
   "export.exporting": "Exportando...",
+  "export.ready": "Exportación lista",
   "export.preview": "Vista previa",
   "export.previewSize": "hoja de {w} × {h} px · {frames}",
   "export.filesTitle": "Archivos",

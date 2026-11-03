@@ -29,6 +29,14 @@ describe("Export tab: success", () => {
     expect(await exportButton("Export again")).toBeTruthy();
   });
 
+  // Checks screen 26: after a good export the title of the panel says "Export
+  // ready" instead of "Preview".
+  it("changes the title to Export ready", async () => {
+    await exportFolder();
+    await screen.findByRole("heading", { name: "Export ready" });
+    expect(screen.queryByRole("heading", { name: "Preview" })).toBeNull();
+  });
+
   // Checks that "Open folder" asks the core to open the output folder.
   it("opens the folder from the message", async () => {
     const { api } = await exportFolder();

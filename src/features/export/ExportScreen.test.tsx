@@ -22,6 +22,18 @@ async function clickExport() {
 
 const card = (name: RegExp) => screen.findByRole("button", { name });
 
+describe("Export tab: format", () => {
+  // Checks screen 24: the chosen format has a check mark and the other one has
+  // none.
+  it("marks the chosen format with a check", async () => {
+    renderExport(fakeApi(), { folder: ["Personajes"] });
+    const sheet = await screen.findByRole("button", { name: "Sheet + JSON" });
+    expect(sheet.querySelector("svg")).not.toBeNull();
+    const png = screen.getByRole("button", { name: "PNG files" });
+    expect(png.querySelector("svg")).toBeNull();
+  });
+});
+
 describe("Export tab: what to export", () => {
   // Checks the "Export a folder" scenario: with the folder "Personajes" (4
   // sprites, 14 frames) the card shows its name and count and the tab says

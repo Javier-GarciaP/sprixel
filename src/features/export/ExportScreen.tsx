@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/shared/components";
+import { Button, Icon } from "@/shared/components";
 import {
   asCoreFailure,
   type ProjectTree,
@@ -222,12 +222,15 @@ function Export({
                   type="button"
                   aria-pressed={format === id}
                   onClick={() => setFormat(id)}
-                  className={`rounded-md border px-3 py-3 text-left text-sm font-semibold ${format === id ? "border-amber bg-surface" : "border-border bg-surface"}`}
+                  className={`flex items-center justify-between gap-2 rounded-md border px-3 py-3 text-left text-sm font-semibold ${format === id ? "border-amber bg-surface" : "border-border bg-surface"}`}
                 >
                   {t(
                     id === "sheet"
                       ? "export.format.sheet"
                       : "export.format.png",
+                  )}
+                  {format === id && (
+                    <Icon name="check" className="h-4 w-4 text-amber" />
                   )}
                 </button>
               ))}
@@ -274,6 +277,7 @@ function Export({
           disabled={busy || !summary || summary.sprites === 0}
           onClick={run}
         >
+          {!busy && <Icon name="download" />}
           {busy
             ? t("export.exporting")
             : result?.kind === "ok"
@@ -286,7 +290,7 @@ function Export({
       <section className="flex flex-col gap-4 overflow-auto bg-surface-2 p-6">
         <div className="flex items-baseline justify-between">
           <h2 className="font-title text-lg font-semibold">
-            {t("export.preview")}
+            {result?.kind === "ok" ? t("export.ready") : t("export.preview")}
           </h2>
           {summary && summary.sprites > 0 && format === "sheet" && (
             <span className="font-mono text-xs text-text-muted">
@@ -427,14 +431,22 @@ function Banner({
       role={tone === "error" ? "alert" : "status"}
       className={`flex items-center justify-between gap-4 rounded-md border px-4 py-3 ${tone === "error" ? "border-error bg-error/10" : "border-success bg-success/10"}`}
     >
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="font-mono text-xs text-text-muted">{detail}</p>
+      <div className="flex items-center gap-3">
+        {tone === "success" && (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success text-bg">
+            <Icon name="check" className="h-5 w-5" />
+          </span>
+        )}
+        <div>
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="font-mono text-xs text-text-muted">{detail}</p>
+        </div>
       </div>
       <Button
         variant={tone === "error" ? "secondary" : "primary"}
         onClick={onAction}
       >
+        {tone === "success" && <Icon name="folder" />}
         {action}
       </Button>
     </div>
