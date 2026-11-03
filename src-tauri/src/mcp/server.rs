@@ -17,6 +17,9 @@ pub const RUNTIME_FILE: &str = "runtime.json";
 struct Runtime {
     port: u16,
     pid: u32,
+    /// The version of the app, so `sprixel status` can show it without
+    /// opening an MCP session (which would make the app ask the user).
+    version: &'static str,
 }
 
 pub fn runtime_path(data_dir: &Path) -> PathBuf {
@@ -39,7 +42,7 @@ impl Server {
         let addr = listener.local_addr()?;
         let port = addr.port();
         let data_dir = core.data_dir.clone();
-        let runtime = serde_json::to_vec_pretty(&Runtime { port, pid: std::process::id() })?;
+        let runtime = serde_json::to_vec_pretty(&Runtime { port, pid: std::process::id(), version: env!("CARGO_PKG_VERSION") })?;
         super::token::write_private(&runtime_path(&data_dir), &runtime)?;
         let stop = Arc::new(AtomicBool::new(false));
         let thread = {

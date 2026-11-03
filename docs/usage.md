@@ -477,12 +477,17 @@ them is built.
 | `sprixel mcp add claude` | Connect Claude Code |
 | `sprixel mcp add opencode` | Connect OpenCode |
 | `sprixel mcp remove <client>` | Disconnect an AI tool |
+| `sprixel mcp list` | Show where Sprixel is connected |
 | `sprixel tools` | List the tools an AI can use |
 | `sprixel tool <name> key=value ...` | Run one tool from the terminal |
 | `sprixel doctor` | Check the install and the connections |
 | `sprixel update` | Update to the latest version |
 | `sprixel uninstall` | Remove Sprixel |
 | `sprixel version` | Show the version |
+
+Every command accepts `--json` (machine-readable output) and `--help`. Exit
+codes: `0` ok, `1` failure, `2` wrong usage, `3` the app is not running, `4` a
+tool answered with an error. More in [AI and MCP](ai-and-mcp.md#the-sprixel-command).
 
 ## Where your files are
 
