@@ -30,3 +30,18 @@ The server instructions and the Claude Code skill SHALL carry the same workflow 
 #### Scenario: Skill and server agree
 - **WHEN** the tests compare them
 - **THEN** both name the same steps in the same order
+
+### Requirement: The agent sees its result
+Every write tool that changes pixels (`apply_grid`, `set_pixels`, `draw_shape`) SHALL return a preview image of the edited frame with its result, unless the call sets `preview` to false, and the guides and the skill MUST tell the agent to look at the image and fix what looks wrong before it says it is done.
+
+#### Scenario: Preview after a write
+- **WHEN** an agent calls `set_pixels`
+- **THEN** the result carries a PNG of the edited frame, scaled so its side is at most 512 pixels
+
+#### Scenario: Preview off
+- **WHEN** the call sets `preview` to false
+- **THEN** the result has no image
+
+#### Scenario: Through the command line
+- **WHEN** the same call is made with `sprixel tool`
+- **THEN** the image is saved to a file and its path is printed
