@@ -12,7 +12,7 @@
 ## 3. Projects
 
 - [x] 3.1 Add the permission "Open projects" (policy, panel, Spanish and English); verify off by default and change without reconnecting
-- [ ] 3.2 Add `list_projects` and `open_project` with their `Host` method, the shell event and the tests; verify allowed, denied and not-a-project
+- [x] 3.2 Add `list_projects` and `open_project` with their `Host` method, the shell event and the tests; verify allowed, denied and not-a-project
 
 ## 4. Skill
 

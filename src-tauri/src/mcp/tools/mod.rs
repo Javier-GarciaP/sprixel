@@ -13,6 +13,7 @@ mod create;
 mod docs;
 mod draw;
 mod export;
+mod projects;
 mod read;
 mod shapes;
 mod structure;
@@ -22,12 +23,14 @@ pub(super) mod write;
 use super::Tool;
 
 pub use docs::INSTRUCTIONS;
+pub use projects::PROJECT_OPENED_EVENT;
 pub use read::OPEN_SPRITE_EVENT;
 
 /// Every tool of the server, in the order a client sees them.
 pub fn all() -> Vec<Tool> {
     let mut tools = Vec::new();
     tools.extend(read::tools());
+    tools.extend(projects::tools());
     tools.extend(create::tools());
     tools.extend(draw::tools());
     tools.extend(structure::tools());
@@ -38,6 +41,9 @@ pub fn all() -> Vec<Tool> {
 
 #[cfg(test)]
 mod read_tests;
+
+#[cfg(test)]
+mod projects_tests;
 
 #[cfg(test)]
 mod create_tests;

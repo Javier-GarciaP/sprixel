@@ -110,6 +110,13 @@ description tells the AI the rules, so it does not need this page.
 | `get_palette` | The colors with their one-letter keys |
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
+| `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
+
+**Open projects** (permission "Open projects")
+
+| Tool | What it does |
+| --- | --- |
+| `open_project` | Opens the project in a folder, as if you opened it. Off by default, because it can open any folder |
 
 **Create** (permission "Create sprites")
 
@@ -152,6 +159,7 @@ The most common codes:
 | --- | --- |
 | `awaiting_approval`, `client_rejected`, `not_approved` | The person has not allowed this client |
 | `permission_denied` | A permission is off (the message names it) |
+| `not_a_project` | `open_project` got a folder that does not exist or has no `sprixel.json` |
 | `stopped_by_user` | The person pressed Stop; do not continue |
 | `stale_revision` | The project changed since `base_revision`; read it again |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
@@ -207,6 +215,7 @@ every agent, with no reconnecting. They are saved in `~/.sprixel/permissions.jso
 | Edit pixels (the drawing and structure tools, and `undo_last_ai_action`) | On |
 | Delete sprites (`delete_sprite`) | **Off** |
 | Export files (`export`) | On |
+| Open projects (`open_project`) | **Off** |
 | Ask me when a new agent connects | On |
 
 Everything an agent does is saved in the activity list (for the session) with

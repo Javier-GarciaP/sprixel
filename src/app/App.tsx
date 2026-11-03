@@ -98,6 +98,9 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
       setActiveSprite(event.sprite);
       setTab("editor");
       setSettingsOpen(false);
+    } else if (event.type === "project-opened") {
+      // An agent opened a project: show it as if the person had.
+      afterOpen({ ...event.project, damagedFiles: 0 });
     } else if (event.type === "pending") {
       notifyApproval(
         t("agents.notify.title", { agent: event.name }),

@@ -94,6 +94,23 @@ describe("Agents in the app", () => {
     expect(within(card).getByText("Connected")).toBeTruthy();
   });
 
+  // Checks that `open_project` from an agent is shown like an open by the
+  // person: the new project is the open one and enters the recent list.
+  it("shows the project an agent opened and adds it to the recent list", async () => {
+    await openProject();
+    const { addRecentProject } = await import("./api/preferences");
+    act(() =>
+      agents().emit({
+        type: "project-opened",
+        project: { name: "Other Kit", path: "/p/other" },
+      }),
+    );
+    await waitFor(() =>
+      expect(addRecentProject).toHaveBeenCalledWith("/p/other", "Other Kit"),
+    );
+    await waitFor(() => expect(document.title).toContain("Other Kit"));
+  });
+
   // Checks that `open_sprite` from an agent shows the sprite in the Editor.
   it("opens the sprite an agent asks for in the Editor", async () => {
     await openProject();

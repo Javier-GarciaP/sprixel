@@ -31,6 +31,7 @@ fn a_client_sees_every_tool_with_a_description_and_a_schema() {
         "get_project", "list_sprites", "get_sprite", "get_palette", "render_preview", "open_sprite",
         "create_folder", "create_sprite", "apply_grid", "set_pixels", "draw_shape", "add_frame",
         "delete_frame", "create_tag", "set_palette_color", "delete_sprite", "export", "undo_last_ai_action",
+        "list_projects", "open_project",
     ] {
         assert!(names.contains(&expected), "missing {expected}: {names:?}");
     }
