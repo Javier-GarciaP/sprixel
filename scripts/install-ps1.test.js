@@ -10,8 +10,8 @@ import { makeRelease } from "./release-fixture.mjs";
 const script = path.resolve("install.ps1");
 const text = fs.readFileSync(script, "utf8");
 
-// PowerShell is not installed on every machine (and the CI has it only on
-// Windows runners). The real runs below are skipped when `pwsh` is missing;
+// PowerShell is not installed on every machine (the CI runners of the three
+// systems have it). The real runs below are skipped when `pwsh` is missing;
 // the static checks always run.
 const pwsh = ["pwsh", "powershell"].find(
   (name) => spawnSync(name, ["-NoProfile", "-Command", "1"]).status === 0,
@@ -67,6 +67,9 @@ describe.skipIf(!pwsh)("install.ps1 (run with PowerShell)", () => {
         LOCALAPPDATA: local,
         SPRIXEL_BASE_URL: pathToFileURL(release).href,
         SPRIXEL_SKIP_PATH: "1",
+        // The script reads the CPU from a Windows variable: say it is x64, so
+        // the same run works on Linux and macOS runners too.
+        SPRIXEL_ARCH: "AMD64",
         ...env,
       },
     });
