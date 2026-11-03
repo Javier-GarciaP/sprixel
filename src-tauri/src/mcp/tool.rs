@@ -60,6 +60,8 @@ pub struct Ctx<'a> {
     pub core: &'a Core,
     /// The name of the client, which is the author of its changes.
     pub client: &'a str,
+    /// The name of the tool being run.
+    pub tool: &'a str,
 }
 
 pub struct Tool {

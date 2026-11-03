@@ -42,6 +42,7 @@ fn a_change_by_the_person_after_the_action_blocks_the_undo() {
     let (host, core, session) = setup();
     open_demo_project(&host);
     draw(&core, &session, 0);
+    crate::mcp::testing::replay_done(&host);
     editor::apply_changes(
         &host.project,
         &host.agents,

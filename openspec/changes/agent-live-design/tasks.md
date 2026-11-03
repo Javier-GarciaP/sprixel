@@ -2,7 +2,7 @@
 
 ## 1. Live view
 
-- [ ] 1.1 Emit the ordered `agent-ops` event from `write.rs` and verify the order for line, shape, grid and `set_pixels`
+- [x] 1.1 Emit the ordered `agent-ops` event from `write.rs` and verify the order for line, shape, grid and `set_pixels`
 - [ ] 1.2 Write the pure timeline (cap 8 s, queue) and verify it with unit tests
 - [ ] 1.3 Replay on the canvas with `useAgentPlayback`, ending equal to the stored frame; verify with UI tests (no fixed sleeps, 15 runs and one loaded run)
 - [ ] 1.4 Draw the cursor overlay with the agent name; verify position with zoom and offset

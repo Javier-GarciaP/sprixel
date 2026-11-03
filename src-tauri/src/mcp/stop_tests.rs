@@ -67,7 +67,9 @@ fn a_frame_is_busy_while_the_agent_writes() {
 
     release.send(()).unwrap();
     agent.join().unwrap().unwrap();
-    assert_eq!(host.agents.writing(), None, "the marker ends with the call");
+    assert!(host.agents.writing().is_some(), "the marker stays until the replay is done");
+    super::testing::replay_done(&host);
+    assert_eq!(host.agents.writing(), None);
     assert!(busy_events(&host).last().unwrap().is_null());
 }
 
@@ -96,6 +98,9 @@ fn a_user_stroke_waits_for_the_agent_and_is_applied_after() {
 
     release.send(()).unwrap();
     agent.join().unwrap().unwrap();
+    // Still busy until the editor says the replay is done.
+    assert_eq!(editor::apply_changes(&host.project, &host.agents, &goblin(), 2, &stroke(3, 0)).unwrap_err().code, "frame_busy");
+    super::testing::replay_done(&host);
     editor::apply_changes(&host.project, &host.agents, &goblin(), 2, &stroke(3, 0)).unwrap();
     editor::apply_changes(&host.project, &host.agents, &goblin(), 1, &stroke(2, 0)).unwrap();
     assert_eq!(rows(&host, &["Characters"], "goblin", 2), "R..G/..../..../....");

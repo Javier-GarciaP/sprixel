@@ -183,3 +183,18 @@ pub fn rows(host: &TestHost, folder: &[&str], name: &str, frame: usize) -> Strin
     })
     .unwrap()
 }
+
+/// The editor says the replay of the last write is done, so the frame is free
+/// (what the command `agent_playback_done` does).
+pub fn replay_done(host: &TestHost) {
+    let id = host
+        .events
+        .lock()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|(event, _)| event == super::tools::write::OPS_EVENT)
+        .and_then(|(_, payload)| payload["id"].as_u64())
+        .expect("a write with pixels");
+    super::playback_done(host, id);
+}

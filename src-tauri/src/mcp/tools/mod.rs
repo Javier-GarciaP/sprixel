@@ -65,3 +65,6 @@ mod docs_tests;
 
 #[cfg(test)]
 mod undo_tests;
+
+#[cfg(test)]
+mod live_tests;
