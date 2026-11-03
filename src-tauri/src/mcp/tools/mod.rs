@@ -18,6 +18,7 @@ mod read;
 mod shapes;
 mod structure;
 mod undo;
+mod views;
 pub(super) mod write;
 
 use super::Tool;
@@ -30,6 +31,7 @@ pub use read::OPEN_SPRITE_EVENT;
 pub fn all() -> Vec<Tool> {
     let mut tools = Vec::new();
     tools.extend(read::tools());
+    tools.extend(views::tools());
     tools.extend(docs::tools());
     tools.extend(projects::tools());
     tools.extend(create::tools());
@@ -75,3 +77,9 @@ mod guide_tests;
 
 #[cfg(test)]
 mod preview_tests;
+
+#[cfg(test)]
+mod background_tests;
+
+#[cfg(test)]
+mod frames_tests;

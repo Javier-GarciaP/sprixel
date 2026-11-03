@@ -7,6 +7,7 @@ package testapp
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -282,6 +283,12 @@ var Tools = []map[string]any{
 	{"name": "render_preview", "description": "Renders a frame as a PNG image.", "inputSchema": map[string]any{
 		"type": "object", "properties": map[string]any{
 			"name": map[string]any{"type": "string"}, "frame": map[string]any{"type": "integer"}}}},
+	{"name": "render_frames", "description": "Renders frames in a grid as a PNG image.", "inputSchema": map[string]any{
+		"type": "object", "properties": map[string]any{
+			"name": map[string]any{"type": "string"}, "from": map[string]any{"type": "integer"}, "to": map[string]any{"type": "integer"}}}},
+	{"name": "render_onion", "description": "Renders frames over each other as a PNG image.", "inputSchema": map[string]any{
+		"type": "object", "properties": map[string]any{
+			"name": map[string]any{"type": "string"}, "frames": map[string]any{"type": "array"}}}},
 	{"name": "slow", "description": "Waits until the app closes (tests only).", "inputSchema": map[string]any{"type": "object"}},
 }
 
@@ -305,6 +312,23 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 			frame = 1 // the real tool starts at frame 1
 		}
 		info, _ := json.Marshal(map[string]any{"name": args["name"], "frame": frame, "revision": 7})
+		return map[string]any{"isError": false, "content": []any{
+			map[string]any{"type": "image", "data": base64.StdEncoding.EncodeToString(png.Bytes()), "mimeType": "image/png"},
+			map[string]any{"type": "text", "text": string(info)},
+		}}
+	case "render_frames", "render_onion":
+		// The color of the pixel comes from the arguments, so two different
+		// requests give two different images (like the real tools).
+		var png bytes.Buffer
+		sum := sha256.Sum256([]byte(fmt.Sprint(name, args)))
+		pixel := image.NewRGBA(image.Rect(0, 0, 1, 1))
+		pixel.Set(0, 0, color.RGBA{R: sum[0], G: sum[1], B: sum[2], A: 255})
+		pngEncode(&png, pixel)
+		kind := "frames"
+		if name == "render_onion" {
+			kind = "onion"
+		}
+		info, _ := json.Marshal(map[string]any{"kind": kind, "name": args["name"], "revision": 7})
 		return map[string]any{"isError": false, "content": []any{
 			map[string]any{"type": "image", "data": base64.StdEncoding.EncodeToString(png.Bytes()), "mimeType": "image/png"},
 			map[string]any{"type": "text", "text": string(info)},
