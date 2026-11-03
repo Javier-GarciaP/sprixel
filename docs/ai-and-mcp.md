@@ -55,6 +55,48 @@ The first time an agent connects, the app asks you to **allow or reject** it.
 You can remove the connection at any time with `sprixel mcp remove <client>`
 or from the **Agents** tab.
 
+## How each client is configured
+
+`sprixel mcp add` follows the official documentation of each tool (read on
+2026-11-03).
+
+**Claude Code** ([MCP docs](https://code.claude.com/docs/en/mcp)). The command
+registers a stdio server with Claude Code's own CLI, so Claude Code writes its
+own files:
+
+```sh
+claude mcp add --scope user sprixel -- sprixel mcp   # add (user scope)
+claude mcp remove sprixel --scope user               # remove
+claude mcp get sprixel                               # is it registered?
+```
+
+The `--` separates the options of Claude Code from the server command. The
+user scope is stored in `~/.claude.json` and applies to all projects. Server
+names may only use letters, numbers, hyphens and underscores. The docs do not
+state the exit codes of `claude mcp`, so Sprixel reads the text of
+`claude mcp get` and does not trust an exit code alone.
+
+**OpenCode** ([MCP servers](https://opencode.ai/docs/mcp-servers/),
+[Config](https://opencode.ai/docs/config/)). The command edits the global
+file `~/.config/opencode/opencode.json` (JSON and JSONC are both valid
+OpenCode files). The local server is an entry under `mcp`, and `command` is an
+array:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "sprixel": { "type": "local", "command": ["sprixel", "mcp"], "enabled": true }
+  }
+}
+```
+
+Sprixel reads the file, changes only the `mcp.sprixel` entry, and writes it
+back atomically. A file with comments (JSONC) cannot be rewritten without
+losing them, so Sprixel stops and prints the entry for you to paste. The docs
+do not document an `opencode mcp add` command and do not name a Windows path;
+Sprixel uses `~/.config/opencode` on every system.
+
 ## What the AI can do: tools
 
 The AI sees these tools. Frames are numbered from 1, and `x` and `y` count from
