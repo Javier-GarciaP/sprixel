@@ -19,8 +19,8 @@ type Env struct {
 	Home string
 }
 
-// context is what a command receives.
-type context struct {
+// invocation is what a command receives.
+type invocation struct {
 	env Env
 	p   *printer
 	// dir is the Sprixel data folder (~/.sprixel).
@@ -31,7 +31,7 @@ type command struct {
 	name    string
 	summary string
 	usage   string
-	run     func(c *context, args []string) int
+	run     func(c *invocation, args []string) int
 }
 
 // commands is the list of commands, sorted by name when printed.
@@ -43,7 +43,7 @@ var commands = []command{
 func Run(args []string, env Env) int {
 	args, asJSON, help := splitFlags(args)
 	p := &printer{out: env.Stdout, err: env.Stderr, json: asJSON}
-	c := &context{env: env, p: p, dir: runtime.Dir(env.Home)}
+	c := &invocation{env: env, p: p, dir: runtime.Dir(env.Home)}
 
 	if len(args) == 0 {
 		if help {
@@ -97,14 +97,14 @@ func pad(s string, n int) string {
 }
 
 // noArgs reports a usage error when a command that takes no arguments gets some.
-func noArgs(c *context, usage string, args []string) (int, bool) {
+func noArgs(c *invocation, usage string, args []string) (int, bool) {
 	if len(args) == 0 {
 		return 0, false
 	}
 	return c.p.Fail(ExitUsage, "usage", "unexpected argument: "+args[0], "usage: "+usage), true
 }
 
-func runVersion(c *context, args []string) int {
+func runVersion(c *invocation, args []string) int {
 	if code, bad := noArgs(c, "sprixel version [--json]", args); bad {
 		return code
 	}
