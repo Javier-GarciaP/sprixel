@@ -168,3 +168,34 @@ pub fn sheet_size(w: u32, h: u32, count: u32, columns: u32, scale: u32, labels: 
     let band = if labels { LABEL_BAND * (scale / 2).max(1) } else { 0 };
     (columns * w * scale + (columns - 1) * scale, rows * (h * scale + band) + rows.saturating_sub(1) * scale)
 }
+
+/// Frames (same size, oldest first) drawn over each other. The last one is
+/// normal and opaque. Each earlier one is tinted half way to #FF4040 and
+/// translucent, the oldest the faintest (alpha 90 to 190). The newest frame
+/// wins where two have a pixel.
+pub fn onion(frames: &[Image]) -> Image {
+    let (width, height) = frames.first().map_or((0, 0), |f| (f.width, f.height));
+    let mut out = Image { width, height, rgba: vec![0; (width * height * 4) as usize] };
+    let earlier = frames.len().saturating_sub(1);
+    for (index, frame) in frames.iter().enumerate() {
+        let alpha = if index == earlier {
+            255
+        } else if earlier == 1 {
+            190
+        } else {
+            (90 + index * 100 / (earlier - 1)) as u8
+        };
+        for (at, px) in frame.rgba.chunks_exact(4).enumerate() {
+            if px[3] == 0 {
+                continue;
+            }
+            let color = if index == earlier {
+                [px[0], px[1], px[2], 255]
+            } else {
+                [((px[0] as u16 + 255) / 2) as u8, ((px[1] as u16 + 64) / 2) as u8, ((px[2] as u16 + 64) / 2) as u8, alpha]
+            };
+            out.rgba[at * 4..at * 4 + 4].copy_from_slice(&color);
+        }
+    }
+    out
+}

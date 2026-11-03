@@ -112,3 +112,75 @@ fn bad_arguments() {
     assert_eq!(code(json!({ "name": "nope" })), "not_found");
     assert_eq!(revision(&host), before);
 }
+
+fn goblin_onion(core: &Core, extra: Value) -> Result<Output, crate::mcp::ToolError> {
+    let mut arguments = json!({ "name": "goblin", "folder": "Characters", "scale": 1, "background": "transparent" });
+    for (key, value) in extra.as_object().unwrap() {
+        arguments[key] = value.clone();
+    }
+    run(core, "render_onion", arguments)
+}
+
+// Checks the onion colors. Goblin frame 1 has red at (0,0) and green at (3,3);
+// frame 2 gets red at (1,0). With frames [1, 2]: the last frame is normal and
+// opaque, the earlier one is tinted toward #FF4040 and translucent.
+#[test]
+fn the_last_frame_is_normal_and_earlier_ones_are_tinted() {
+    let (_host, core) = setup();
+    run(&core, "set_pixels", json!({ "name": "goblin", "folder": "Characters", "frame": 2, "preview": false, "pixels": [{ "x": 1, "y": 0, "key": "R" }] })).unwrap();
+
+    let (image, info) = image_of(goblin_onion(&core, json!({ "frames": [1, 2] })).unwrap());
+
+    assert_eq!((image.width(), image.height()), (4, 4));
+    assert_eq!(image.get_pixel(1, 0).0, [255, 0, 0, 255]);
+    assert_eq!(image.get_pixel(0, 0).0, [255, 32, 32, 190]);
+    assert_eq!(image.get_pixel(3, 3).0, [127, 159, 32, 190]);
+    assert_eq!(image.get_pixel(2, 2).0[3], 0);
+    assert_eq!(info["frames"], json!([1, 2]));
+}
+
+// Checks that older frames are fainter (alpha from 90 up to 190) and that the
+// newest frame wins where frames overlap.
+#[test]
+fn older_frames_are_fainter_and_the_newest_wins() {
+    let (_host, core) = setup();
+    dot(&core, 1, 0);
+    dot(&core, 2, 1);
+    dot(&core, 3, 1);
+    let (image, _) = image_of(run(&core, "render_onion", json!({ "name": "walk", "frames": [1, 2, 3], "scale": 1, "background": "transparent" })).unwrap());
+    assert_eq!(image.get_pixel(0, 0).0[3], 90);
+    // Frames 2 and 3 share (1,0): frame 3 is last, so it is the real color.
+    assert_eq!(image.get_pixel(1, 0).0, [255, 0, 0, 255]);
+}
+
+// Checks the default (every frame) and the over-the-background look: with the
+// default checker the image is fully opaque.
+#[test]
+fn default_frames_and_background() {
+    let (_host, core) = setup();
+    let (image, info) = image_of(run(&core, "render_onion", json!({ "name": "walk" })).unwrap());
+    assert_eq!(info["frames"], json!([1, 2, 3, 4]));
+    assert_eq!(info["scale"], 8);
+    assert_eq!((image.width(), image.height()), (32, 32));
+    assert!(image.pixels().all(|p| p.0[3] == 255));
+}
+
+// Checks the errors: empty list, a frame that does not exist, a list of the
+// wrong type, a size over the cap and a bad background; nothing changes.
+#[test]
+fn onion_errors() {
+    let (host, core) = setup();
+    let before = revision(&host);
+    let code = |arguments: Value| run(&core, "render_onion", arguments).unwrap_err();
+    assert_eq!(code(json!({ "name": "walk", "frames": [] })).code, "bad_argument");
+    assert_eq!(code(json!({ "name": "walk", "frames": "1" })).code, "bad_argument");
+    assert_eq!(code(json!({ "name": "walk", "frames": [1, 9] })).code, "bad_frame");
+    assert_eq!(code(json!({ "name": "walk", "frames": [0] })).code, "bad_frame");
+    assert_eq!(code(json!({ "name": "walk", "background": "purple" })).code, "bad_argument");
+    run(&core, "create_sprite", json!({ "name": "wide", "width": 100, "height": 100 })).unwrap();
+    let before = revision(&host);
+    let big = code(json!({ "name": "wide", "scale": 20 }));
+    assert_eq!(big.code, "too_big");
+    assert_eq!(big.details["max_scale"], 10);
+    assert_eq!(revision(&host), before);
+}

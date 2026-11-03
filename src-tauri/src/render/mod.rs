@@ -9,7 +9,7 @@ mod pack;
 mod preview;
 
 pub use frame::{Image, render_frame};
-pub use preview::{Background, checker_cell, flatten, render_sheet, sheet_size};
+pub use preview::{Background, checker_cell, flatten, onion, render_sheet, sheet_size};
 pub use pack::{FRAMES_PER_ROW, Layout, Placement, pack_rows};
 
 #[cfg(test)]
