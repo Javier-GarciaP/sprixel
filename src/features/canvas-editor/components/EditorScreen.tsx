@@ -28,6 +28,7 @@ import {
 } from "../hooks/useEditorCommands";
 import { sameSprite, useAgentActivity } from "../hooks/useAgentActivity";
 import { screenClock, useAgentPlayback } from "../hooks/useAgentPlayback";
+import { useFollowAgent } from "../hooks/useFollowAgent";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useSpriteData, isBlank } from "../hooks/useSpriteData";
 import { tools } from "../tools/tools";
@@ -63,6 +64,10 @@ type Props = {
   onCommands?: (handlers: CommandHandlers | null) => void;
   // With no sprite open, the button that leads to the Project tab.
   onGoToProject?: () => void;
+  // An agent edits another sprite: the app may show it (see `useFollowAgent`).
+  onFollow?: (sprite: SpriteRef, frame: number) => void;
+  // The frame to start at when this sprite opens (an agent works there).
+  startFrame?: number;
 };
 
 export function EditorScreen({
@@ -74,10 +79,13 @@ export function EditorScreen({
   clock,
   onCommands,
   onGoToProject,
+  onFollow,
+  startFrame,
 }: Props) {
   const t = useT();
   // True while the person has a stroke in progress (set by the open sprite).
   const strokeActive = useRef(false);
+  useFollowAgent(api, sprite, strokeActive, onFollow);
   if (!sprite) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -107,6 +115,7 @@ export function EditorScreen({
       clock={clock}
       onCommands={onCommands}
       strokeActive={strokeActive}
+      startFrame={startFrame}
     />
   );
 }
@@ -120,7 +129,9 @@ function OpenSprite({
   clock,
   onCommands,
   strokeActive,
+  startFrame,
 }: {
+  startFrame?: number;
   sprite: SpriteRef;
   api: EditorApi;
   framesApi: FramesApi;
@@ -132,7 +143,7 @@ function OpenSprite({
 }) {
   const t = useT();
   const { preferences } = usePreferences();
-  const [frame, setFrame] = useState(1);
+  const [frame, setFrame] = useState(startFrame ?? 1);
   const [tool, setTool] = useState<ToolId>("pencil");
   const [main, setMain] = useState("#000000");
   const [secondary, setSecondary] = useState("#FFFFFF");

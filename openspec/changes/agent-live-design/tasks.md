@@ -8,7 +8,7 @@
 - [x] 1.4 Draw the cursor overlay with the agent name; verify position with zoom and offset
 - [x] 1.5 Keep the frame busy until `agent_playback_done` (and a core timeout); verify held strokes and the timeout
 - [x] 1.6 Stop and reduced motion jump to the final state; verify both
-- [ ] 1.7 Follow the agent only when the person is free; verify the busy person case
+- [x] 1.7 Follow the agent only when the person is free; verify the busy person case
 
 ## 2. Design guide
 

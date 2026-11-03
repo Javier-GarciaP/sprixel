@@ -99,11 +99,13 @@ function Host({
   api,
   textApi,
   onGoToProject,
+  onFollow,
 }: {
   sprite: SpriteRef | null;
   api: EditorApi;
   textApi?: TextApi;
   onGoToProject?: () => void;
+  onFollow?: (sprite: SpriteRef, frame: number) => void;
 }) {
   const [handlers, setHandlers] = useState<CommandHandlers>({});
   useShortcuts(handlers, "other");
@@ -122,6 +124,7 @@ function Host({
       clock={testClock}
       onCommands={register}
       onGoToProject={onGoToProject}
+      onFollow={onFollow}
     />
   );
 }
@@ -133,6 +136,8 @@ export function renderEditor(
     language?: "en" | "es";
     pixelGrid?: boolean;
     onGoToProject?: () => void;
+    // The app is asked to show the sprite an agent edits.
+    onFollow?: (sprite: SpriteRef, frame: number) => void;
     // The fake core of the Text view, when the test opens it.
     textApi?: TextApi;
   } = {},
@@ -151,6 +156,7 @@ export function renderEditor(
           api={current}
           textApi={options.textApi}
           onGoToProject={options.onGoToProject}
+          onFollow={options.onFollow}
         />
       </I18nProvider>
     </PreferencesProvider>

@@ -71,6 +71,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const [newProjectFrom, setNewProjectFrom] = useState<string | null>(null);
   // The sprite open in the Editor tab.
   const [activeSprite, setActiveSprite] = useState<SpriteTarget | null>(null);
+  // The frame an agent was drawing when the editor followed it to a sprite.
+  const [startFrame, setStartFrame] = useState(1);
   // What the Project tab shows (open folder and selection), for the Export tab.
   const [browserView, setBrowserView] = useState<{
     folder: string[];
@@ -96,6 +98,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
   const agents = useAgents(coreAgentsApi, (event) => {
     if (event.type === "open-sprite") {
       setActiveSprite(event.sprite);
+      setStartFrame(1);
       setTab("editor");
       setSettingsOpen(false);
     } else if (event.type === "project-opened") {
@@ -202,6 +205,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         onViewChange={setBrowserView}
         onOpenSprite={(sprite) => {
           setActiveSprite(sprite);
+          setStartFrame(1);
           setTab("editor");
         }}
         onOpenPalette={setEditingPalette}
@@ -228,6 +232,11 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
       <EditorScreen
         key={project?.path}
         sprite={activeSprite}
+        startFrame={startFrame}
+        onFollow={(sprite, frame) => {
+          setActiveSprite(sprite);
+          setStartFrame(frame);
+        }}
         onCommands={registerEditorCommands}
         onGoToProject={() => setTab("project")}
       />
