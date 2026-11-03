@@ -13,12 +13,17 @@ mod args;
 mod create;
 mod docs;
 mod draw;
+mod edit;
 mod export;
+mod palettes;
 mod projects;
 mod read;
+mod reference;
+mod region;
 mod shapes;
 mod structure;
 mod undo;
+mod views;
 pub(super) mod write;
 
 use super::Tool;
@@ -31,12 +36,16 @@ pub use read::OPEN_SPRITE_EVENT;
 pub fn all() -> Vec<Tool> {
     let mut tools = Vec::new();
     tools.extend(read::tools());
+    tools.extend(views::tools());
     tools.extend(docs::tools());
     tools.extend(projects::tools());
     tools.extend(create::tools());
     tools.extend(draw::tools());
     tools.extend(analysis::tools());
+    tools.extend(region::tools());
+    tools.extend(reference::tools());
     tools.extend(structure::tools());
+    tools.extend(palettes::tools());
     tools.extend(export::tools());
     tools.extend(undo::tools());
     tools
@@ -56,6 +65,18 @@ mod draw_tests;
 
 #[cfg(test)]
 mod structure_tests;
+
+#[cfg(test)]
+mod edit_tests;
+
+#[cfg(test)]
+mod region_tests;
+
+#[cfg(test)]
+mod reference_tests;
+
+#[cfg(test)]
+mod palettes_tests;
 
 #[cfg(test)]
 mod export_tests;
@@ -80,3 +101,9 @@ mod preview_tests;
 
 #[cfg(test)]
 mod analysis_tests;
+
+#[cfg(test)]
+mod background_tests;
+
+#[cfg(test)]
+mod frames_tests;

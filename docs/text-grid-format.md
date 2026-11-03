@@ -69,7 +69,7 @@ A text grid has these parts, in this order:
 | Part | Required | Meaning |
 | --- | --- | --- |
 | `palette: <name>` | No | The palette the keys belong to. If missing, the project palette is used. |
-| `legend` block | No | Lines of `<key> <name> [#hex]`. The name can have spaces. A line with a `#hex` for a key that is **not** in the palette adds that color when the grid is applied, in the same undo step as the pixels. For a key that already exists it is only informational: a grid never changes an existing color. A legend line without a `#hex` does not define a key. `.` can be listed (`. transparent`) but never has a color. |
+| `legend` block | No | Lines of `<key> <name> [#hex]`. The name can have spaces. A line with a `#hex` for a key that is **not** in the palette adds that color when the grid is applied, in the same undo step as the pixels. A grid never changes an existing color. If the key exists with the **same** `#hex`, the line is only informational. If it exists with a **different** `#hex`, the line and every pixel of that key move to another key: the key that already has that hex, or else a free key, which is added as a new color. The old color stays as it was. The `apply_grid` tool then answers with `remapped` (for example `{"P": "Z"}`) and `warnings`. A legend line without a `#hex` does not define a key. `.` can be listed (`. transparent`) but never has a color. |
 | `frame <n>` + rows | Yes, at least one | The pixels of frame number `n`. Frames are numbered from 1. |
 
 - Keywords (`palette`, `legend`, `frame`) are always **English**, even when the
@@ -82,8 +82,10 @@ A text grid has these parts, in this order:
   can never have spaces, so a row like `frame` (five keys) is still a row.
 - When you write only part of a sprite (for example one frame, or a region),
   the rest is not touched.
-- The keys are always checked against the palette of the **sprite**. If the
-  `palette:` line names another palette, it is not used.
+- The keys are always checked against the palette of the **sprite**. The
+  `apply_grid` tool never ignores the `palette:` line: another existing palette
+  is `palette_mismatch` and an unknown one is `palette_not_found`. The app
+  ignores that line.
 - Frames can come in any order. A frame number that is not a number, is `0`
   or is written twice is `bad_frame`.
 
@@ -160,3 +162,11 @@ one undo step, and a grid that changes nothing makes no undo step.
 - Keep rows aligned (use a monospace font).
 - Read the palette first and reuse the same keys everywhere.
 - For big sprites, write one region at a time.
+
+## A part of a sprite
+
+`get_sprite` can return only a rectangle (`region`) and can leave out the
+legend (`include_palette` false). The text is still a grid: it has the line
+`palette: <name>`, optionally a legend, and `frame N` with the rows of the
+region only. To write it back, send the rows to `apply_grid` with `x` and `y`
+set to the top left corner of the region.

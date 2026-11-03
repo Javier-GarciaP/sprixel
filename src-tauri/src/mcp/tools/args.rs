@@ -61,6 +61,33 @@ pub fn optional_bool(args: &Value, key: &str) -> Result<Option<bool>, ToolError>
     }
 }
 
+/// A rectangle `{x, y, width, height}` that must fit in a `max_width` x
+/// `max_height` frame. `bad_argument` if it is not well written, `region_out`
+/// if it does not fit. `None` when the argument is missing.
+pub fn region(args: &Value, key: &str, max_width: u32, max_height: u32) -> Result<Option<(u32, u32, u32, u32)>, ToolError> {
+    let Some(value) = object(args)?.get(key).filter(|v| !v.is_null()) else { return Ok(None) };
+    let shape = "an object {x, y, width, height} with whole numbers";
+    if !value.is_object() {
+        return Err(bad(key, shape));
+    }
+    let part = |name: &str| {
+        value[name].as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| bad(key, shape))
+    };
+    let (x, y, width, height) = (part("x")?, part("y")?, part("width")?, part("height")?);
+    if width == 0 || height == 0 {
+        return Err(bad(key, "at least 1 pixel wide and high"));
+    }
+    if u64::from(x) + u64::from(width) > u64::from(max_width) || u64::from(y) + u64::from(height) > u64::from(max_height) {
+        return Err(ToolError::new(
+            "region_out",
+            format!("the region {width}x{height} at ({x}, {y}) does not fit in the {max_width}x{max_height} sprite"),
+        )
+        .with("width", max_width)
+        .with("height", max_height));
+    }
+    Ok(Some((x, y, width, height)))
+}
+
 /// A folder path written as `Characters/Humans` (or a list of names). An
 /// empty text or a missing value is the project root. Names cannot be `.` or
 /// `..`, and a path cannot start with a slash: a path always starts at the

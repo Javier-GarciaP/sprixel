@@ -17,6 +17,10 @@ const toolText: Record<string, TranslationKey> = {
   delete_frame: "agents.tool.delete_frame",
   create_tag: "agents.tool.create_tag",
   set_palette_color: "agents.tool.set_palette_color",
+  create_palette: "agents.tool.create_palette",
+  set_sprite_palette: "agents.tool.set_sprite_palette",
+  remove_unused_colors: "agents.tool.remove_unused_colors",
+  generate_ramp: "agents.tool.generate_ramp",
   delete_sprite: "agents.tool.delete_sprite",
   export: "agents.tool.export",
   undo_last_ai_action: "agents.tool.undo_last_ai_action",
@@ -33,6 +37,7 @@ const needsSprite = new Set([
   "auto_shade",
   "delete_frame",
   "create_tag",
+  "set_sprite_palette",
   "delete_sprite",
 ]);
 

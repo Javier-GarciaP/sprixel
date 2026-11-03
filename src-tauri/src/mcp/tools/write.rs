@@ -156,6 +156,7 @@ pub fn write(
 ) -> ToolResult {
     let base = args::optional_u64(input, "base_revision")?;
     let want_preview = args::optional_bool(input, "preview")?.unwrap_or(true);
+    let background = super::read::background_of(input)?;
     let core = ctx.core;
     // A panic of another write must not block all the others.
     let _one_at_a_time = core.write_lock.lock().unwrap_or_else(|e| e.into_inner());
@@ -220,7 +221,7 @@ pub fn write(
         };
         // Drawn after the write, so it shows the new pixels.
         let image = picture.and_then(|(target, frame)| {
-            super::read::write_preview(&session.project, &target, frame).map(|image| (target, frame, image))
+            super::read::write_preview(&session.project, &target, frame, background).map(|image| (target, frame, image))
         });
         Ok((answer, event, changed, replay, image))
     })

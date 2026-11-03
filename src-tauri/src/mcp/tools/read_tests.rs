@@ -89,6 +89,63 @@ fn get_sprite_reads_one_frame_and_accepts_a_path() {
     assert_eq!(bad["frames"], 2);
 }
 
+// Checks that `get_sprite` can read a part of a frame: the grid has only the
+// rows and columns of the region, it says which region, and the text is a
+// valid grid that `apply_grid` takes back with `x` and `y`.
+#[test]
+fn get_sprite_reads_a_region_as_a_valid_grid() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+
+    let part = call(&core, &session, "get_sprite", json!({
+        "name": "goblin", "frame": 1, "region": { "x": 2, "y": 2, "width": 2, "height": 2 },
+    })).unwrap();
+
+    let grid = part["grid"].as_str().unwrap();
+    assert!(grid.contains("frame 1\n..\n.G\n"), "{grid}");
+    assert_eq!(part["region"]["width"], 2);
+    assert_eq!(part["width"], 4, "the size is still the size of the sprite");
+    // The text parses and writes back into the same place.
+    let back = call(&core, &session, "apply_grid", json!({ "name": "goblin", "grid": grid, "x": 0, "y": 0 }));
+    assert!(back.is_ok(), "{back:?}");
+}
+
+// Checks `include_palette` false: no legend, but the palette name stays, in
+// the grid and in the answer. The default keeps the legend.
+#[test]
+fn get_sprite_can_leave_out_the_legend() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+
+    let short = call(&core, &session, "get_sprite", json!({ "name": "goblin", "frame": 1, "include_palette": false })).unwrap();
+
+    let grid = short["grid"].as_str().unwrap();
+    assert!(!grid.contains("legend") && !grid.contains("red"), "{grid}");
+    assert!(grid.starts_with("palette: main\n"), "{grid}");
+    assert!(grid.contains("frame 1\nR...\n....\n....\n...G\n"), "{grid}");
+    assert_eq!(short["palette"], "main");
+    let full = call(&core, &session, "get_sprite", json!({ "name": "goblin", "frame": 1 })).unwrap();
+    assert!(full["grid"].as_str().unwrap().contains("legend"));
+    assert!(full.get("region").is_none());
+}
+
+// Checks that a region that does not fit gives `region_out`, and one that is
+// badly written gives `bad_argument`.
+#[test]
+fn get_sprite_refuses_a_bad_region() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let code = |region| {
+        call(&core, &session, "get_sprite", json!({ "name": "goblin", "region": region })).unwrap_err()["code"]
+            .as_str().unwrap().to_string()
+    };
+
+    assert_eq!(code(json!({ "x": 3, "y": 0, "width": 2, "height": 1 })), "region_out");
+    assert_eq!(code(json!({ "x": 0, "y": 0, "width": 0, "height": 1 })), "bad_argument");
+    assert_eq!(code(json!({ "x": 0, "y": 0 })), "bad_argument");
+    assert_eq!(code(json!("all")), "bad_argument");
+}
+
 // Checks the errors of the sprite lookup: an unknown sprite lists the ones
 // that exist, and two sprites with one name ask for the folder.
 #[test]

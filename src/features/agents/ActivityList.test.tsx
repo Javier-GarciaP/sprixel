@@ -171,4 +171,18 @@ describe("Activity list", () => {
     renderWithApp(<Screen api={api} />);
     expect(await screen.findByText("Did something new")).toBeTruthy();
   });
+
+  // Checks that the palette tools have their own text, in both languages,
+  // and that the one about a sprite names it.
+  it("names the palette tools", async () => {
+    const rows = [
+      row(3, { tool: "set_sprite_palette", summary: "core text" }),
+      row(2, { tool: "generate_ramp", summary: "core text" }),
+      row(1, { tool: "create_palette", summary: "core text" }),
+    ];
+    renderWithApp(<Screen api={new FakeAgentsApi({ rows })} />, "es");
+    expect(await screen.findByText("Creó una paleta")).toBeTruthy();
+    expect(screen.getByText("Creó una rampa de colores")).toBeTruthy();
+    expect(screen.getByText("Cambió la paleta de goblin")).toBeTruthy();
+  });
 });
