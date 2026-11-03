@@ -36,6 +36,10 @@ say "Source code: $SOURCE"
 say "The license and the third-party notices are installed in ~/.local/share/sprixel/"
 say ""
 
+# Every path below starts with $HOME. An empty one would point at the root of the
+# system, so stop before anything is copied or removed.
+[ -n "${HOME:-}" ] && [ -d "$HOME" ] || fail "HOME must be set to your home folder. Nothing was installed."
+
 # 1. Which system is this?
 case "${SPRIXEL_OS:-$(uname -s)}" in
   Linux)  OS=linux ;;
@@ -78,8 +82,13 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 trap 'exit 1' INT TERM
 
+# Only https is accepted, also after a redirect. file:// is allowed only for the
+# tests, through SPRIXEL_BASE_URL.
+PROTO="=https"
+[ -z "${SPRIXEL_BASE_URL:-}" ] || PROTO="=https,file"
+
 # 3. Download everything and check it BEFORE installing anything.
-get() { curl -fsSL "$BASE/$1" -o "$TMP/$1" || fail "cannot download $BASE/$1 (is the version right, and are you online?)"; }
+get() { curl --proto "$PROTO" --proto-redir "=https" -fsSL "$BASE/$1" -o "$TMP/$1" || fail "cannot download $BASE/$1 (is the version right, and are you online?)"; }
 
 say "Downloading Sprixel ($OS $ARCH)..."
 get checksums.txt

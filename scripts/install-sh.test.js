@@ -224,6 +224,17 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
     );
   });
 
+  // An empty HOME would turn "$HOME/Applications" into "/Applications": the
+  // script must stop before it copies or removes anything.
+  it("stops when HOME is empty or is not a folder", () => {
+    makeRelease(release);
+    for (const bad of ["", path.join(root, "missing")]) {
+      const r = install([], { HOME: bad });
+      expect(r.status).not.toBe(0);
+      expect(r.stderr).toContain("HOME");
+    }
+  });
+
   it("--version needs a value and unknown options fail", () => {
     expect(install(["--version"]).status).toBe(1);
     expect(install(["--nope"]).stderr).toContain("unknown option");
