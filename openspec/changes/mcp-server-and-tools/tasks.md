@@ -21,7 +21,7 @@
 - [x] 3.2 Implement `create_folder`, `create_sprite` and `add_frame` and verify the shared error codes
 - [x] 3.3 Implement `apply_grid`, `set_pixels` and `draw_shape` as atomic actions and verify the invalid grid test
 - [x] 3.4 Implement `delete_frame`, `create_tag`, `set_palette_color` and `delete_sprite` and verify validation matches the app
-- [ ] 3.6 Implement revisions, `base_revision` and `stale_revision` on all write tools and verify the stale test
+- [x] 3.6 Implement revisions, `base_revision` and `stale_revision` on all write tools and verify the stale test
 - [ ] 3.7 Write the tool descriptions and schemas (including the grid format and keys) and verify a client sees them
 
 ### 4. Agent activity

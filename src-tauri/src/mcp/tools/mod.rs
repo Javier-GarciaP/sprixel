@@ -39,3 +39,6 @@ mod structure_tests;
 
 #[cfg(test)]
 mod export_tests;
+
+#[cfg(test)]
+mod revision_tests;
