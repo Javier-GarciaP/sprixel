@@ -15,7 +15,7 @@
 ## 3. Safe grids
 
 - [x] 3.1 Check the `palette:` line in `apply_grid`; verify same palette, `palette_mismatch` and `palette_not_found`
-- [ ] 3.2 Remap legend keys that conflict, with `remapped` and `warnings`; verify different hex, same hex, equal hex under another key and a full palette
+- [x] 3.2 Remap legend keys that conflict, with `remapped` and `warnings`; verify different hex, same hex, equal hex under another key and a full palette
 
 ## 4. UI and docs
 

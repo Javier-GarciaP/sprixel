@@ -319,3 +319,38 @@ fn a_grid_palette_line_for_a_missing_palette_is_not_found() {
     assert!(error["message"].as_str().unwrap().contains("main"));
     assert_eq!(revision(&host), before);
 }
+
+// Checks the "Different color" scenario through the tool: the legend says
+// `R` is blue but `main` has `R` red. The old red stays, the pixels use a new
+// key, and the answer has `remapped` and a warning that names both colors.
+#[test]
+fn a_conflicting_legend_key_is_remapped_with_a_warning() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let grid = "legend\n  R blue #0000FF\nframe 1\nRR......\n........\n........\n........\n........\n........\n........\n........\n";
+
+    let done = call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid, "preview": false })).unwrap();
+
+    assert_eq!(done["remapped"], json!({ "R": "A" }));
+    let warning = done["warnings"][0].as_str().unwrap();
+    assert!(warning.contains("#0000FF") && warning.contains("#FF0000") && warning.contains("\"A\""), "{warning}");
+    assert_eq!(done["colors_added"], 1);
+    assert_eq!(crate::mcp::testing::rows(&host, &[], "slime", 1).split('/').next(), Some("AA......"));
+    let palette = call(&core, &session, "get_palette", json!({})).unwrap();
+    assert_eq!(palette["colors"][0], json!({ "key": "R", "name": "red", "hex": "#FF0000", "used": true }));
+    assert_eq!(palette["colors"][2]["hex"], "#0000FF");
+}
+
+// Checks "Same color": repeating a legend key with the same hex has no
+// `remapped` and no `warnings` in the answer.
+#[test]
+fn a_legend_with_the_same_color_has_no_warning() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let grid = "legend\n  R red #ff0000\nframe 1\nRR......\n........\n........\n........\n........\n........\n........\n........\n";
+
+    let done = call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid, "preview": false })).unwrap();
+
+    assert!(done.get("remapped").is_none() && done.get("warnings").is_none(), "{done}");
+    assert_eq!(done["colors_added"], 0);
+}

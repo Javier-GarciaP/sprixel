@@ -202,9 +202,10 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
             (None, None) => None,
             (x, y) => Some((x.unwrap_or(0), y.unwrap_or(0))),
         };
-        let ops = project
-            .grid_operations(&target, &text, &GridOptions { region, skip_transparent })
+        let plan = project
+            .grid_plan(&target, &text, &GridOptions { region, skip_transparent })
             .map_err(|errors| grid_failure(errors, &valid_keys(project, sprite)))?;
+        let (ops, remap) = (plan.ops, plan.remap);
         let (mut pixels, mut colors, mut busy) = (0, 0, None);
         for op in &ops {
             match op {
@@ -216,7 +217,15 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
                 _ => {}
             }
         }
-        let plan = Plan::new(ops, json!({ "pixels_changed": pixels, "colors_added": colors })).preview();
+        let mut extra = json!({ "pixels_changed": pixels, "colors_added": colors });
+        if !remap.keys.is_empty() {
+            // {"P": "Z"}: the legend key P conflicted, the pixels use Z.
+            let moved: serde_json::Map<String, Value> =
+                remap.keys.iter().map(|(from, to)| (from.to_string(), to.to_string().into())).collect();
+            extra["remapped"] = moved.into();
+            extra["warnings"] = remap.warnings.into();
+        }
+        let plan = Plan::new(ops, extra).preview();
         Ok(match busy {
             Some(frame) => plan.busy(&target, frame),
             None => plan,

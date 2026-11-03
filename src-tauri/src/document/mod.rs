@@ -23,7 +23,7 @@ pub use import::{ImportFormat, palette_from_file};
 pub use presets::{PRESETS, Preset};
 pub use ramp::ramp;
 pub use palette::{ColorEdit, check_colors};
-pub use grid::{Grid, GridError, GridOptions, write_grid};
+pub use grid::{Grid, GridError, GridOptions, GridPlan, Remap, write_grid};
 pub use stroke::ColorChange;
 pub use model::{
     Color, DEFAULT_FRAME_MS, Folder, Frame, Layer, MAX_COLORS, frame_duration_ms, MAX_SIZE, Palette, Project, Sprite, TRANSPARENT, Tag,
