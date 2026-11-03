@@ -1,7 +1,10 @@
 //! Spec `agent-guides-v2`: the worked example of each guide is run through the
 //! real tools, so a guide cannot teach calls that do not work.
 
-use super::docs::{CAT_GRID, FACES_GUIDE, GEM_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE};
+use super::docs::{
+    CAT_GRID, FACES_GUIDE, GEM_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE, WALK_GUIDE,
+    WALKER_GRID,
+};
 use crate::mcp::testing::{call, open_demo_project, rows, setup};
 use serde_json::json;
 
@@ -90,4 +93,90 @@ fn the_faces_example_draws_a_cat_head() {
     let report = call(&core, &session, "analyze_sprite", json!({ "name": "cat", "outline_key": "K" })).unwrap();
     assert_eq!(report["frame_reports"][0]["loose_pixels"]["count"], 0, "{report}");
     assert_eq!(report["frame_reports"][0]["outline_gaps"]["count"], 0, "{report}");
+}
+
+/// Makes the 4 frame walker of the `walk-and-attack-cycles` guide (steps 1 to 3).
+fn make_walker(core: &crate::mcp::Core, session: &str) {
+    call(core, session, "create_sprite", json!({ "name": "walker", "width": 12, "height": 10 })).unwrap();
+    for _ in 0..3 {
+        call(core, session, "add_frame", json!({ "name": "walker" })).unwrap();
+    }
+    call(core, session, "apply_grid", json!({ "name": "walker", "grid": WALKER_GRID })).unwrap();
+}
+
+// Checks the walk of the example: 4 different frames, the body 1 pixel higher
+// in the passing frames, the lowest row of the feet is row 9 in every frame,
+// the durations and the tag are saved, and `analyze_sprite` finds nothing
+// wrong. `ground_kept` is false between frames because a foot moves.
+#[test]
+fn the_walk_example_makes_a_four_frame_walk() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    assert!(WALK_GUIDE.contains(WALKER_GRID));
+    make_walker(&core, &session);
+    call(&core, &session, "render_frames", json!({ "name": "walker", "labels": true })).unwrap();
+
+    let frame = |n: usize| rows(&host, &[], "walker", n);
+    for n in 1..=4 {
+        assert_eq!(frame(n).split('/').nth(9).unwrap().contains('K'), true, "frame {n} has its feet on row 9");
+    }
+    assert_eq!(frame(1).split('/').next().unwrap(), "............");
+    assert_eq!(frame(2).split('/').next().unwrap(), "...KKKKKK...");
+    assert_ne!(frame(1), frame(3), "the legs change color places");
+
+    for (frame, milliseconds) in [(1, 120), (2, 80), (3, 120), (4, 80)] {
+        call(&core, &session, "set_frame_duration", json!({ "name": "walker", "frame": frame, "milliseconds": milliseconds })).unwrap();
+    }
+    call(&core, &session, "create_tag", json!({ "sprite": "walker", "name": "walk", "from": 1, "to": 4, "fps": 10, "mode": "loop" })).unwrap();
+
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "walker", "frame": 1 })).unwrap();
+    assert_eq!(sprite["frame_durations"], json!([120, 80, 120, 80]));
+    assert_eq!(sprite["animations"][0]["name"], "walk");
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "walker", "outline_key": "K" })).unwrap();
+    for n in 0..4 {
+        assert_eq!(report["frame_reports"][n]["loose_pixels"]["count"], 0, "{report}");
+        assert_eq!(report["frame_reports"][n]["outline_gaps"]["count"], 0, "{report}");
+    }
+    let changes = report["changes"].as_array().unwrap();
+    assert_eq!(changes.len(), 3, "{report}");
+    assert!(changes.iter().all(|change| change["ground_kept"] == false), "{report}");
+}
+
+// Checks the attack of the example: frames 5 to 7 are copies of frame 1; the
+// body of frame 5 is 1 pixel to the left, the body of frame 6 is 2 pixels to
+// the right, the legs stay, frame 7 is equal to frame 1, and the tag `attack`
+// has mode once and the durations of the three phases.
+#[test]
+fn the_walk_example_makes_a_three_frame_attack() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    make_walker(&core, &session);
+
+    for _ in 0..3 {
+        call(&core, &session, "add_frame", json!({ "name": "walker", "copy_of": 1 })).unwrap();
+    }
+    let body = json!({ "x": 0, "y": 1, "width": 12, "height": 7 });
+    call(&core, &session, "transform_region", json!({ "name": "walker", "frame": 5, "operation": "move", "dx": -1, "dy": 0, "region": body })).unwrap();
+    call(&core, &session, "transform_region", json!({ "name": "walker", "frame": 6, "operation": "move", "dx": 2, "dy": 0, "region": body })).unwrap();
+    for (frame, milliseconds) in [(5, 200), (6, 60), (7, 120)] {
+        call(&core, &session, "set_frame_duration", json!({ "name": "walker", "frame": frame, "milliseconds": milliseconds })).unwrap();
+    }
+    call(&core, &session, "create_tag", json!({ "sprite": "walker", "name": "attack", "from": 5, "to": 7, "fps": 10, "mode": "once" })).unwrap();
+
+    call(&core, &session, "render_frames", json!({ "name": "walker", "from": 5, "to": 7, "labels": true })).unwrap();
+    call(&core, &session, "render_onion", json!({ "name": "walker", "frames": [5, 6, 7] })).unwrap();
+
+    let row = |frame: usize, y: usize| rows(&host, &[], "walker", frame).split('/').nth(y).unwrap().to_string();
+    assert_eq!(row(1, 4), "..KBBBBEBK..");
+    assert_eq!(row(5, 4), ".KBBBBEBK...", "leaning back");
+    assert_eq!(row(6, 4), "....KBBBBEBK", "lunging");
+    assert_eq!(row(5, 8), row(1, 8), "the legs do not move");
+    assert_eq!(rows(&host, &[], "walker", 7), rows(&host, &[], "walker", 1));
+
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "walker", "frame": 7 })).unwrap();
+    assert_eq!(sprite["frame_durations"], json!([100, 100, 100, 100, 200, 60, 120]));
+    assert_eq!(sprite["animations"][0]["mode"], "once", "{sprite}");
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "walker", "outline_key": "K" })).unwrap();
+    assert_eq!(report["frame_reports"][5]["loose_pixels"]["count"], 0, "{report}");
 }

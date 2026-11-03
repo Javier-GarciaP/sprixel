@@ -328,8 +328,69 @@ Worked example: a 16x16 cat head.\n\
 6. `analyze_sprite` with name cat and `outline_key` K: no loose pixels and no gaps."
 );
 
+/// The four frames of the walker of the `walk-and-attack-cycles` guide
+/// (12x10). The colors are in a `legend`.
+macro_rules! walker_grid {
+    () => {
+        "\
+legend\n\
+\x20\x20K outline #2A2A3C\n\
+\x20\x20B body #5B8DEF\n\
+\x20\x20E eye #FFFFFF\n\
+\x20\x20H back leg #3A5FB0\n\
+\x20\x20F front leg #8FB4FF\n\
+frame 1\n\
+............\n\
+...KKKKKK...\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+..KBBBBEBK..\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+...KKKKKK...\n\
+..KHK..KFK..\n\
+..KKK..KKK..\n\
+frame 2\n\
+...KKKKKK...\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+..KBBBBEBK..\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+...KKKKKK...\n\
+..KHK..KFK..\n\
+..KKK..KFK..\n\
+.......KKK..\n\
+frame 3\n\
+............\n\
+...KKKKKK...\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+..KBBBBEBK..\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+...KKKKKK...\n\
+..KFK..KHK..\n\
+..KKK..KKK..\n\
+frame 4\n\
+...KKKKKK...\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+..KBBBBEBK..\n\
+..KBBBBBBK..\n\
+..KBBBBBBK..\n\
+...KKKKKK...\n\
+..KHK..KFK..\n\
+..KHK..KKK..\n\
+..KKK.......\n"
+    };
+}
+
+/// The grid of the walker example, for the tests.
+pub const WALKER_GRID: &str = walker_grid!();
+
 /// How to make walk and attack animations. Also available as the topic `walk-and-attack-cycles`.
-pub const WALK_GUIDE: &str = "\
+pub const WALK_GUIDE: &str = concat!("\
 Walk and attack cycles guide: frames that move well\n\
 \n\
 1. Walk: 4 frames is the minimum: contact, passing, contact (the other leg), passing. 6 or 8 frames are smoother. Make the key poses first, as whole frames.\n\
@@ -340,7 +401,24 @@ Walk and attack cycles guide: frames that move well\n\
 6. Attack has three phases. Anticipation: pull back, slow (150 to 250 ms). Strike: the biggest pose, fast (40 to 80 ms, 1 or 2 frames). Recovery: come back to the first idle pose (100 to 150 ms). A long wind-up and a short strike feel powerful.\n\
 7. Move a body part without redrawing it: `transform_region` with the operation move and a `region` around the body, so the feet stay in place.\n\
 8. The loop closes. A walk goes back to its first frame: `create_tag` with mode loop. An attack is not a loop: use mode once and end on the idle pose, so the game can go back to idle without a jump.\n\
-9. Look at the whole animation with `render_frames` and at the movement with `render_onion`. If the body grows, shrinks or jumps by accident, fix that frame.";
+9. Look at the whole animation with `render_frames` and at the movement with `render_onion`. If the body grows, shrinks or jumps by accident, fix that frame.\n\
+\n\
+Worked example: a 12x10 walker with a 4 frame walk and a 3 frame attack. The body is B, the eye E, the back leg H and the front leg F; frame 1 and 3 are the contact poses (the body is low and the legs are on the ground), frames 2 and 4 are the passing poses (the body is 1 pixel higher and one foot is lifted).\n\
+1. `create_sprite` with name walker, width 12 and height 10.\n\
+2. `add_frame` with name walker three times (now it has 4 frames).\n\
+3. `apply_grid` with name walker and this grid:\n\
+\n",
+    walker_grid!(),
+    "\n\
+LOOK at the frames with `render_frames` (name walker, `labels` true). The lowest row of the feet is row 9 in all of them.\n\
+4. `set_frame_duration` with name walker: frame 1 and 3 with `milliseconds` 120, frame 2 and 4 with 80.\n\
+5. `create_tag` with sprite walker, name walk, from 1, to 4, fps 10, mode loop.\n\
+6. `analyze_sprite` with name walker and `outline_key` K: no loose pixels and no gaps in the 4 frames. `ground_kept` is false between the frames, because a foot moves; this is right for a walk.\n\
+7. The attack: `add_frame` with name walker and `copy_of` 1, three times (frames 5, 6 and 7).\n\
+8. `transform_region` with name walker, `frame` 5, operation move, `dx` -1, `dy` 0 and `region` {x: 0, y: 1, width: 12, height: 7}: the body leans back (anticipation). The same on `frame` 6 with `dx` 2 and `dy` 0: the body lunges forward (strike). Frame 7 stays as the first frame (recovery). The legs do not move.\n\
+9. `set_frame_duration`: frame 5 with 200, frame 6 with 60, frame 7 with 120.\n\
+10. `create_tag` with sprite walker, name attack, from 5, to 7, fps 10, mode once. Then LOOK at `render_frames` (`from` 5, `to` 7) and `render_onion` (`frames` [5, 6, 7])."
+);
 
 /// What a game needs from a sprite. Also available as the topic `game-ready`.
 pub const GAME_READY_GUIDE: &str = "\
