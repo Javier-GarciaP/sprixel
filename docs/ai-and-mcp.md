@@ -131,9 +131,9 @@ description tells the AI the rules, so it does not need this page.
 
 | Tool | What it does |
 | --- | --- |
-| `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet |
-| `set_pixels` | Sets individual pixels (`x`, `y`, `key`) |
-| `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key |
+| `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet. Returns an image of the edited frame |
+| `set_pixels` | Sets individual pixels (`x`, `y`, `key`). Returns an image of the edited frame |
+| `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
@@ -149,6 +149,12 @@ description tells the AI the rules, so it does not need this page.
 Every write tool is **atomic**: it is applied whole or not at all, as one entry
 of the history by the agent. Every write returns the new `revision` and takes
 an optional `base_revision`.
+
+The three pixel tools (`apply_grid`, `set_pixels`, `draw_shape`) return a PNG
+of the frame they edited, at most 512 pixels on a side, next to their usual
+answer. The AI must look at it and fix what is wrong. Pass `preview` false to
+skip the image. With `sprixel tool` the image is saved to a file and its path
+is printed.
 
 ### Errors
 
@@ -188,14 +194,37 @@ answers with an error. Neither `tool` nor `tools` start the app; use
 
 ## Drawing tips for an AI
 
+The AI gets this advice from the server itself: the server instructions carry
+the workflow and a worked example (a 16x16 slime with an idle and a jump frame),
+the tool `get_guide` serves the full guides (`design`, `animation`, `palette`),
+and the Claude Code skill has the same workflow, example and design rules. A
+test fails if the skill and the server differ.
+
 - **Small first.** Text grids work best up to about 32x32. Bigger sprites are
-  allowed (up to 512x512) but the AI makes more counting mistakes.
+  allowed (up to 512x512) but the AI makes more counting mistakes; for them it
+  works region by region with `x` and `y`.
 - **Read the palette first** (`get_palette`) and only use its keys.
-- **Use `apply_grid`** with the legend, and `set_pixels` or `draw_shape` to fix
-  details. For big sprites, draw one region at a time with `x` and `y`.
-- **Check the result** with `render_preview`.
+- **Method.** A small palette with ramps, one light direction, silhouette first,
+  flat fills, two or three tones of shading, a selective outline and no stray
+  pixels.
+- **Look at the result.** Every pixel write returns an image of the frame. The
+  AI must look at it and fix what is wrong before it says it is done.
+- **Animation.** Key poses first, the same palette in every frame and a loop
+  that closes.
 - Errors are exact (for example: `row 7 has 7 columns, expected 8`) so the AI
   can fix them on its own.
+
+### Watching the AI draw
+
+Every write of an AI is applied at once, but the editor replays it: a cursor
+with the name of the AI moves over the canvas and the pixels appear in drawing
+order. The replay takes at most 8 seconds, however big the write is. The frame
+is busy until the replay ends, so your strokes wait and are applied after it.
+**Stop** shows the final state at once. With "reduce motion" on in your system
+the final state appears with no replay. If many writes arrive in a row, the
+editor shows the final state instead of playing all of them. When the AI edits
+another sprite or frame, the editor follows it, unless you are in the middle of
+a stroke or in another tab.
 
 Example prompts:
 
@@ -310,10 +339,11 @@ keeps its `data` (base64) and has a `path` too.
 
 `sprixel mcp add claude` installs a small skill that teaches Claude Code how to
 use Sprixel: how to connect, the order of the tools, the rules for coordinates
-and frames, and what to do with each error code. The file comes inside the
+and frames, how to design a sprite that looks good (with a worked example), and
+what to do with each error code. The file comes inside the
 `sprixel` command (no download). `sprixel mcp remove claude` and
 `sprixel uninstall` delete its folder, `~/.claude/skills/sprixel/`, and
-nothing else of Claude Code. Advice about drawing well comes in a later spec.
+nothing else of Claude Code.
 
 ### Which app starts
 

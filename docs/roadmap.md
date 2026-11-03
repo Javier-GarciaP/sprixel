@@ -75,6 +75,7 @@ the `palette-editor` and `drawing-tools` specs.
 | 12 | [`cli-sprixel`](../openspec/changes/cli-sprixel/) | The `sprixel` command: bridge, setup, doctor and tools from the terminal | 10 |
 | 13 | [`install-and-release`](../openspec/changes/install-and-release/) | Install scripts, release pipeline, installers, versioning and updates | 1, 12 |
 | 14 | [`agent-usability-fixes`](../openspec/changes/agent-usability-fixes/) | Fixes found testing with a real agent: sessions that close, calls in order, approval dialog, `list_projects` and `open_project`, the Claude Code skill, previews saved as files and a clear `sprixel start` | 10, 11, 12 |
+| 15 | [`agent-live-design`](../openspec/changes/agent-live-design/) | Watch the AI draw (a cursor and a replay of its pixels), pixel art guides for the AI (`get_guide`), a preview image after every write and the shared workflow in the server and the skill | 10, 11, 12, 14 |
 
 The numbers are the names of the specs. In the demo, `export-spritesheet` (9)
 is built after the AI path (10 to 12); its `export` tool is added then.

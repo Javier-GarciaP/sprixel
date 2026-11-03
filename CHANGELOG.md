@@ -9,6 +9,17 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Watch the AI draw: the editor replays each agent write (at most 8 seconds)
+  with a cursor that carries the agent name, keeps the frame busy until the
+  replay ends, and follows the agent to its sprite and frame when you are free.
+  Stop and reduced motion show the final state at once.
+- `get_guide` tool with pixel art guides for the AI (`design`, `animation` and
+  `palette`). The server instructions and the Claude Code skill now share one
+  workflow and a worked 16x16 example.
+- `apply_grid`, `set_pixels` and `draw_shape` return an image of the edited
+  frame (at most 512 pixels on a side) so the AI can look at its work; send
+  `preview` false to skip it.
+- `docs/demo.md`: the chicken test to check this with a real agent.
 - Agents tab: Claude Code and OpenCode cards, activity list with Stop and
   Undo, permissions panel, Connect dialog, approval prompt and top bar state.
 - Project planning: concept, design (36 screens in light and dark), version 1

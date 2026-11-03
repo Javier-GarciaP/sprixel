@@ -19,4 +19,4 @@
 ## 3. Check with a real agent
 
 - [ ] 3.1 Write `docs/demo.md` with the chicken test, run it with Claude Code and record what is seen
-- [ ] 3.2 Update `docs/ai-and-mcp.md` and `docs/roadmap.md` and run `openspec validate --all --strict`
+- [x] 3.2 Update `docs/ai-and-mcp.md` and `docs/roadmap.md` and run `openspec validate --all --strict`
