@@ -23,7 +23,7 @@
 
 ### 4. Other commands
 
-- [ ] 4.1 Implement `start`, `status`, `version`, `tools` and `tool` and verify against a running test app
+- [x] 4.1 Implement `start`, `status`, `version`, `tools` and `tool` and verify against a running test app
 
 ### 5. Documentation
 
