@@ -28,6 +28,18 @@ export type ApplyResult = HistoryState & { palette: PaletteColor[] };
 // An AI agent writing to a frame. The UI shows the marker while it lasts.
 export type AgentActivity = { agent: string; sprite: SpriteRef; frame: number };
 
+// The pixels of one agent write in drawing order (event `agent-ops`). `id` is
+// the number of the write: the editor sends it back when the replay is done.
+// Each pixel is `[x, y, key]`.
+export type AgentOps = {
+  id: number;
+  agent: string;
+  sprite: SpriteRef;
+  frame: number;
+  tool: string;
+  pixels: [number, number, string][];
+};
+
 // The codes of the errors the core sends for the editor.
 export type EditorFailure =
   | { code: "palette_full" }
@@ -55,4 +67,8 @@ export interface EditorApi {
     callback: (activity: AgentActivity | null) => void,
   ): Promise<() => void>;
   stopAgent(): Promise<void>;
+  // Calls back with the pixels of every agent write, to replay them.
+  onAgentOps(callback: (ops: AgentOps) => void): Promise<() => void>;
+  // Tells the core that the replay of write `id` ended, so the frame is free.
+  playbackDone(id: number): Promise<void>;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import ghost from "@/assets/sprixel-ghost.png";
 import { Button, Icon, Toast } from "@/shared/components";
 import {
@@ -27,6 +27,8 @@ import {
   type CommandHandlers,
 } from "../hooks/useEditorCommands";
 import { sameSprite, useAgentActivity } from "../hooks/useAgentActivity";
+import { screenClock, useAgentPlayback } from "../hooks/useAgentPlayback";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useSpriteData, isBlank } from "../hooks/useSpriteData";
 import { tools } from "../tools/tools";
 import { ColorBook } from "../controller/colorBook";
@@ -73,6 +75,8 @@ export function EditorScreen({
   onGoToProject,
 }: Props) {
   const t = useT();
+  // True while the person has a stroke in progress (set by the open sprite).
+  const strokeActive = useRef(false);
   if (!sprite) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -101,6 +105,7 @@ export function EditorScreen({
       textApi={textApi}
       clock={clock}
       onCommands={onCommands}
+      strokeActive={strokeActive}
     />
   );
 }
@@ -113,6 +118,7 @@ function OpenSprite({
   textApi,
   clock,
   onCommands,
+  strokeActive,
 }: {
   sprite: SpriteRef;
   api: EditorApi;
@@ -121,6 +127,7 @@ function OpenSprite({
   textApi: TextApi;
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
+  strokeActive: RefObject<boolean>;
 }) {
   const t = useT();
   const { preferences } = usePreferences();
@@ -164,6 +171,7 @@ function OpenSprite({
         reload();
       }}
       onCommands={onCommands}
+      strokeActive={strokeActive}
       reload={reload}
       sprite={sprite}
       info={data.info}
@@ -198,6 +206,7 @@ type ReadyProps = {
   textApi: TextApi;
   onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
+  strokeActive: RefObject<boolean>;
   // Reads the sprite from the core again.
   reload: () => void;
   sprite: SpriteRef;
@@ -289,6 +298,23 @@ function Ready(props: ReadyProps) {
   const busy = writing !== null && writing.frame === props.frame;
   const busyRef = useRef(false);
   busyRef.current = busy;
+  // The agent's pixels appear on the canvas one after another.
+  const reducedMotion = useReducedMotion();
+  const { cursor } = useAgentPlayback({
+    api: props.api,
+    sprite,
+    frame: props.frame,
+    pixels,
+    width: info.width,
+    height: info.height,
+    canvasRef,
+    clock: props.clock ?? screenClock,
+    reducedMotion,
+    strokeActive: props.strokeActive,
+    onFrame: props.onFrame,
+    endCount,
+  });
+  void cursor;
   const held = useRef<{ frame: number; changes: PixelChange[] }[]>([]);
   const failed = (error: { code?: string; message?: string }) => {
     // The core is the truth: read the frame again so the screen shows what
@@ -477,13 +503,17 @@ function Ready(props: ReadyProps) {
             onMove={canvas.moveTo}
             onHover={setPosition}
             canvasRef={canvasRef}
-            onStrokeStart={(pixel, button, shift) =>
-              controller.pointerDown(pixel.x, pixel.y, button, { shift })
-            }
+            onStrokeStart={(pixel, button, shift) => {
+              props.strokeActive.current = true;
+              controller.pointerDown(pixel.x, pixel.y, button, { shift });
+            }}
             onStrokeMove={(pixel, shift) =>
               controller.pointerMove(pixel.x, pixel.y, { shift })
             }
-            onStrokeEnd={() => controller.pointerUp()}
+            onStrokeEnd={() => {
+              props.strokeActive.current = false;
+              controller.pointerUp();
+            }}
           />
         </div>
         {mode === "canvas" && isBlank(pixels) && (
