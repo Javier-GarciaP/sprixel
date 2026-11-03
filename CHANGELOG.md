@@ -87,6 +87,22 @@ and the project follows [Semantic Versioning](https://semver.org/).
   starts the app and reconnects), `mcp add|remove|list` for Claude Code and
   OpenCode, `doctor`, `start`, `status`, `tools` and `tool`, with `--json` and
   documented exit codes.
+- Install scripts: `install.sh` (Linux and macOS) and `install.ps1` (Windows)
+  install Sprixel for the current user from a GitHub Release, check the SHA-256
+  of every download, show the MIT license notice, add the `sprixel` command to
+  the PATH and keep your projects, settings and tokens when run again.
+- `sprixel update` (and `--check`) installs the latest release with the same
+  checksum checks, and `sprixel uninstall` removes the app, the command and the
+  PATH entry after asking, keeping your projects and asking separately about
+  the local data folder.
+- `node scripts/bump-version.mjs` sets the version in every file and checks that
+  they match, and can check that a tag matches the code.
+- The release pipeline (`release.yml`): on a version tag from `main` it builds
+  the app and the command for Linux, macOS (Apple silicon and Intel) and
+  Windows, smoke tests the install on each system, and publishes a GitHub
+  Release with checksums and the notes from this changelog.
+- Documentation of the install, update and uninstall steps and of the first-run
+  warnings of an unsigned app.
 
 ### Fixed
 
