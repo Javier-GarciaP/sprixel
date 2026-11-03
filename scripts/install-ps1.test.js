@@ -90,6 +90,25 @@ describe.skipIf(!pwsh)("install.ps1 (run with PowerShell)", () => {
     expect(fs.existsSync(path.join(local, "Sprixel"))).toBe(false);
   });
 
+  it("reinstalling upgrades and keeps the user's projects and settings", () => {
+    makeRelease(release, { version: "0.2.0" });
+    install();
+    const project = path.join(root, "home/Sprites/hero.txt");
+    const token = path.join(root, "home/.sprixel/token");
+    fs.mkdirSync(path.dirname(project), { recursive: true });
+    fs.mkdirSync(path.dirname(token), { recursive: true });
+    fs.writeFileSync(project, "pixels\n");
+    fs.writeFileSync(token, "secret\n");
+
+    makeRelease(release, { version: "0.3.0" });
+    const r = install({ USERPROFILE: path.join(root, "home") });
+
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(r.stdout).toContain("Sprixel 0.3.0 is installed");
+    expect(fs.readFileSync(project, "utf8")).toBe("pixels\n");
+    expect(fs.readFileSync(token, "utf8")).toBe("secret\n");
+  });
+
   it("stops on an unsupported CPU", () => {
     makeRelease(release);
     const r = install({ SPRIXEL_ARCH: "ARM64" });

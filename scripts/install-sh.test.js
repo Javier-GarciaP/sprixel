@@ -175,6 +175,54 @@ describe("install.sh", () => {
     }
   });
 
+  it("reinstalling changes nothing outside the install folders", () => {
+    makeRelease(release);
+    install();
+    // Things the user owns: projects, data folder, a profile with other lines.
+    fs.mkdirSync(file(".sprixel"), { recursive: true });
+    fs.writeFileSync(file(".sprixel/token"), "t\n");
+    fs.mkdirSync(file("Documents/game"), { recursive: true });
+    fs.writeFileSync(file("Documents/game/hero.txt"), "pixels\n");
+    fs.writeFileSync(file(".profile"), "alias ll='ls -l'\n");
+    const mine = [".sprixel/token", "Documents/game/hero.txt", ".profile"];
+    const snapshot = () => mine.map((n) => fs.readFileSync(file(n), "utf8"));
+    const before = snapshot();
+
+    makeRelease(release, { version: "0.3.0" });
+    const r = install([], { PATH: "/usr/bin:/bin" });
+
+    expect(r.status, r.stderr).toBe(0);
+    // Only the installer's own two lines were added to the profile.
+    const [token, hero, profile] = snapshot();
+    expect([token, hero]).toEqual(before.slice(0, 2));
+    expect(profile.startsWith(before[2])).toBe(true);
+  });
+
+  it("repairs an installation whose command was deleted", () => {
+    makeRelease(release);
+    install();
+    fs.rmSync(file(".local/bin/sprixel"));
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.existsSync(file(".local/bin/sprixel"))).toBe(true);
+  });
+
+  it("a failed reinstall leaves the working installation as it was", () => {
+    makeRelease(release, { version: "0.2.0" });
+    install();
+    makeRelease(release, {
+      version: "0.3.0",
+      wrongChecksum: "sprixel-linux-x64",
+    });
+    const r = install();
+
+    expect(r.status).toBe(1);
+    expect(fs.readFileSync(file(".local/bin/sprixel"), "utf8")).toContain(
+      "0.2.0",
+    );
+  });
+
   it("--version needs a value and unknown options fail", () => {
     expect(install(["--version"]).status).toBe(1);
     expect(install(["--nope"]).stderr).toContain("unknown option");
