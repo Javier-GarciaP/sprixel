@@ -1,0 +1,100 @@
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import process from "node:process";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeRelease } from "./release-fixture.mjs";
+
+const script = path.resolve("install.ps1");
+const text = fs.readFileSync(script, "utf8");
+
+// PowerShell is not installed on every machine (and the CI has it only on
+// Windows runners). The real runs below are skipped when `pwsh` is missing;
+// the static checks always run.
+const pwsh = ["pwsh", "powershell"].find(
+  (name) => spawnSync(name, ["-NoProfile", "-Command", "1"]).status === 0,
+);
+
+describe("install.ps1 (static checks)", () => {
+  it("verifies the SHA-256 of every file before it installs", () => {
+    expect(text).toContain("Get-FileHash -Algorithm SHA256");
+    expect(text.indexOf("does not match")).toBeLessThan(
+      text.indexOf("# 4. Install"),
+    );
+  });
+
+  it("prints the MIT notice and the source URL first", () => {
+    expect(text.indexOf("MIT License")).toBeLessThan(
+      text.indexOf("Downloading"),
+    );
+    expect(text).toContain("Source code: $source");
+    expect(text).toContain("Javier-GarciaP/sprixel");
+  });
+
+  it("installs only for the user and never asks for administrator rights", () => {
+    expect(text).toContain("$env:LOCALAPPDATA");
+    expect(text).toContain('"User"');
+    expect(text).not.toMatch(/RunAs|"Machine"|HKLM|ProgramFiles/i);
+  });
+
+  it("does not exit when run with iex (it would close the terminal)", () => {
+    expect(text).toContain("$MyInvocation.MyCommand.Path");
+  });
+
+  it("uses the same file names as the release", () => {
+    expect(text).toContain("sprixel-windows-x64.exe");
+    expect(text).toContain("Sprixel-windows-x64.zip");
+  });
+});
+
+describe.skipIf(!pwsh)("install.ps1 (run with PowerShell)", () => {
+  let root, local, release;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "sprixel-ps1-"));
+    local = path.join(root, "local");
+    release = path.join(root, "release");
+    fs.mkdirSync(local);
+  });
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const install = (env = {}) =>
+    spawnSync(pwsh, ["-NoProfile", "-File", script], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        LOCALAPPDATA: local,
+        SPRIXEL_BASE_URL: `file://${release}`,
+        SPRIXEL_SKIP_PATH: "1",
+        ...env,
+      },
+    });
+
+  it("installs the app, the command and the notices", () => {
+    makeRelease(release);
+    const r = install();
+
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(fs.existsSync(path.join(local, "Sprixel/bin/sprixel.exe"))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
+    expect(fs.existsSync(path.join(local, "Sprixel/LICENSE"))).toBe(true);
+  });
+
+  it("stops and installs nothing when a checksum is wrong", () => {
+    makeRelease(release, { wrongChecksum: "Sprixel-windows-x64.zip" });
+    const r = install();
+
+    expect(r.status).toBe(1);
+    expect(fs.existsSync(path.join(local, "Sprixel"))).toBe(false);
+  });
+
+  it("stops on an unsupported CPU", () => {
+    makeRelease(release);
+    const r = install({ SPRIXEL_ARCH: "ARM64" });
+
+    expect(r.status).toBe(1);
+    expect(fs.existsSync(path.join(local, "Sprixel"))).toBe(false);
+  });
+});
