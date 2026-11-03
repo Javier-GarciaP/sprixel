@@ -80,3 +80,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
   folder and "..." buttons that show only on hover, as in the design.
 - The Editor tab with no sprite shows the gray ghost and a "Go to project" button.
 
+- Error messages under a field now float below it, so the dialog no longer jumps
+  when one appears.
+- Apply in the Text view says "Grid applied" when it works.
+- The Export tab follows the design: a check on the chosen format, "Export
+  ready" with a check after exporting, and folder and download icons.
+- The palette editor list shows all the colors, with no row cut in half.
+- The errors of the Text view now show in the language of the app (Spanish or
+  English), with the line and the numbers.
