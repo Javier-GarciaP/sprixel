@@ -391,5 +391,20 @@
   "grid.error.legendName": "line {line}: the legend line for {key} needs a name",
   "grid.error.legendName.short": "the legend line for {key} needs a name",
   "grid.error.paletteFull": "line {line}: the legend adds the color {key} but palette {palette} already has {count} colors",
-  "grid.error.paletteFull.short": "the legend adds the color {key} but palette {palette} already has {count} colors"
+  "grid.error.paletteFull.short": "the legend adds the color {key} but palette {palette} already has {count} colors",
+  "agents.title": "AI agents",
+  "agents.subtitle": "Connect an AI and you will see here everything it draws.",
+  "agents.state.connected": "Connected",
+  "agents.state.notConnected": "Not connected",
+  "agents.state.waiting": "Waiting for approval",
+  "agents.state.lost": "Connection lost",
+  "agents.connect": "Connect",
+  "agents.viewCommand": "View command",
+  "agents.disconnect": "Disconnect",
+  "agents.reconnect": "Reconnect",
+  "agents.allow": "Allow",
+  "agents.reject": "Reject",
+  "agents.stopped": "Stopped by you",
+  "agents.resume": "Let it continue",
+  "agents.lostBanner": "The connection with {agent} was lost. What it was drawing stopped."
 }

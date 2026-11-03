@@ -391,5 +391,20 @@
   "grid.error.legendName": "Línea {line}: la línea de la leyenda de {key} necesita un nombre",
   "grid.error.legendName.short": "la línea de la leyenda de {key} necesita un nombre",
   "grid.error.paletteFull": "Línea {line}: la leyenda añade el color {key} pero la paleta {palette} ya tiene {count} colores",
-  "grid.error.paletteFull.short": "la leyenda añade el color {key} pero la paleta {palette} ya tiene {count} colores"
+  "grid.error.paletteFull.short": "la leyenda añade el color {key} pero la paleta {palette} ya tiene {count} colores",
+  "agents.title": "Agentes de IA",
+  "agents.subtitle": "Conecta una IA y verás aquí todo lo que dibuja.",
+  "agents.state.connected": "Conectado",
+  "agents.state.notConnected": "No conectado",
+  "agents.state.waiting": "Esperando aprobación",
+  "agents.state.lost": "Conexión perdida",
+  "agents.connect": "Conectar",
+  "agents.viewCommand": "Ver comando",
+  "agents.disconnect": "Desconectar",
+  "agents.reconnect": "Volver a conectar",
+  "agents.allow": "Permitir",
+  "agents.reject": "Rechazar",
+  "agents.stopped": "Detenido por ti",
+  "agents.resume": "Dejar que continúe",
+  "agents.lostBanner": "Se perdió la conexión con {agent}. Lo que estaba dibujando se detuvo."
 }

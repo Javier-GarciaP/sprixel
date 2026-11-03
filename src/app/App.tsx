@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AgentsScreen, coreAgentsApi, useAgents } from "@/features/agents";
 import { EditorScreen } from "@/features/canvas-editor";
 import { ExportScreen } from "@/features/export";
 import {
@@ -81,6 +82,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     (next: Record<string, () => void> | null) => setEditorHandlers(next ?? {}),
     [],
   );
+  // What the core says about the agents, for the Agents tab.
+  const agents = useAgents(coreAgentsApi);
   const save = useSaveStatus(project !== null);
   useWindowTitle(project?.name ?? null);
 
@@ -214,6 +217,8 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
         onGoToProject={() => setTab("project")}
       />
     );
+  } else if (tab === "agents" && project) {
+    body = <AgentsScreen api={coreAgentsApi} state={agents} />;
   } else {
     body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;
   }
