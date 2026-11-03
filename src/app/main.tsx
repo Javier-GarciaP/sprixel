@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { blockPageZoom } from "./blockPageZoom";
 import "./index.css";
 
 // `npm run benchmark` starts the app with this flag to measure drawing speed.
@@ -8,6 +9,8 @@ import "./index.css";
 const Root = import.meta.env.VITE_BENCHMARK
   ? (await import("./benchmark/Benchmark")).Benchmark
   : App;
+
+blockPageZoom();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
