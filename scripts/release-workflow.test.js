@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -56,5 +57,35 @@ describe("release workflow", () => {
 
   it("runs the tests before the app is built", () => {
     expect(text.indexOf("npm test")).toBeLessThan(text.indexOf("tauri build"));
+  });
+
+  // Only the job that creates the release may write to the repository.
+  it("gives contents: write to the release job only", () => {
+    expect(text.match(/contents: write/g)).toHaveLength(1);
+    const release = text.slice(text.indexOf("\n  release:"));
+    expect(release).toContain("contents: write");
+  });
+
+  it("creates the release only after every build job passed", () => {
+    const release = text.slice(text.indexOf("\n  release:"));
+
+    expect(release).toMatch(/needs: build/);
+  });
+
+  it("marks a tag with a suffix as a pre-release", () => {
+    const snippet = text.match(/case "\$TAG" in .*? esac/)[0];
+    const flag = (tag) =>
+      spawnSync("sh", ["-c", `TAG=${tag}; ${snippet}; echo "[$PRERELEASE]"`], {
+        encoding: "utf8",
+      }).stdout.trim();
+
+    expect(flag("v0.3.0-alpha.1")).toBe("[--prerelease]");
+    expect(flag("v1.0.0-rc.2")).toBe("[--prerelease]");
+    expect(flag("v1.0.0")).toBe("[]");
+  });
+
+  it("takes the notes from the changelog and checks the tag exists", () => {
+    expect(text).toContain('node scripts/release-notes.mjs "$TAG"');
+    expect(text).toContain("--verify-tag");
   });
 });

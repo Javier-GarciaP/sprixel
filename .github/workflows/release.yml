@@ -91,3 +91,40 @@ jobs:
           name: release-${{ matrix.target }}-${{ matrix.arch }}
           path: staged/*
           if-no-files-found: error
+
+  release:
+    name: Publish the release
+    # Runs only if every build job (and so every test) passed.
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the only job that can create a release
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: artifacts
+
+      # Puts the files of all systems together, adds install.sh, install.ps1,
+      # LICENSE, THIRD-PARTY.md and VERSION, and writes checksums.txt.
+      - name: Assemble the release files
+        run: node scripts/assemble-release.mjs artifacts release
+
+      - name: Take the release notes from CHANGELOG.md
+        run: node scripts/release-notes.mjs "$TAG" > notes.md
+
+      - name: Create the GitHub Release
+        run: |
+          # A tag with a suffix (-alpha.1, -beta.1, -rc.1) is a pre-release.
+          case "$TAG" in *-*) PRERELEASE=--prerelease ;; *) PRERELEASE= ;; esac
+          gh release create "$TAG" release/* \
+            --title "Sprixel $TAG" \
+            --notes-file notes.md \
+            --verify-tag \
+            $PRERELEASE
