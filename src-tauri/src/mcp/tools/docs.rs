@@ -44,6 +44,15 @@ macro_rules! workflow {
     };
 }
 
+/// The sentence that lists the topics. The same text is in the server
+/// instructions, the Claude Code skill and `docs/ai-and-mcp.md` (a test checks
+/// all three). A macro, so `concat!` can use it.
+macro_rules! guide_list {
+    () => {
+        "Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`."
+    };
+}
+
 /// The grid of the worked example: a 16x16 slime, an idle frame and a jump
 /// frame, with the colors in a `legend`.
 macro_rules! example_grid {
@@ -131,6 +140,9 @@ Workflow:\n",
 \n",
     example!(),
     "\n\
+\n",
+    guide_list!(),
+    "\n\
 \n\
 Pixels: x and y count from 0 at the top left; frames count from 1; a color is a one-character palette key; `.` is always transparent. \
 A text grid is one character per pixel, one row per line; the exact format is in the description of `apply_grid`. \
@@ -143,7 +155,11 @@ The person can stop you (`stopped_by_user`) and undo your last action."
 );
 
 /// The topics of `get_guide`, in the order they are listed.
-pub const GUIDE_TOPICS: [&str; 3] = ["design", "animation", "palette"];
+pub const GUIDE_TOPICS: [&str; 8] =
+    ["design", "animation", "palette", "large-sprites", "faces-and-animals", "walk-and-attack-cycles", "game-ready", "tools"];
+
+/// The sentence that lists the topics (see `guide_list!`).
+pub const GUIDE_LIST: &str = guide_list!();
 
 /// How to design a sprite so it looks good. The same text is in the Claude
 /// Code skill (a test checks it).
@@ -187,12 +203,86 @@ Palette guide: how to choose colors\n\
 7. Make a ramp for you: `generate_ramp` adds 3 to 9 tones of one color (use `hue_shift` for cooler shadows and warmer lights). `remove_unused_colors` cleans a palette at the end.\n\
 8. A sprite can have its own palette: `create_sprite` with `own_palette: true`, or `create_palette` and then `set_sprite_palette`. Check the palette of a sprite with `get_palette` before you write a grid for it.";
 
+/// How to draw sprites bigger than 32x32. Also available as the topic `large-sprites`.
+pub const LARGE_SPRITES_GUIDE: &str = "\
+Large sprites guide: how to draw more than 32x32 without losing count\n\
+\n\
+1. Plan the parts. Before you draw, list the parts (head, body, arms, legs) and give each one a box: `x`, `y`, `width`, `height`. Parts must not overlap by accident.\n\
+2. One part at a time. Write each part with `apply_grid` and `x` and `y`, with at most about 24 rows. LOOK at the image after each part and fix it before you go on. A row with a wrong length is refused with `row_length`, so count the columns of the first row and copy that length.\n\
+3. Draw half, mirror the rest. For a front view write only the left half and send `symmetry` horizontal: the mirror line is the center of the sprite, so the half must end at the center column. To mirror a finished half, use `transform_region` with the operation mirror, or `copy_region`.\n\
+4. Start from a picture. Put a PNG in the folder `references/` of the project and call `import_reference` (`width` and `height` scale it down, `max_colors` adds colors to the palette). It is a rough start: clean it with `apply_grid` and `set_pixels`.\n\
+5. Read only what you need. `get_sprite` with `frame`, `region` and `include_palette` false returns one part, still as a valid grid. Do not read the whole sprite after every change.\n\
+6. Let the server finish. When the parts are done, call `auto_outline` once, then `auto_shade` for each material with the same light direction, then `analyze_sprite` with `outline_key`. Fix the loose pixels and the outline gaps it lists and call it again until both counts are 0.\n\
+7. Keep your changes safe. Pass `base_revision` on every write; if the person edits at the same time you get `stale_revision` and you read again instead of overwriting.";
+
+/// How to draw faces and animals. Also available as the topic `faces-and-animals`.
+pub const FACES_GUIDE: &str = "\
+Faces and animals guide: heads, eyes and bodies that read well\n\
+\n\
+1. Silhouette first. An animal is known by its outline: ears, snout, tail, legs. Block the shape with one flat color and look at it with `render_preview`. If you cannot tell what it is, change the shape, not the details.\n\
+2. Big head, small body. In a small sprite the head is about half of the height. It reads as cute and the face has room.\n\
+3. Eyes are the face. In 16x16 use 1 or 2 pixels wide; in 32x32 use 2x2. Put them just below the middle of the head and leave a gap of at least one eye between them. Use a dark tone (not the outline color) and one light pixel as a highlight, in the corner the light comes from.\n\
+4. Use symmetry for a front face. Write one half with `apply_grid` (`x` and `y`) and `symmetry` horizontal, and draw the eyes with `set_pixels` and `symmetry`, so both are equal. A side view has no symmetry: face the animal to the right.\n\
+5. Less is more. A nose is 1 or 2 pixels on the center column (2 for an even width). A mouth is a dark line of 1 to 3 pixels under it. If the face looks busy, remove a feature.\n\
+6. Animal parts. Ears are small triangles of 2 to 4 pixels (pointed for a cat, round for a bear). The muzzle is a lighter patch under the nose. Legs and tails are 2 pixels wide at 16x16.\n\
+7. Fur is 3 tones: base, shadow and light. The belly and the muzzle are one tone lighter. Use the same palette for all animals of a game so they feel like one world.\n\
+8. Finish with `auto_outline`, then `analyze_sprite` with `outline_key`. A stray pixel near an eye is easy to make: fix every loose pixel it lists.";
+
+/// How to make walk and attack animations. Also available as the topic `walk-and-attack-cycles`.
+pub const WALK_GUIDE: &str = "\
+Walk and attack cycles guide: frames that move well\n\
+\n\
+1. Walk: 4 frames is the minimum: contact, passing, contact (the other leg), passing. 6 or 8 frames are smoother. Make the key poses first, as whole frames.\n\
+2. Contact: the legs are far apart and the body is at its lowest. Passing: the legs are close and the body is 1 pixel higher. The body goes up and down by 1 pixel at 16x16 and by 2 at 32x32.\n\
+3. Ground contact. The lowest row of the feet must be the same row in every frame, or the character floats. `analyze_sprite` compares each frame with the next: `ground_kept` true means the bottom rows did not change. That is right for an idle, but in a walk a foot moves, so false is normal; look at the frames with `render_frames` (`labels` true) to check the feet.\n\
+4. Time. Give each frame its time with `set_frame_duration` (milliseconds). A walk: contact 100 to 140, passing 60 to 100. Without it, a frame lasts 1000 divided by the fps of the animation (8 to 12 fps is good for a walk).\n\
+5. Start a new frame with `add_frame` and `copy_of`, then change only what moves. Arms swing the opposite way to the legs. Do not add colors for one frame.\n\
+6. Attack has three phases. Anticipation: pull back, slow (150 to 250 ms). Strike: the biggest pose, fast (40 to 80 ms, 1 or 2 frames). Recovery: come back to the first idle pose (100 to 150 ms). A long wind-up and a short strike feel powerful.\n\
+7. Move a body part without redrawing it: `transform_region` with the operation move and a `region` around the body, so the feet stay in place.\n\
+8. The loop closes. A walk goes back to its first frame: `create_tag` with mode loop. An attack is not a loop: use mode once and end on the idle pose, so the game can go back to idle without a jump.\n\
+9. Look at the whole animation with `render_frames` and at the movement with `render_onion`. If the body grows, shrinks or jumps by accident, fix that frame.";
+
+/// What a game needs from a sprite. Also available as the topic `game-ready`.
+pub const GAME_READY_GUIDE: &str = "\
+Game-ready guide: anchors, times, tiles and export\n\
+\n\
+1. One size. All frames of a character have the same size, and so do the characters of one game (16, 32 or 48). Leave one empty pixel around the shape for the outline.\n\
+2. Anchors are the points the game needs: feet (where the sprite stands, usually the bottom center), hand (a weapon), head, muzzle. Use `set_anchor`; without `frame` it is for the whole sprite, with `frame` only for that frame (a hand that moves). Keep feet on the same pixel in every frame. Read them back with `get_sprite`; `remove_anchor` removes one.\n\
+3. Times. `set_frame_duration` gives a frame its milliseconds (10 to 10000). A frame that has exactly 100 lasts 1000 divided by the fps of its animation.\n\
+4. Animations are tags: `create_tag` with the usual names (idle, walk, attack, hurt). Idle and walk use mode loop; attack and death use mode once.\n\
+5. Tiles repeat, so the first column must equal the last column and the first row must equal the last row. Call `check_tile`: it says if the tile is seamless and lists the pixels that differ. `render_tiled` shows the tile 3 by 3 so you can see the seams. Fix them with `set_pixels`. Avoid a single bright pixel that makes the repetition obvious.\n\
+6. One palette for a set. Keep the keys of the same material equal in every sprite. At the end call `remove_unused_colors`.\n\
+7. Check before you export: `analyze_sprite` for each sprite (no loose pixels, no outline gaps).\n\
+8. Export with `export`: format sheet writes one PNG and a JSON file with the frames, animations, times and anchors; format png writes one file per frame. Choose the sprites with `scope`. Use `scale` 1 for the engine. Files go inside the project (default `assets/sprites`) and cannot be undone.";
+
+/// A map of the tools. Also available as the topic `tools`.
+pub const TOOLS_GUIDE: &str = "\
+Tools guide: which tool for which job\n\
+\n\
+1. Read (they change nothing): `get_project` (folders, palettes, revision), `list_sprites` (sizes, frames, animations), `get_sprite` (the grid; `frame`, `region` and `include_palette` read a part), `get_palette` (the keys), `list_projects` and `open_project` (find and open a project), `get_guide`.\n\
+2. See: `render_preview` (one frame), `render_frames` (many frames, `labels`), `render_onion` (the movement), `render_tiled` (a tile 3 by 3), `open_sprite` (shows a sprite to the person). Every pixel write also returns an image.\n\
+3. Create: `create_folder`, `create_sprite` (`own_palette` for a palette of its own), `add_frame` (`copy_of` copies a frame), `delete_frame`, `delete_sprite`.\n\
+4. Draw: `apply_grid` (a frame or a region from text; best for shapes), `set_pixels` (single pixels), `draw_shape` (line, rectangle, ellipse, fill). `symmetry` and `only_over` work on all three.\n\
+5. Edit: `transform_region` (flip, mirror, move, rotate), `copy_region` (copy to another place, frame or sprite), `import_reference` (a PNG from `references/`).\n\
+6. Finish: `auto_outline` when the shape is done, `auto_shade` for lit and shadow tones.\n\
+7. Check: `analyze_sprite` (loose pixels, outline gaps, unused colors, what changes between frames), `check_tile` (seams of a tile).\n\
+8. Colors: `set_palette_color`, `generate_ramp`, `create_palette`, `set_sprite_palette`, `remove_unused_colors`.\n\
+9. Animation and game data: `create_tag`, `set_frame_duration`, `set_anchor`, `remove_anchor`, `export`.\n\
+10. Mistakes: `undo_last_ai_action` takes back your last action, if nothing happened after it.\n\
+Pick the smallest tool: one pixel is `set_pixels`; a shape or a part is `apply_grid`; a copy is `copy_region`; both sides at once is `symmetry`; an outline or shading is `auto_outline` or `auto_shade`; a move or a flip is `transform_region`. Never redraw a whole frame to move or flip something.\n\
+When a call fails read its `message`. Common codes: `unknown_key` (the key is not in the palette), `out_of_range` and `region_out` (outside the sprite), `stale_revision` (read again), `permission_denied` (ask the person).";
+
 /// The text of a guide topic, or `None` when it is not a topic.
 pub fn guide(topic: &str) -> Option<&'static str> {
     match topic {
         "design" => Some(DESIGN_GUIDE),
         "animation" => Some(ANIMATION_GUIDE),
         "palette" => Some(PALETTE_GUIDE),
+        "large-sprites" => Some(LARGE_SPRITES_GUIDE),
+        "faces-and-animals" => Some(FACES_GUIDE),
+        "walk-and-attack-cycles" => Some(WALK_GUIDE),
+        "game-ready" => Some(GAME_READY_GUIDE),
+        "tools" => Some(TOOLS_GUIDE),
         _ => None,
     }
 }
@@ -200,9 +290,9 @@ pub fn guide(topic: &str) -> Option<&'static str> {
 pub fn tools() -> Vec<Tool> {
     vec![Tool {
         name: "get_guide",
-        description: "Returns the pixel art guide for a topic: `design` (palette ramps, light, silhouette, shading, outline, how to review your work), `animation` (key poses, loops) or `palette` (how to choose colors). Read `design` before you draw a new sprite. It changes nothing and needs no permission.",
+        description: "Returns the pixel art guide for a topic: `design` (palette ramps, light, silhouette, shading, outline, how to review your work), `animation` (key poses, loops), `palette` (how to choose colors), `large-sprites` (more than 32x32), `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` (anchors, times, tiles, export) or `tools` (which tool for which job). Read `design` before you draw a new sprite. It changes nothing and needs no permission.",
         schema: json!({ "type": "object", "required": ["topic"], "properties": {
-            "topic": { "type": "string", "enum": GUIDE_TOPICS, "description": "design, animation or palette." },
+            "topic": { "type": "string", "enum": GUIDE_TOPICS, "description": "The guide to read. `tools` is a map of the tools." },
         }}),
         need: Need::Nothing,
         run: get_guide,

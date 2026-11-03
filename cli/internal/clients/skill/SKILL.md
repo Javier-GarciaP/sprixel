@@ -54,7 +54,7 @@ Design guide: how to make a sprite that looks good
 10. Edit without redrawing. `transform_region` flips, mirrors, moves or rotates a region; `copy_region` copies a region to another place, frame or sprite; `symmetry` on `set_pixels`, `draw_shape` and `apply_grid` draws both sides at once; `only_over` changes only the pixels that have one key (shade a color without touching the outline). `import_reference` draws a PNG from the folder `references/` of the project, reduced to the palette.
 11. Let the server finish the sprite. When the shape is done, call `auto_outline` (the outline) and `auto_shade` (lit and shadow tones from one light direction), then `analyze_sprite` to find loose pixels, gaps in the outline, unused colors and, for animations, frames where the feet (`ground_kept`) moved. Fix what it reports.
 
-For moving sprites call `get_guide` with `animation`; for colors, with `palette`.
+Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`.
 
 ## Worked example
 
