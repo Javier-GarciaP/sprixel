@@ -47,6 +47,11 @@ impl Sessions {
         Some(entry.session.clone())
     }
 
+    /// Ends every session of a client (it was removed by the user).
+    pub fn end_client(&mut self, name: &str, version: &str) {
+        self.0.retain(|_, entry| !(entry.session.name == name && entry.session.version == version));
+    }
+
     pub fn exists(&self, id: &str) -> bool {
         self.0.contains_key(id)
     }

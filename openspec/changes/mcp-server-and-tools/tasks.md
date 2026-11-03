@@ -12,7 +12,7 @@
 
 ### 2. Approval and permissions
 
-- [ ] 2.1 Implement client approval (pending, allowed, rejected) with persistence and removal, and verify blocked calls before approval
+- [x] 2.1 Implement client approval (pending, allowed, rejected) with persistence and removal, and verify blocked calls before approval
 - [ ] 2.2 Implement the permission policy and `permission_denied`, and verify each of the four permissions and the change-without-reconnect scenario
 
 ### 3. Tools

@@ -60,3 +60,10 @@ pub fn connect(core: &Core, name: &str) -> String {
         "clientInfo": { "name": name, "version": "1.0" } } });
     core.handle(None, body.to_string().as_bytes()).session.expect("a session id")
 }
+
+/// Like `connect`, and the user allows the client.
+pub fn connect_allowed(core: &Core, name: &str) -> String {
+    let session = connect(core, name);
+    assert!(core.answer_client(name, "1.0", true).unwrap());
+    session
+}

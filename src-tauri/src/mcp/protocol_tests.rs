@@ -1,6 +1,6 @@
 //! Task 1.1: a client can talk MCP and list a tool.
 
-use super::testing::{connect, core_with, rpc};
+use super::testing::{connect, connect_allowed, core_with, rpc};
 use super::*;
 use serde_json::{Value, json};
 
@@ -23,7 +23,7 @@ fn example_tool() -> Tool {
 #[test]
 fn a_client_lists_the_tools_with_their_schemas() {
     let (_host, core) = core_with(vec![example_tool()]);
-    let session = connect(&core, "Claude Code");
+    let session = connect_allowed(&core, "Claude Code");
 
     let reply = rpc(&core, Some(&session), "tools/list", json!({}));
 
@@ -59,7 +59,7 @@ fn a_tool_call_returns_content_and_errors_are_marked() {
     }
     let failing = Tool { name: "fail", run: fail, ..example_tool() };
     let (_host, core) = core_with(vec![example_tool(), failing]);
-    let session = connect(&core, "Claude Code");
+    let session = connect_allowed(&core, "Claude Code");
 
     let ok = rpc(&core, Some(&session), "tools/call", json!({ "name": "echo", "arguments": { "text": "hi" } }));
     assert_eq!(ok["result"]["isError"], false);
@@ -79,7 +79,7 @@ fn a_tool_call_returns_content_and_errors_are_marked() {
 #[test]
 fn an_unknown_tool_lists_the_valid_ones() {
     let (_host, core) = core_with(vec![example_tool()]);
-    let session = connect(&core, "Claude Code");
+    let session = connect_allowed(&core, "Claude Code");
 
     let reply = rpc(&core, Some(&session), "tools/call", json!({ "name": "nope" }));
 

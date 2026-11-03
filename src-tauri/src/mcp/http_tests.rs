@@ -136,6 +136,7 @@ fn a_valid_token_can_list_and_call_tools() {
     let first = post(port, Some(&core.token), None, &[], &initialize());
     assert_eq!(first.status, 200);
     let session = header(&first, "mcp-session-id").expect("a session id").to_string();
+    core.answer_client("Claude Code", "1", true).unwrap();
     let session_header = format!("Mcp-Session-Id: {session}");
 
     let list = json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }).to_string();

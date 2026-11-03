@@ -5,7 +5,8 @@
 
 use super::sessions::{Session, clean_name};
 use super::tool::{Output, ToolError, ToolResult};
-use super::{Core, base64};
+use super::clients::Standing;
+use super::{CLIENTS_EVENT, CLIENT_PENDING_EVENT, Core, base64};
 use serde_json::{Value, json};
 
 /// The protocol versions the server speaks. The first is the newest.
@@ -85,9 +86,18 @@ impl Core {
             name: clean_name(&text(&params["clientInfo"]["name"])),
             version: text(&params["clientInfo"]["version"]),
         };
+        let (client_name, client_version) = (client.name.clone(), client.version.clone());
         let Some(session) = self.sessions.lock().unwrap().start(client) else {
             return error(id, -32000, "limit_exceeded: too many clients are connected");
         };
+        let (_, asked) = self.clients.lock().unwrap().request(&client_name, &client_version, true);
+        if asked {
+            // The user answers in the app; a system notification is sent when
+            // the app is in the background.
+            self.log("a new client waits for approval");
+            self.host.emit(CLIENT_PENDING_EVENT, json!({ "name": client_name, "version": client_version }));
+            self.host.emit(CLIENTS_EVENT, Value::Null);
+        }
         let mut reply = result(
             id,
             json!({
@@ -100,8 +110,16 @@ impl Core {
         reply
     }
 
+    fn standing(&self, client: &Session) -> Standing {
+        self.clients.lock().unwrap().standing(&client.name, &client.version)
+    }
+
     /// The tools a client sees, with their schemas.
-    fn list_tools(&self, _client: &Session) -> Vec<Value> {
+    fn list_tools(&self, client: &Session) -> Vec<Value> {
+        // A client that is not allowed sees no tool at all.
+        if self.standing(client) != Standing::Allowed {
+            return Vec::new();
+        }
         self.tools
             .iter()
             .map(|tool| {
@@ -123,6 +141,26 @@ impl Core {
     /// Finds a tool and runs it. The checks before it runs (approval,
     /// permissions) belong here.
     pub fn run_tool(&self, client: &Session, name: &str, arguments: &Value) -> ToolResult {
+        // Looked up on every call, so removing or rejecting a client applies
+        // to its very next call.
+        match self.standing(client) {
+            Standing::Allowed => {}
+            Standing::Pending => {
+                return Err(ToolError::new(
+                    "awaiting_approval",
+                    "the user has not allowed this client yet; ask them to press Allow in the Sprixel app, then try again",
+                ));
+            }
+            Standing::Rejected => {
+                return Err(ToolError::new("client_rejected", "the user rejected this client"));
+            }
+            Standing::Unknown => {
+                return Err(ToolError::new(
+                    "not_approved",
+                    "this client is not allowed; connect again to ask the user for access",
+                ));
+            }
+        }
         let tool = self.tools.iter().find(|t| t.name == name).ok_or_else(|| {
             let names: Vec<&str> = self.tools.iter().map(|t| t.name).collect();
             ToolError::new("unknown_tool", format!("there is no tool {name:?}; the tools are {}", names.join(", ")))
