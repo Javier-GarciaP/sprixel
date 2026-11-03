@@ -6,9 +6,9 @@ use crate::mcp::testing::{connect_allowed, core_with, rpc};
 use crate::mcp::tools;
 use serde_json::Value;
 
-const WRITE_TOOLS: [&str; 10] = [
+const WRITE_TOOLS: [&str; 11] = [
     "create_folder", "create_sprite", "add_frame", "apply_grid", "set_pixels", "draw_shape",
-    "delete_frame", "create_tag", "set_palette_color", "delete_sprite",
+    "delete_frame", "create_tag", "set_palette_color", "delete_sprite", "undo_last_ai_action",
 ];
 
 fn listed() -> Vec<Value> {
@@ -30,7 +30,7 @@ fn a_client_sees_every_tool_with_a_description_and_a_schema() {
     for expected in [
         "get_project", "list_sprites", "get_sprite", "get_palette", "render_preview", "open_sprite",
         "create_folder", "create_sprite", "apply_grid", "set_pixels", "draw_shape", "add_frame",
-        "delete_frame", "create_tag", "set_palette_color", "delete_sprite", "export",
+        "delete_frame", "create_tag", "set_palette_color", "delete_sprite", "export", "undo_last_ai_action",
     ] {
         assert!(names.contains(&expected), "missing {expected}: {names:?}");
     }

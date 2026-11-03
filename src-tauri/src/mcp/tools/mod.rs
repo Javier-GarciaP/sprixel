@@ -16,6 +16,7 @@ mod export;
 mod read;
 mod shapes;
 mod structure;
+mod undo;
 pub(super) mod write;
 
 use super::Tool;
@@ -31,6 +32,7 @@ pub fn all() -> Vec<Tool> {
     tools.extend(draw::tools());
     tools.extend(structure::tools());
     tools.extend(export::tools());
+    tools.extend(undo::tools());
     tools
 }
 
@@ -54,3 +56,6 @@ mod revision_tests;
 
 #[cfg(test)]
 mod docs_tests;
+
+#[cfg(test)]
+mod undo_tests;
