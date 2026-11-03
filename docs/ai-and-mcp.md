@@ -111,6 +111,7 @@ description tells the AI the rules, so it does not need this page.
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
+| `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |
 
 **Open projects** (permission "Open projects")
 
@@ -162,6 +163,7 @@ The most common codes:
 | `not_a_project` | `open_project` got a folder that does not exist or has no `sprixel.json` |
 | `stopped_by_user` | The person pressed Stop; do not continue |
 | `stale_revision` | The project changed since `base_revision`; read it again |
+| `unknown_topic` | `get_guide` got a topic that is not `design`, `animation` or `palette` |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
 | `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
