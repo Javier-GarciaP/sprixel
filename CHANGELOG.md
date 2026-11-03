@@ -67,6 +67,22 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Text view: the Canvas and Text switch shows the sprite as a text grid with
   line numbers, a live preview that keeps the last valid state, a status line,
   marked lines with errors, and Apply, Copy and Paste.
+- MCP server inside the app, for AI agents: it listens only on `127.0.0.1`, needs
+  a random token kept in `~/.sprixel/` (readable only by you), rejects web page
+  requests (`Origin` and `Host` checks) and has limits on size, time and rate.
+- You approve each new AI client before it gets any tool, and you choose what
+  agents may do: create sprites, edit pixels, delete sprites (off by default)
+  and export files. A switch applies to the next call, with no reconnecting.
+- AI tools: read the project, sprites (as a text grid), palettes and an image of
+  a frame; create folders, sprites and frames; draw with a text grid, single
+  pixels or shapes; delete frames; create animations; set palette colors; delete
+  sprites; export; and undo the last action of the agent. Each call is atomic,
+  one undo step, and errors are exact (`row_length`, `unknown_key`...).
+- Agents see a `revision` and can pass `base_revision` to avoid overwriting
+  newer changes (`stale_revision`).
+- The core records the activity of every agent, shows who edited a sprite last,
+  marks the frame an agent is writing, and lets you Stop an agent
+  (`stopped_by_user`) and undo only its latest action.
 
 ### Fixed
 

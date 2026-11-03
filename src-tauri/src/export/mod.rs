@@ -15,7 +15,7 @@ mod write;
 pub use error::ExportError;
 pub use plan::{DEFAULT_NAMING, ExportFile, Format, Options, Scope};
 pub use png_files::build_png_files;
-pub use sheet::build;
+pub use sheet::{build, encode_png};
 pub use summary::{Summary, default_name, preview, summarize};
 pub use write::{DEFAULT_OUTPUT, Written, resolve_output, write_files};
 

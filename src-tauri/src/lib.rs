@@ -1,6 +1,9 @@
+use tauri::Manager;
+
 mod document;
 mod export;
 mod history;
+mod mcp;
 mod render;
 mod storage;
 
@@ -15,6 +18,19 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(ipc::project::ProjectState::default())
         .manage(ipc::editor::EditorState::default())
+        .setup(|app| {
+            // The MCP server starts with the app. If it cannot start (for
+            // example the home folder is read-only) the app still works, only
+            // without AI agents.
+            match mcp::start(app.handle().clone()) {
+                Ok((core, server)) => {
+                    app.manage(core);
+                    app.manage(std::sync::Mutex::new(Some(server)));
+                }
+                Err(error) => eprintln!("[mcp] the server did not start: {error}"),
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             ipc::frames::frames_info_of,
             ipc::frames::frames_insert,
@@ -38,6 +54,14 @@ pub fn run() {
             ipc::editor::agent_activity,
             ipc::editor::agent_stop,
             ipc::editor::debug_agent_write,
+            ipc::mcp::mcp_clients,
+            ipc::mcp::mcp_answer_client,
+            ipc::mcp::mcp_remove_client,
+            ipc::mcp::mcp_permissions,
+            ipc::mcp::mcp_set_permissions,
+            ipc::mcp::mcp_activity,
+            ipc::mcp::mcp_stop_agent,
+            ipc::mcp::mcp_resume_agent,
             ipc::load_preferences,
             ipc::save_settings,
             ipc::add_recent_project,
@@ -67,8 +91,16 @@ pub fn run() {
             ipc::export_run,
             ipc::export_reveal
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Stop the server when the app ends, so `runtime.json` is removed.
+            if let tauri::RunEvent::Exit = event {
+                if let Some(server) = app.try_state::<std::sync::Mutex<Option<mcp::Server>>>() {
+                    server.lock().unwrap().take();
+                }
+            }
+        });
 }
 
 // The shell modules (the storage modules are declared at the top of the file).
