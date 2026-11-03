@@ -118,4 +118,15 @@ describe("bump-version", () => {
 
     expect(run("--tag", "v0.1.0").status).toBe(1);
   });
+
+  it("--tag fails when the tag has a bad suffix, even if the code agrees", () => {
+    const pkg = JSON.parse(read("package.json"));
+    pkg.version = "0.1.0-foo";
+    fs.writeFileSync(path.join(copy, "package.json"), JSON.stringify(pkg));
+
+    const bad = run("--tag", "v0.1.0-foo");
+
+    expect(bad.status).toBe(1);
+    expect(bad.stderr).toContain("vMAJOR.MINOR.PATCH");
+  });
 });

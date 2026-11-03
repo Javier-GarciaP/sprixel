@@ -55,10 +55,10 @@ const TARGETS = [
   ),
   {
     file: "src-tauri/Cargo.lock",
-    // The "sprixel" package is the line after its name.
-    get: (text) => text.match(/name = "sprixel"\nversion = "([^"]+)"/)?.[1],
+    // The "sprixel" package is the line after its name (LF or CRLF).
+    get: (text) => text.match(/name = "sprixel"\r?\nversion = "([^"]+)"/)?.[1],
     set: (text, v) =>
-      text.replace(/(name = "sprixel"\nversion = ")[^"]+(")/, `$1${v}$2`),
+      text.replace(/(name = "sprixel"\r?\nversion = ")[^"]+(")/, `$1${v}$2`),
   },
   lineFile(
     "cli/internal/version/version.go",
@@ -108,8 +108,11 @@ export function bump(root, version) {
   }
 }
 
-/** Returns the problem when the tag is not "v" plus the code version. */
+/** Returns the problem when the tag is badly formed or is not "v" plus the code version. */
 export function checkTag(root, tag) {
+  if (!/^v/.test(tag) || !SEMVER.test(tag.slice(1))) {
+    return `the tag ${tag} is not in the form vMAJOR.MINOR.PATCH (or -alpha.N, -beta.N, -rc.N)`;
+  }
   const version = JSON.parse(read(root, "package.json")).version;
   if (tag !== `v${version}`) {
     return `the tag is ${tag} but the code version is ${version} (the tag must be v${version})`;
