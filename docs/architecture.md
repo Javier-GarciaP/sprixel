@@ -3,10 +3,11 @@
 > **Status: foundation, storage and app shell built.** The app skeleton (Tauri 2
 > + Vite + React + TypeScript + Tailwind), the Go CLI, the tooling, CI, the
 > drawing benchmark, the document model and project storage in the Rust core,
-> and the app shell with settings (create and open projects) exist. The
-> editor features, rendering, export and the MCP server are still planned and
-> follow the version 1 specs in [`openspec/`](../openspec/). If a spec and
-> this document disagree, the spec wins.
+> the app shell with settings, the editor features, the export and the MCP
+> server with its tools exist. The `sprixel` command bridge and the Agents tab
+> are still planned and follow the version 1 specs in
+> [`openspec/`](../openspec/). If a spec and this document disagree, the spec
+> wins.
 
 ## Overview
 

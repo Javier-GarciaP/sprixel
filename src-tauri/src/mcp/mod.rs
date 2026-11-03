@@ -237,3 +237,6 @@ mod stop_tests;
 
 #[cfg(test)]
 mod security_tests;
+
+#[cfg(test)]
+mod docs_tests;

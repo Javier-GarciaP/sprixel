@@ -1,8 +1,11 @@
 # AI and MCP
 
-> **Status: planned.** Nothing is built yet. This is how the AI integration
-> will work in version 1. The exact tool list is defined in the
-> `mcp-server-and-tools` spec.
+> **Status: the server and the tools are built** (the `mcp-server-and-tools`
+> spec). The `sprixel` command (`sprixel mcp add`, `doctor`, `tool`) and the
+> **Agents** tab (approval prompt, permissions, activity, Stop and Undo
+> buttons) come in the `cli-sprixel` and `agents-ui` specs. Until then an MCP
+> client can connect directly over HTTP (see
+> [Connect without the command](#connect-without-the-command)).
 
 Sprixel is made to be used by an AI. An AI agent such as Claude Code or
 OpenCode connects to the running app, reads your project and draws on the real
@@ -30,6 +33,9 @@ command is its remote control.
 
 ## Connect your AI
 
+> The `sprixel` command is built in the `cli-sprixel` spec. What follows is how
+> it will work.
+
 First install Sprixel (see the [README](../README.md#install)). Then:
 
 ```sh
@@ -51,36 +57,74 @@ or from the **Agents** tab.
 
 ## What the AI can do: tools
 
-The AI sees these tools. Names are proposed and may change in the spec.
+The AI sees these tools. Frames are numbered from 1, and `x` and `y` count from
+0 at the top left. A sprite is named by `name`, with `folder` when two sprites
+share a name (or a path in `name`, like `Characters/goblin`). Every tool
+description tells the AI the rules, so it does not need this page.
 
-**Read**
+**Read** (they never change the project)
 
 | Tool | What it does |
 | --- | --- |
-| `get_project` | Project name, folders, palette name and counts |
-| `list_sprites` | Sprites with size, frames and animations |
-| `get_sprite` | One sprite as a [text grid](text-grid-format.md) |
+| `get_project` | Project name, revision, folders, palettes and number of sprites |
+| `list_sprites` | Sprites with size, frames, palette, animations and who edited them last |
+| `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations |
 | `get_palette` | The colors with their one-letter keys |
-| `render_preview` | An image of a sprite or frame, so the AI can see its work |
-| `open_sprite` | Shows a sprite in the editor, so you see what it works on |
+| `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
+| `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 
-**Write**
+**Create** (permission "Create sprites")
 
 | Tool | What it does |
 | --- | --- |
 | `create_folder` | Creates a folder |
-| `create_sprite` | Creates a sprite with a size, a folder and a palette |
+| `create_sprite` | Creates an empty sprite with a size (1 to 512), a folder and a palette |
+| `add_frame` | Adds an empty frame, or a copy of another frame, at a place |
+
+**Edit** (permission "Edit pixels")
+
+| Tool | What it does |
+| --- | --- |
 | `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet |
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`) |
-| `draw_shape` | Draws a line, rectangle, ellipse or fill |
-| `add_frame` / `delete_frame` | Adds (or copies) and removes frames |
-| `create_tag` | Creates an animation (name, from, to, fps, mode) |
-| `set_palette_color` | Adds or changes a palette color |
-| `delete_sprite` | Moves a sprite to the trash (needs permission) |
-| `export` | Exports a sheet, PNG files or a GIF |
-| `undo_last_ai_action` | Reverts the last action made by an AI |
+| `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key |
+| `delete_frame` | Removes a frame (a sprite keeps at least one) |
+| `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
+| `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
+| `undo_last_ai_action` | Takes back the last action of this agent, if nothing happened after it |
 
-The same tools can be called from a terminal:
+**Delete and export**
+
+| Tool | What it does |
+| --- | --- |
+| `delete_sprite` | Moves a sprite to the trash (permission "Delete sprites", off by default) |
+| `export` | Writes a sprite sheet with JSON, or PNG files, into a folder inside the project (permission "Export files") |
+
+Every write tool is **atomic**: it is applied whole or not at all, as one entry
+of the history by the agent. Every write returns the new `revision` and takes
+an optional `base_revision`.
+
+### Errors
+
+Every error has a stable `code`, a `message` that says how to fix it, and
+details when they apply (`line`, `row`, `column`, `valid_keys`, `limit`...).
+The most common codes:
+
+| Code | Meaning |
+| --- | --- |
+| `awaiting_approval`, `client_rejected`, `not_approved` | The person has not allowed this client |
+| `permission_denied` | A permission is off (the message names it) |
+| `stopped_by_user` | The person pressed Stop; do not continue |
+| `stale_revision` | The project changed since `base_revision`; read it again |
+| `newer_changes` | `undo_last_ai_action` would hide a newer change |
+| `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
+| `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
+| `out_of_range`, `unknown_key` | A pixel outside the sprite, or a key that is not in the palette (`valid_keys` lists the ones that are) |
+| `invalid_path`, `outside_project` | A path that is not allowed |
+| `limit_exceeded` | A limit was passed (see [Security](#security)) |
+
+The same tools can be called from a terminal with the `sprixel` command
+(planned in the `cli-sprixel` spec):
 
 ```sh
 sprixel tools
@@ -109,42 +153,80 @@ Example prompts:
 ## Permissions
 
 In the **Agents** tab you choose what agents may do. These are enforced inside
-the app, not only in the interface.
+the app core, not only in the interface: a switch applies to the **next call** of
+every agent, with no reconnecting. They are saved in `~/.sprixel/permissions.json`.
 
 | Permission | Default |
 | --- | --- |
-| Create sprites | On |
-| Edit pixels | On |
-| Delete sprites | **Off** |
-| Export files | On |
+| Create sprites (`create_folder`, `create_sprite`, `add_frame`) | On |
+| Edit pixels (the drawing and structure tools, and `undo_last_ai_action`) | On |
+| Delete sprites (`delete_sprite`) | **Off** |
+| Export files (`export`) | On |
 | Ask me when a new agent connects | On |
 
-Everything an agent does is saved in the activity list with its name and time.
-**Stop** cancels the work in progress. **Undo** reverts the last action.
-Exported files cannot be undone.
+Everything an agent does is saved in the activity list (for the session) with
+its name and time. Calls that failed are listed too; reading is not.
+
+- **Stop** cancels the call in progress before anything is applied, and the
+  agent's next write calls fail with `stopped_by_user` until you let it
+  continue. Stop is by agent name and also stops its other sessions.
+- **Undo** reverts the last action. It is offered only on the most recent AI
+  action, while nothing else changed the project after it. Exported files
+  cannot be undone.
+
+## Connect without the command
+
+Any MCP client can connect to the running app:
+
+1. Read `~/.sprixel/runtime.json` (`{"port": ..., "pid": ...}`) and
+   `~/.sprixel/token`.
+2. Send JSON-RPC 2.0 requests with `POST http://127.0.0.1:<port>/mcp`, the
+   header `Authorization: Bearer <token>` and a `Content-Length` (no chunked
+   bodies). Send no `Origin` header.
+3. Call `initialize` with your `clientInfo` (name and version). The answer has
+   the `Mcp-Session-Id` header: send it on every later request.
+4. The app asks you to allow the client. Until then `tools/list` is empty and
+   `tools/call` fails with `awaiting_approval`.
+
+The server speaks `initialize`, `ping`, `tools/list` and `tools/call`, with
+the protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Images from
+`render_preview` come as MCP image content.
 
 ## Security
 
 The server can change your files, so it is closed by default.
 
-- Listens on **`127.0.0.1` only** (never the network), on a random free port.
-- Needs a random **token** on every request. It is stored in a file only your
-  user can read.
-- Checks the `Host` header and **rejects browser requests** (any request with
-  an `Origin` header). A web page you visit cannot control Sprixel.
-- A **new AI client must be approved** by you.
-- File access and exports are **limited to the project folder**.
-- Requests have a **size limit**, and writes are applied one at a time.
+- Listens on **`127.0.0.1` only** (never the network), on a free port written to
+  `runtime.json` (removed when the app stops).
+- Needs a random **token** (256 bits) on every request. It is stored in
+  `~/.sprixel/token` in a folder only your user can read (mode 0600 and 0700 on
+  Linux and macOS, an access list with only your user on Windows), compared in
+  constant time and never written to a log. Delete the file to rotate it.
+- Checks the `Host` header (only the local address and port) and **rejects
+  browser requests**: any request with an `Origin` header, even with a valid
+  token. A web page you visit cannot control Sprixel. No CORS header is sent.
+- A **new AI client must be approved** by you. A client is known by its name and
+  version; a new version asks again.
+- Paths from a client are checked: no `..`, no absolute paths. Exported files
+  go **inside the project folder**, never in hidden folders or in the folders
+  that hold the project files, and a link that points outside is refused.
+- **Limits** (answered with `limit_exceeded`): 4 MB per request, 10 seconds to
+  send a request, 100 requests per second for each client, 16 clients at the
+  same time, 32 connections open at once, 16 clients waiting for an answer, an
+  export of at most 64 million pixels.
+- Writes are applied **one at a time**.
 
 Note: the name an agent gives itself ("Claude Code") is only a label. The real
-protection is the token and your approval.
+protection is the token and your approval. A program of your own user that can
+read the token file can use the app like an agent; that is the limit of this
+design.
 
 ## Two things to know
 
 - **Concurrency.** If you and an agent edit the same frame, the agent's
-  operation finishes first and your strokes wait a moment. The agent can pass a
-  `base_revision`; if the project changed, the tool fails with
-  `stale_revision` and the agent reads again.
+  operation finishes first and your strokes wait a moment (the frame shows who
+  is drawing). The agent can pass a `base_revision`; if the project changed,
+  the tool fails with `stale_revision` and the agent reads again.
 - **No app, no AI.** The tools need the app to be running. `sprixel mcp` starts
   it when it can. On a computer with no screen (a server) it cannot.
 
@@ -154,3 +236,4 @@ protection is the token and your approval.
   OpenCode get the one-command setup).
 - A headless mode (running the app without a window).
 - Remote access over a network.
+- The "connection lost" state of an agent after 10 seconds (planned).
