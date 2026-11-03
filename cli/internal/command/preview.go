@@ -20,7 +20,8 @@ const keepPreviews = 20
 // savePreview writes a PNG (base64 text, as the app sends it) in
 // ~/.sprixel/previews and returns the path. An AI that only uses the shell
 // cannot read base64, but it can open a file. info is the text part of the
-// result of render_preview; it names the file: <sprite>-<frame>-<revision>.png.
+// result of render_preview; it names the file: <sprite>-<frame>-<revision>.png
+// (render_frames and render_onion: <sprite>-<kind>-<revision>-<hash>.png).
 func (c *invocation) savePreview(data string, info string) (string, error) {
 	png, err := base64.StdEncoding.DecodeString(data)
 	if err != nil || len(png) == 0 {
@@ -60,10 +61,11 @@ func (c *invocation) savePreview(data string, info string) (string, error) {
 func previewName(info string, png []byte) string {
 	var parsed struct {
 		Name     string `json:"name"`
+		Kind     string `json:"kind"`
 		Frame    int    `json:"frame"`
 		Revision uint64 `json:"revision"`
 	}
-	if json.Unmarshal([]byte(info), &parsed) == nil && parsed.Name != "" && parsed.Frame > 0 {
+	if json.Unmarshal([]byte(info), &parsed) == nil && parsed.Name != "" && (parsed.Frame > 0 || parsed.Kind == "frames" || parsed.Kind == "onion") {
 		safe := strings.Map(func(r rune) rune {
 			switch {
 			case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
@@ -71,6 +73,11 @@ func previewName(info string, png []byte) string {
 			}
 			return '_'
 		}, parsed.Name)
+		sum := sha256.Sum256(png)
+		if parsed.Kind == "frames" || parsed.Kind == "onion" {
+			// Several frames: the hash tells two different requests apart.
+			return fmt.Sprintf("%s-%s-%d-%s.png", strings.Trim(safe, "_-"), parsed.Kind, parsed.Revision, hex.EncodeToString(sum[:4]))
+		}
 		return fmt.Sprintf("%s-%d-%d.png", strings.Trim(safe, "_-"), parsed.Frame, parsed.Revision)
 	}
 	sum := sha256.Sum256(png)
