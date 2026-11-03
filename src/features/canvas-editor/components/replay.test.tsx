@@ -6,6 +6,7 @@ import { FakeEditorApi } from "../testing/fakeApi";
 import { centeredView, fitZoom } from "../view/viewMath";
 import {
   colorOfPixel,
+  drag,
   goblin,
   manualClock,
   mockLayout,
@@ -183,5 +184,44 @@ describe("Agent cursor", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("agent-cursor")).toBeNull(),
     );
+  });
+});
+
+describe("Busy during the replay", () => {
+  const line = (count: number): [number, number, string][] =>
+    Array.from({ length: count }, (_, x) => [x, 0, "R"]);
+
+  // Checks the "Person draws during replay" scenario: a stroke on the frame
+  // that is being replayed is held (it shows on the canvas but nothing is sent),
+  // and it is sent after the replay ends and the core frees the frame.
+  it("holds a stroke of the person until the replay ends", async () => {
+    const api = await open(new FakeEditorApi(16, 16, 1, palette));
+    agentWrites(api, ops(1, line(10)));
+    tick(100);
+
+    drag([16, 16], [[8, 8]]);
+
+    expect(api.calls).toEqual([]);
+    expect(colorOfPixel(16, 16, 8, 8)).toEqual([0, 0, 0, 255]);
+    tick(300);
+    await waitFor(() => expect(api.playbackDones).toEqual([1]));
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    expect(api.calls[0].changes[0]).toMatchObject({ x: 8, y: 8 });
+  });
+
+  // Checks the core timeout (10 s): if the core frees the frame while the
+  // editor is still replaying (the replays took too long), the canvas shows
+  // the final state at once and the held stroke is sent.
+  it("shows the final state and sends held strokes when the core frees the frame", async () => {
+    const api = await open(new FakeEditorApi(16, 16, 1, palette));
+    agentWrites(api, ops(1, line(10)));
+    tick(100);
+    drag([16, 16], [[8, 8]]);
+    expect(colorOfPixel(16, 16, 9, 0)).not.toEqual(RED);
+
+    act(() => api.emit(null));
+
+    await waitFor(() => expect(colorOfPixel(16, 16, 9, 0)).toEqual(RED));
+    await waitFor(() => expect(api.calls).toHaveLength(1));
   });
 });
