@@ -137,6 +137,8 @@ description tells the AI the rules, so it does not need this page.
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
+| `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
+| `set_sprite_palette` | Makes a sprite use another palette; fails with `keys_missing` if the sprite uses a key the palette lacks |
 | `undo_last_ai_action` | Takes back the last action of this agent, if nothing happened after it |
 
 **Delete and export**
