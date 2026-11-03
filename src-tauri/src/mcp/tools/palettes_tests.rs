@@ -266,3 +266,56 @@ fn create_palette_can_add_a_ramp() {
     let error = call(&core, &session, "create_palette", json!({ "name": "x", "ramp": { "base": "#FF0000", "steps": 1 } })).unwrap_err();
     assert_eq!(error["code"], "bad_argument");
 }
+
+const SLIME_ROWS: &str = "frame 1\nRRRR....\n........\n........\n........\n........\n........\n........\n........\n";
+
+// Checks that `palette:` with the palette of the sprite works (any letter
+// case), and that a grid with no `palette:` line still works.
+#[test]
+fn a_grid_palette_line_with_the_sprite_palette_is_fine() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+
+    let grid = format!("palette: MAIN\n{SLIME_ROWS}");
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid })).unwrap();
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": SLIME_ROWS })).unwrap();
+}
+
+// Checks "Other palette": the palette exists but the sprite uses `main`. The
+// error names both and says how to fix it; nothing changes. After
+// `set_sprite_palette` it works.
+#[test]
+fn a_grid_palette_line_for_another_palette_is_a_mismatch() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "create_palette", json!({ "name": "skin", "colors": [{ "key": "R", "hex": "#AA0000" }] })).unwrap();
+    let before = revision(&host);
+    let grid = format!("palette: skin\n{SLIME_ROWS}");
+
+    let error = call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid })).unwrap_err();
+
+    assert_eq!(error["code"], "palette_mismatch");
+    let message = error["message"].as_str().unwrap();
+    assert!(message.contains("main") && message.contains("skin") && message.contains("set_sprite_palette"), "{message}");
+    assert_eq!(revision(&host), before);
+
+    // A sprite with no pixels can take the other palette, and then the grid works.
+    call(&core, &session, "create_sprite", json!({ "name": "blank", "width": 8, "height": 8, "palette": "skin" })).unwrap();
+    call(&core, &session, "apply_grid", json!({ "name": "blank", "grid": grid })).unwrap();
+}
+
+// Checks "Unknown palette": a name that does not exist is `palette_not_found`
+// and the message lists the palettes that do exist.
+#[test]
+fn a_grid_palette_line_for_a_missing_palette_is_not_found() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let before = revision(&host);
+    let grid = format!("palette: ghost\n{SLIME_ROWS}");
+
+    let error = call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid })).unwrap_err();
+
+    assert_eq!(error["code"], "palette_not_found");
+    assert!(error["message"].as_str().unwrap().contains("main"));
+    assert_eq!(revision(&host), before);
+}
