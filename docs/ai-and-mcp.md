@@ -136,6 +136,8 @@ description tells the AI the rules, so it does not need this page.
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000) |
+| `set_anchor` | Adds or moves a named point of a sprite (`feet`, `hand`...), for the whole sprite or one `frame` |
+| `remove_anchor` | Removes an anchor by name |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
 | `undo_last_ai_action` | Takes back the last action of this agent, if nothing happened after it |
