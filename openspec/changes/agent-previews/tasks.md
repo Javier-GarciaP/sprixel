@@ -3,7 +3,7 @@
 ## 1. Backgrounds
 
 - [x] 1.1 Add `render/preview.rs` with `Background` and `flatten`, and verify checker, light, dark and transparent with unit tests
-- [ ] 1.2 Add `background` to `render_preview` and to the image of `apply_grid`, `set_pixels` and `draw_shape`, and verify the default, the options and `bad_argument`
+- [x] 1.2 Add `background` to `render_preview` and to the image of `apply_grid`, `set_pixels` and `draw_shape`, and verify the default, the options and `bad_argument`
 
 ## 2. Frames and onion
 

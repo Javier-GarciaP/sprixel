@@ -75,3 +75,6 @@ mod guide_tests;
 
 #[cfg(test)]
 mod preview_tests;
+
+#[cfg(test)]
+mod background_tests;

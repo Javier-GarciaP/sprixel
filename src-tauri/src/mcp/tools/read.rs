@@ -5,7 +5,7 @@ use super::args;
 use crate::document::{Project, SpriteRef, Tag, write_grid};
 use crate::ipc::project;
 use crate::mcp::{Ctx, Need, Output, Tool, ToolError, ToolResult};
-use crate::render::render_frame;
+use crate::render::{Background, checker_cell, flatten, render_frame};
 use serde_json::{Value, json};
 
 /// The event that asks the UI to show a sprite in the editor.
@@ -63,7 +63,8 @@ pub fn tools() -> Vec<Tool> {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
                 "frame": { "type": "integer", "minimum": 1, "description": "The frame, from 1. Default 1." },
-                "scale": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Each pixel becomes scale x scale pixels. Default 8. The image is at most 1024 pixels on a side." }
+                "scale": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Each pixel becomes scale x scale pixels. Default 8. The image is at most 1024 pixels on a side." },
+                "background": background_arg()
             }}),
             need: Need::Nothing,
             run: render_preview,
@@ -222,6 +223,23 @@ fn get_palette(ctx: &Ctx, input: &Value) -> ToolResult {
     })
 }
 
+/// The `background` argument of every tool that returns an image.
+pub fn background_arg() -> Value {
+    json!({ "type": "string", "enum": ["checker", "light", "dark", "transparent"],
+        "description": "What is behind transparent pixels. Default `checker` (a gray checkerboard, so white pixels are visible). `transparent` keeps alpha 0." })
+}
+
+/// Reads `background`; a wrong value is `bad_argument`.
+pub fn background_of(input: &Value) -> Result<Background, ToolError> {
+    match args::optional_str(input, "background")? {
+        None => Ok(Background::Checker),
+        Some(name) => Background::parse(name).ok_or_else(|| {
+            ToolError::new("bad_argument", format!("`background` must be one of: {}", Background::NAMES))
+                .with("argument", "background")
+        }),
+    }
+}
+
 /// The largest side of the preview a write tool returns with its result.
 pub const WRITE_PREVIEW_SIDE: u32 = 512;
 /// Small sprites are not blown up more than this.
@@ -230,18 +248,19 @@ const WRITE_PREVIEW_MAX_SCALE: u32 = 32;
 /// The picture of the frame an agent just wrote, scaled up with sharp pixels
 /// so its side is at most `WRITE_PREVIEW_SIDE`. `None` if it cannot be drawn
 /// (the write itself already worked, so this is never an error).
-pub fn write_preview(project: &Project, target: &SpriteRef, frame: u32) -> Option<crate::render::Image> {
+pub fn write_preview(project: &Project, target: &SpriteRef, frame: u32, background: Background) -> Option<crate::render::Image> {
     let sprite = project.find_sprite(target)?;
     check_frame(sprite, frame).ok()?;
     let palette = project.palette(&sprite.palette)?;
     let side = sprite.width.max(sprite.height).max(1);
     let scale = (WRITE_PREVIEW_SIDE / side).clamp(1, WRITE_PREVIEW_MAX_SCALE);
-    Some(render_frame(sprite, palette, frame as usize - 1, scale))
+    Some(flatten(&render_frame(sprite, palette, frame as usize - 1, scale), background, checker_cell(scale)))
 }
 
 fn render_preview(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
     let scale = args::optional_u32(input, "scale")?.unwrap_or(DEFAULT_SCALE);
+    let background = background_of(input)?;
     if !(1..=64).contains(&scale) {
         return Err(ToolError::new("bad_argument", "`scale` must be from 1 to 64").with("argument", "scale"));
     }
@@ -263,7 +282,7 @@ fn render_preview(ctx: &Ctx, input: &Value) -> ToolResult {
         let palette = project.palette(&sprite.palette).ok_or_else(|| {
             ToolError::new("palette_not_found", format!("the palette {:?} of this sprite does not exist", sprite.palette))
         })?;
-        let image = render_frame(sprite, palette, frame as usize - 1, scale);
+        let image = flatten(&render_frame(sprite, palette, frame as usize - 1, scale), background, checker_cell(scale));
         let info = json!({
             "name": sprite.name, "folder": args::join(&target.folder), "frame": frame, "scale": scale,
             "width": image.width, "height": image.height, "revision": project.revision,
