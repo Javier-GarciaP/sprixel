@@ -13,6 +13,7 @@ mod names;
 mod operation;
 mod palette;
 mod presets;
+mod ramp;
 mod stroke;
 
 pub use error::DocError;
@@ -20,6 +21,7 @@ pub use names::{copy_name, same_name, validate_name};
 pub use operation::{Applied, AppliedGroup, Operation, PixelBatch, PixelChange, SpriteRef, Target};
 pub use import::{ImportFormat, palette_from_file};
 pub use presets::{PRESETS, Preset};
+pub use ramp::ramp;
 pub use palette::{ColorEdit, check_colors};
 pub use grid::{Grid, GridError, GridOptions, write_grid};
 pub use stroke::ColorChange;
@@ -57,3 +59,6 @@ mod import_tests;
 
 #[cfg(test)]
 mod grid_tests;
+
+#[cfg(test)]
+mod ramp_tests;
