@@ -132,6 +132,36 @@ func (c *Client) Initialize(ctx context.Context) error {
 	return nil
 }
 
+// Close ends the session of this client in the app. It is safe to call when
+// no session was opened, and it never fails the command: the app drops idle
+// sessions by itself, so a lost DELETE only delays the cleanup.
+func (c *Client) Close() {
+	if c.session == "" {
+		return
+	}
+	session := c.session
+	c.session = ""
+	info, err := runtime.ReadInfo(c.Dir)
+	if err != nil {
+		return
+	}
+	token, err := runtime.ReadToken(c.Dir)
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, "http://"+info.Addr()+"/mcp", nil)
+	if err != nil {
+		return
+	}
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Mcp-Session-Id", session)
+	if response, err := c.http().Do(request); err == nil {
+		response.Body.Close()
+	}
+}
+
 // Tool is a tool of the app.
 type Tool struct {
 	Name        string          `json:"name"`

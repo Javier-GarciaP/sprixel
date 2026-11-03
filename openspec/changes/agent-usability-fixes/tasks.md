@@ -2,7 +2,7 @@
 
 ## 1. Sessions and order
 
-- [ ] 1.1 Add `Client.Close` and use it in `tool`, `tools` and `doctor`; verify with a test that 20 calls leave no open session
+- [x] 1.1 Add `Client.Close` and use it in `tool`, `tools` and `doctor`; verify with a test that 20 calls leave no open session
 - [ ] 1.2 Send `tools/call` through one ordered worker in the bridge; verify 20 fast calls run in order
 
 ## 2. Approval

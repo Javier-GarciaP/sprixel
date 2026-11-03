@@ -98,3 +98,31 @@ func TestNotApprovedClient(t *testing.T) {
 		t.Errorf("result = %+v, %v", result, err)
 	}
 }
+
+// Checks that Close sends DELETE with the session id and that a second Close,
+// or a Close without a session, does nothing.
+func TestCloseEndsTheSession(t *testing.T) {
+	app := testapp.Start(t, t.TempDir())
+	c := client(app.Dir)
+	if _, err := c.ListTools(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if app.OpenSessions() != 1 {
+		t.Fatalf("open sessions = %d, want 1", app.OpenSessions())
+	}
+	c.Close()
+	c.Close()
+	client(app.Dir).Close()
+	if app.OpenSessions() != 0 {
+		t.Errorf("open sessions = %d, want 0", app.OpenSessions())
+	}
+	deletes := 0
+	for _, call := range app.Calls() {
+		if call.Method == "DELETE" {
+			deletes++
+		}
+	}
+	if deletes != 1 {
+		t.Errorf("DELETE calls = %d, want 1", deletes)
+	}
+}

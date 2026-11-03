@@ -217,3 +217,20 @@ func TestStartWithoutDisplay(t *testing.T) {
 }
 
 var errNoDisplayForTest = launcher.ErrNoDisplay
+
+// Checks the scenario "Many calls": every `sprixel tool`, `sprixel tools` and
+// failing call ends its session, so 20 runs leave none open (the app refuses
+// new clients at 16). Also a call that fails (unknown tool) must close.
+func TestCommandsCloseTheirSession(t *testing.T) {
+	home, app := appHome(t)
+	for i := 0; i < 20; i++ {
+		if r := appRun(t, home, "tool", "list_sprites"); r.code != ExitOK {
+			t.Fatalf("call %d: code = %d, stderr = %q", i, r.code, r.err)
+		}
+	}
+	appRun(t, home, "tools")
+	appRun(t, home, "tool", "no_such_tool")
+	if n := app.OpenSessions(); n != 0 {
+		t.Errorf("open sessions = %d, want 0", n)
+	}
+}

@@ -119,7 +119,9 @@ func runTools(c *invocation, args []string) int {
 	if code, bad := noArgs(c, "sprixel tools [--json]", args); bad {
 		return code
 	}
-	tools, err := c.appClient().ListTools(context.Background())
+	client := c.appClient()
+	defer client.Close()
+	tools, err := client.ListTools(context.Background())
 	if err != nil {
 		return c.appFailure(err)
 	}
@@ -153,6 +155,7 @@ func runTool(c *invocation, args []string) int {
 	}
 	name, pairs := args[0], args[1:]
 	client := c.appClient()
+	defer client.Close()
 	ctx := context.Background()
 
 	tools, err := client.ListTools(ctx)

@@ -140,6 +140,13 @@ func (a *App) Clients() []string {
 	return names
 }
 
+// OpenSessions returns how many sessions are open now.
+func (a *App) OpenSessions() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return len(a.sessions)
+}
+
 // SetApproved changes whether clients are allowed.
 func (a *App) SetApproved(ok bool) {
 	a.mu.Lock()
