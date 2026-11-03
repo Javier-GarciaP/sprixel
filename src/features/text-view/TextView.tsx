@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Toast } from "@/shared/components";
+import { gridMessage, shortGridMessage } from "./errors";
 import { useT } from "@/shared/lib/i18n";
 import { asGridFailure, coreTextApi } from "./api";
 import { GridPreview } from "./GridPreview";
@@ -15,11 +16,6 @@ import type {
 const LINE_HEIGHT = 21;
 // How long the view waits after the last key before it checks the text.
 const CHECK_DELAY_MS = 200;
-
-// What a person needs next to the line: the message without its "line 15
-// (row 7 of frame 1):" start, which the line already says.
-const shortMessage = (error: GridError) =>
-  error.message.replace(/^line \d+( \([^)]*\))?: /, "");
 
 type Props = {
   // The calls to the core. The tests give a fake one.
@@ -152,6 +148,7 @@ export function TextView({
           return others;
         });
         setReads((n) => n + 1);
+        setNotice({ tone: "neutral", message: t("text.applied") });
         onApplied();
       })
       .catch((failure) =>
@@ -205,9 +202,9 @@ export function TextView({
         tone: "error",
         message:
           rest.length === 0
-            ? first.message
+            ? gridMessage(t, first)
             : t("text.moreErrors", {
-                message: first.message,
+                message: gridMessage(t, first),
                 count: rest.length,
               }),
       };
@@ -294,7 +291,7 @@ export function TextView({
                           <>
                             <span className="invisible">{line}</span>
                             <span className="ml-3 font-sans text-xs font-semibold text-error">
-                              {shortMessage(problem)}
+                              {shortGridMessage(t, problem)}
                             </span>
                           </>
                         )}
