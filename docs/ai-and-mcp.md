@@ -1,9 +1,9 @@
 # AI and MCP
 
 > **Status: the server and the tools are built** (the `mcp-server-and-tools`
-> spec). The `sprixel` command (`sprixel mcp add`, `doctor`, `tool`) and the
-> **Agents** tab (approval prompt, permissions, activity, Stop and Undo
-> buttons) come in the `cli-sprixel` and `agents-ui` specs. Until then an MCP
+> spec). The **Agents** tab (approval prompt, permissions, activity, Stop and Undo
+> buttons) is built (the `agents-ui` spec). The `sprixel` command
+> (`sprixel mcp add`, `doctor`, `tool`) comes in the `cli-sprixel` spec. Until then an MCP
 > client can connect directly over HTTP (see
 > [Connect without the command](#connect-without-the-command)).
 

@@ -25,4 +25,4 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Update `docs/usage.md`, `docs/ai-and-mcp.md` and `docs/design/README.md` (the connect dialog now shows `sprixel mcp add`) and verify they match the app
+- [x] 5.1 Update `docs/usage.md`, `docs/ai-and-mcp.md` and `docs/design/README.md` (the connect dialog now shows `sprixel mcp add`) and verify they match the app
