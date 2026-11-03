@@ -314,3 +314,33 @@ describe("Animation selector", () => {
     expect(select.value).toBe("");
   });
 });
+
+describe("Frame pictures in a big or wide sprite", () => {
+  const fits = (el: Element | null | undefined) => {
+    expect(el?.className).toContain("max-w-full");
+    expect(el?.className).toContain("max-h-full");
+    expect(el?.className).toContain("object-contain");
+    expect(el?.className).toContain("[image-rendering:pixelated]");
+  };
+
+  // Checks that the frame thumbnails of a big (126x126) and of a wide
+  // (200x20) sprite fit their box, keeping the ratio and the hard pixels.
+  it.each([
+    [126, 126],
+    [200, 20],
+  ])("fits the thumbnail of a %ix%i sprite in its box", async (w, h) => {
+    renderEditor(new FakeEditorApi(w, h, 2));
+    const button = await screen.findByRole("button", { name: "Frame 1" });
+    fits(button.querySelector("canvas"));
+  });
+
+  // Checks the same for the picture of the preview panel.
+  it.each([
+    [126, 126],
+    [200, 20],
+  ])("fits the preview of a %ix%i sprite in its box", async (w, h) => {
+    renderEditor(new FakeEditorApi(w, h, 2));
+    const preview = await screen.findByTestId("preview");
+    fits(preview.querySelector("canvas"));
+  });
+});

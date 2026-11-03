@@ -117,14 +117,14 @@ export function PreviewPanel({
   return (
     <div data-testid="preview" data-frame={shown} data-ready={data.size > 0}>
       <div
-        className="flex items-center justify-center rounded bg-surface-2"
+        className="flex items-center justify-center overflow-hidden rounded bg-surface-2"
         style={{ height: BOX }}
       >
         <canvas
           ref={canvas}
           role="img"
           aria-label={t("preview.canvas", { frame: shown })}
-          className="[image-rendering:pixelated]"
+          className="max-h-full max-w-full object-contain [image-rendering:pixelated]"
         />
       </div>
       <div className="mt-2 flex items-center gap-2">
