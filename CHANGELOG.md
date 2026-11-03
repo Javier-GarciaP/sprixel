@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Game data for the AI: `set_frame_duration`, anchor points (`set_anchor`,
+  `remove_anchor`, saved in the sprite file as an optional `anchors` list),
+  `check_tile` and `render_tiled` for seamless tiles. The sheet JSON lists the
+  anchors of every frame, and `docs/export-format.md` explains how to use it
+  in Godot and Unity.
 - Watch the AI draw: the editor replays each agent write (at most 8 seconds)
   with a cursor that carries the agent name, keeps the frame busy until the
   replay ends, and follows the agent to its sprite and frame when you are free.

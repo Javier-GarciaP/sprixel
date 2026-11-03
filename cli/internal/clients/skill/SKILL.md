@@ -105,6 +105,14 @@ frame 2
 4. LOOK at the image that came back. Fix what is wrong with `set_pixels` (a few pixels) or `apply_grid` with `x` and `y` (a region) and look again.
 5. `create_tag` with sprite slime, name jump, from 1, to 2, fps 4: the two frames become an animation.
 
+## Game data
+
+For a game engine, a sprite can carry more than pixels:
+
+- `set_frame_duration`: how long one frame lasts, in milliseconds (10 to 10000). `get_sprite` lists them in `frame_durations`.
+- `set_anchor` and `remove_anchor`: named points such as feet or hand (`x`, `y`, and an optional `frame`). `get_sprite` lists the `anchors`. The `export` JSON gives them to the game.
+- `check_tile`: for a tile, tells if the opposite edges match and lists the pixels that do not. `render_tiled` shows the tile repeated 3x3 so you can see the seams.
+
 ## Rules
 
 - `x` and `y` count from 0, at the top left.

@@ -22,5 +22,5 @@
 
 ## 5. Docs and finish
 
-- [ ] 5.1 Update `docs/ai-and-mcp.md`, the guide and the skill, and the changelog; verify the docs tests
+- [x] 5.1 Update `docs/ai-and-mcp.md`, the guide and the skill, and the changelog; verify the docs tests
 - [ ] 5.2 Run format, lint, tests, builds and `openspec validate --all --strict`

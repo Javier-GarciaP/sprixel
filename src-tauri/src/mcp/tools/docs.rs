@@ -167,7 +167,8 @@ Animation guide: how to make a sprite move\n\
 3. Keep the size and the ground line. The body must not grow or jump by accident between frames: feet stay on the same row unless the pose is a jump.\n\
 4. Change little. Start a new frame with `add_frame` and `copy_of`, then change only what moves, with `set_pixels` or `apply_grid` and `x` and `y`.\n\
 5. The loop closes. The last frame must lead back to the first without a jump. Then make the animation with `create_tag` (mode loop, 6 to 12 fps).\n\
-6. Look at every frame with `render_preview` (argument `frame`) and fix what looks wrong before you say you are done.";
+6. Look at every frame with `render_preview` (argument `frame`) and fix what looks wrong before you say you are done.\n\
+7. Game data. Give a frame its own time with `set_frame_duration` (milliseconds) when it must last longer, like a hit or a pause. Mark the points the game needs (feet, hand) with `set_anchor`, and keep them on the same pixel when the pose does not move.";
 
 /// How to choose and build the colors. Also available as the topic `palette`.
 pub const PALETTE_GUIDE: &str = "\
