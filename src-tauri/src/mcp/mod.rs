@@ -15,6 +15,7 @@ mod server;
 mod sessions;
 mod token;
 mod tool;
+mod tools;
 
 #[cfg(test)]
 mod testing;
@@ -63,6 +64,19 @@ impl Core {
             logs: Mutex::default(),
         })
     }
+}
+
+/// Starts the server for the app: opens the data folder `~/.sprixel`, makes
+/// the core with every tool, and listens. The core is shared with the commands
+/// of the UI (approval, permissions, activity).
+pub fn start(app: tauri::AppHandle) -> std::io::Result<(Arc<Core>, Server)> {
+    let home = tauri::Manager::path(&app)
+        .home_dir()
+        .map_err(|e| std::io::Error::other(e.to_string()))?;
+    let host = Arc::new(TauriHost { app });
+    let core = Arc::new(Core::new(host, tools::all(), home.join(".sprixel"))?);
+    let server = Server::start(core.clone())?;
+    Ok((core, server))
 }
 
 impl Core {
