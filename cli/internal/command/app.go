@@ -13,13 +13,14 @@ import (
 	"time"
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/appclient"
+	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/runtime"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
 )
 
 func init() {
 	commands = append(commands,
-		command{name: "start", summary: "Start the app, optionally opening a project", usage: "sprixel start [path] [--json]", run: runStart},
+		command{name: "start", summary: "Start the app (it does not open a project yet)", usage: "sprixel start [path] [--json]", run: runStart},
 		command{name: "status", summary: "Say whether the app is running", usage: "sprixel status [--json]", run: runStatus},
 		command{name: "tools", summary: "List the tools an AI can use", usage: "sprixel tools [--json]", run: runTools},
 		command{name: "tool", summary: "Run one tool: sprixel tool <name> key=value ...", usage: "sprixel tool <name> [key=value ...] [--json]", run: runTool},
@@ -72,20 +73,21 @@ func runStart(c *invocation, args []string) int {
 	if len(args) > 1 {
 		return c.p.Fail(ExitUsage, "usage", "unexpected argument: "+args[1], "usage: sprixel start [path]")
 	}
-	var appArgs []string
+	// The app does not read a project path from its command line yet, so the
+	// path is checked but not passed: saying "opened" would be a lie. The
+	// person opens it in the app, or an agent calls `open_project`.
+	ignored := ""
 	if len(args) == 1 {
 		path, err := projectPath(args[0])
 		if err != nil {
 			return c.p.Fail(ExitUsage, "usage", err.Error(), "give the folder of a Sprixel project (it has a sprixel.json file)")
 		}
-		appArgs = append(appArgs, path)
+		ignored = path
 	}
 	if info, ok := runtime.Running(c.dir); ok {
-		c.p.Print(fmt.Sprintf("Sprixel is already running (port %d).\n", info.Port),
-			map[string]any{"running": true, "started": false, "port": info.Port})
-		return ExitOK
+		return c.printStart("Sprixel is already running", false, info, ignored)
 	}
-	exited, err := c.startApp(appArgs...)
+	exited, err := c.startApp()
 	if err != nil {
 		return c.p.Fail(ExitFailure, "start", err.Error(), "")
 	}
@@ -93,8 +95,39 @@ func runStart(c *invocation, args []string) int {
 	if err != nil {
 		return c.p.Fail(ExitFailure, "start", err.Error(), "")
 	}
-	c.p.Print(fmt.Sprintf("Sprixel started (port %d).\n", info.Port),
-		map[string]any{"running": true, "started": true, "port": info.Port})
+	return c.printStart("Sprixel started", true, info, ignored)
+}
+
+// printStart tells which build runs: the path of the app (when this command
+// can find it), its version, and a warning when the version is not the one of
+// this command. An old build left in another place is the usual reason.
+func (c *invocation) printStart(headline string, started bool, info runtime.Info, ignoredProject string) int {
+	app, err := launcher.Find(launcher.System(c.env.Home))
+	if err != nil {
+		app = ""
+	}
+	v := info.Version
+	if v == "" {
+		v = "unknown"
+	}
+	text := fmt.Sprintf("%s (port %d, version %s).\n", headline, info.Port, v)
+	data := map[string]any{"running": true, "started": started, "port": info.Port, "version": info.Version}
+	if app != "" {
+		text += "  app: " + app + "\n"
+		data["path"] = app
+	}
+	if info.Version != "" && info.Version != version.Version {
+		warning := fmt.Sprintf("the app is version %s but this command is %s. It may be an old build: install the same version of both, or set SPRIXEL_APP to the path of the app you want", info.Version, version.Version)
+		text += "warning: " + warning + "\n"
+		data["warning"] = warning
+	}
+	if ignoredProject != "" {
+		note := "the app does not open a project from the command line yet, so " + ignoredProject + " was not opened. Open it in the app (Open project), or let an AI agent call open_project"
+		text += "note: " + note + "\n"
+		data["note"] = note
+		data["project_opened"] = false
+	}
+	c.p.Print(text, data)
 	return ExitOK
 }
 
@@ -119,7 +152,9 @@ func runTools(c *invocation, args []string) int {
 	if code, bad := noArgs(c, "sprixel tools [--json]", args); bad {
 		return code
 	}
-	tools, err := c.appClient().ListTools(context.Background())
+	client := c.appClient()
+	defer client.Close()
+	tools, err := client.ListTools(context.Background())
 	if err != nil {
 		return c.appFailure(err)
 	}
@@ -153,6 +188,7 @@ func runTool(c *invocation, args []string) int {
 	}
 	name, pairs := args[0], args[1:]
 	client := c.appClient()
+	defer client.Close()
 	ctx := context.Background()
 
 	tools, err := client.ListTools(ctx)
@@ -245,6 +281,19 @@ func (c *invocation) printToolResult(result appclient.Result) int {
 		}
 	}
 	joined := strings.Join(texts, "\n")
+	// Images become files, so an AI that only has a shell can open them. The
+	// text of the same result (the info of the preview) names the file.
+	var saveErrors []string
+	for _, image := range images {
+		if image["mime_type"] != "image/png" {
+			continue
+		}
+		if path, err := c.savePreview(image["data"].(string), joined); err != nil {
+			saveErrors = append(saveErrors, err.Error())
+		} else {
+			image["path"] = path
+		}
+	}
 	var value any = joined
 	var decoded any
 	if json.Unmarshal([]byte(joined), &decoded) == nil {
@@ -276,7 +325,14 @@ func (c *invocation) printToolResult(result appclient.Result) int {
 		fmt.Fprintln(out, pretty)
 	}
 	for _, image := range images {
+		if path, ok := image["path"]; ok {
+			fmt.Fprintf(out, "image saved: %s\n", path)
+			continue
+		}
 		fmt.Fprintf(out, "[image %s, %d base64 characters: use --json to get it]\n", image["mime_type"], len(image["data"].(string)))
+	}
+	for _, problem := range saveErrors {
+		fmt.Fprintln(c.env.Stderr, "warning: could not save the image: "+problem)
 	}
 	return code
 }

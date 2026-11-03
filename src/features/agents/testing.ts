@@ -17,6 +17,7 @@ export const defaultPermissions: Permissions = {
   edit: true,
   delete: false,
   export: true,
+  openProject: false,
   askOnConnect: true,
 };
 
@@ -57,6 +58,9 @@ export class FakeAgentsApi implements AgentsApi {
   rows: ActivityRow[] = [];
   current: AgentWrite | null = null;
   calls: string[] = [];
+  // Tests set these to play a core that fails or has lost the request.
+  answerError: string | null = null;
+  answerGone = false;
   copied: string[] = [];
   private listeners = new Set<(event: AgentsEvent) => void>();
 
@@ -85,6 +89,11 @@ export class FakeAgentsApi implements AgentsApi {
   writing = async () => this.current;
   answer = async (name: string, version: string, allow: boolean) => {
     this.calls.push(`answer ${name} ${allow}`);
+    if (this.answerError) throw { code: "io", message: this.answerError };
+    if (this.answerGone) {
+      this.clientList = this.clientList.filter((c) => c.name !== name);
+      return false;
+    }
     this.clientList = this.clientList.map((c) =>
       c.name === name && c.version === version
         ? { ...c, state: allow ? "allowed" : "rejected" }

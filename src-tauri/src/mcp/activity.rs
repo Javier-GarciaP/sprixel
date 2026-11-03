@@ -146,6 +146,7 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
             answer["files"].as_array().map_or(0, Vec::len),
             text(answer, "output")
         ),
+        "open_project" => format!("Opened the project {}", text(answer, "name")),
         "undo_last_ai_action" => "Undid the last AI action".to_string(),
         other => other.to_string(),
     };

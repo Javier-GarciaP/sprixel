@@ -15,7 +15,7 @@ function Screen({ api }: { api: FakeAgentsApi }) {
 
 describe("Permissions panel", () => {
   // Checks the "Two agents connected" scenario: with agents connected the
-  // panel shows the five switches in the state the core has (delete is off
+  // panel shows the six switches in the state the core has (delete is off
   // by default) and the note about undo.
   it("shows the switches when an agent is connected", async () => {
     const api = new FakeAgentsApi({ clientList: [client("Claude Code")] });
@@ -29,6 +29,7 @@ describe("Permissions panel", () => {
     expect(await read("Edit pixels")).toBe("true");
     expect(await read("Delete sprites")).toBe("false");
     expect(await read("Export files")).toBe("true");
+    expect(await read("Open projects")).toBe("false");
     expect(await read("Ask me when a new agent connects")).toBe("true");
     expect(
       screen.getByText("AI changes can be undone, except exported files."),
@@ -62,7 +63,7 @@ describe("Permissions panel", () => {
 
     await waitFor(() =>
       expect(api.calls).toContain(
-        `setPermissions ${JSON.stringify({ create: true, edit: true, delete: true, export: true, askOnConnect: true })}`,
+        `setPermissions ${JSON.stringify({ create: true, edit: true, delete: true, export: true, openProject: false, askOnConnect: true })}`,
       ),
     );
     await waitFor(() =>
@@ -72,6 +73,26 @@ describe("Permissions panel", () => {
           .getAttribute("aria-checked"),
       ).toBe("true"),
     );
+  });
+
+  // Checks the "Turn it on" scenario of Open projects: the switch is off by
+  // default and sends the change at once, like the others.
+  it("turns Open projects on", async () => {
+    const api = new FakeAgentsApi({ clientList: [client("Claude Code")] });
+    renderWithApp(<Screen api={api} />);
+
+    fireEvent.click(
+      await screen.findByRole("switch", { name: "Open projects" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("switch", { name: "Open projects" })
+          .getAttribute("aria-checked"),
+      ).toBe("true"),
+    );
+    expect(api.permissionValues.openProject).toBe(true);
   });
 
   // Checks that a failed save is said, and the switch does not move.
@@ -100,6 +121,9 @@ describe("Permissions panel", () => {
     renderWithApp(<Screen api={api} />, "es");
     expect(
       await screen.findByRole("switch", { name: "Borrar sprites" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "Abrir proyectos" }),
     ).toBeTruthy();
   });
 });

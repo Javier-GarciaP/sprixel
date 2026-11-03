@@ -19,6 +19,7 @@ export type Permissions = {
   edit: boolean;
   delete: boolean;
   export: boolean;
+  openProject: boolean;
   askOnConnect: boolean;
 };
 
@@ -53,6 +54,7 @@ export type AgentsEvent =
   | { type: "permissions"; permissions: Permissions }
   | { type: "activity" }
   | { type: "writing"; write: AgentWrite | null }
+  | { type: "project-opened"; project: { name: string; path: string } }
   | { type: "open-sprite"; sprite: { folder: string[]; name: string } };
 
 export type AgentsApi = {

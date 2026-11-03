@@ -93,6 +93,33 @@ fn reject_keeps_the_client_out() {
     assert_eq!(events(&host, CLIENT_PENDING_EVENT).len(), 1);
 }
 
+// Checks the scenario "Request already gone": answering a client that does not
+// wait returns false, and the UI still gets the clients event to refresh.
+#[test]
+fn answering_a_missing_request_still_tells_the_ui() {
+    let (host, core) = core_with(vec![tool()]);
+    assert!(!core.answer_client("Never asked", "1.0", true).unwrap());
+    assert_eq!(events(&host, CLIENTS_EVENT).len(), 1);
+}
+
+// Checks that a failed save is an error to the caller and the UI is told too.
+#[cfg(unix)]
+#[test]
+fn a_failed_save_is_an_error_and_tells_the_ui() {
+    use std::os::unix::fs::PermissionsExt;
+    let (host, core) = core_with(vec![tool()]);
+    connect(&core, "Claude Code");
+    let before = events(&host, CLIENTS_EVENT).len();
+    let dir = host.dir.path().join(".sprixel");
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+    let result = core.answer_client("Claude Code", "1.0", true);
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+    if result.is_ok() {
+        return; // running as root: the folder cannot be locked
+    }
+    assert_eq!(events(&host, CLIENTS_EVENT).len(), before + 1);
+}
+
 // Checks that a client with no answer never runs a tool, even after many
 // calls (the "unanswered client" rule).
 #[test]

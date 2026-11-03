@@ -15,6 +15,8 @@ export type AgentsState = {
   activity: ActivityRow[];
   // The agent that writes to a frame now, if any.
   writing: AgentWrite | null;
+  // Reads the clients from the core again.
+  refreshClients: () => void;
 };
 
 // Follows the events of the core. The core owns the data; this keeps only the
@@ -71,7 +73,7 @@ export function useAgents(
     };
   }, [api, refreshClients, refreshActivity]);
 
-  return { clients, permissions, activity, writing };
+  return { clients, permissions, activity, writing, refreshClients };
 }
 
 const loadClients = (api: AgentsApi) => api.clients();

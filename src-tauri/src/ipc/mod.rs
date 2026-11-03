@@ -24,7 +24,12 @@ fn preferences_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(folder.join("preferences.json"))
 }
 
-fn change(app: &tauri::AppHandle, edit: impl FnOnce(&mut Data)) -> Result<Data, String> {
+/// The recent projects, newest first. Empty when the file cannot be read.
+pub(crate) fn recent_projects(app: &tauri::AppHandle) -> Vec<RecentProject> {
+    preferences_file(app).map(|file| preferences::load(&file).recent_projects).unwrap_or_default()
+}
+
+pub(crate) fn change(app: &tauri::AppHandle, edit: impl FnOnce(&mut Data)) -> Result<Data, String> {
     let file = preferences_file(app)?;
     let mut data = preferences::load(&file);
     edit(&mut data);

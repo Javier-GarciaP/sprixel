@@ -57,6 +57,9 @@ export const coreAgentsApi: AgentsApi = {
       listen<AgentWrite | null>("agent-activity", (event) =>
         listener({ type: "writing", write: event.payload }),
       ),
+      listen<{ name: string; path: string }>("mcp://project-opened", (event) =>
+        listener({ type: "project-opened", project: event.payload }),
+      ),
       listen<{ folder: string[]; name: string }>("mcp://open-sprite", (event) =>
         listener({ type: "open-sprite", sprite: event.payload }),
       ),

@@ -266,3 +266,30 @@ func TestUninstallWindowsLayoutAndPath(t *testing.T) {
 		t.Error("the project changed")
 	}
 }
+
+// Checks that uninstall deletes the Sprixel skill (and only that folder of
+// ~/.claude), including when Claude Code has no registration any more.
+func TestUninstallDeletesTheSkill(t *testing.T) {
+	in := newReady(t)
+	skill := clients.Skill{Home: in.home}
+	skill.Install()
+	other := filepath.Join(in.home, ".claude", "skills", "other", "SKILL.md")
+	os.MkdirAll(filepath.Dir(other), 0o755)
+	os.WriteFile(other, []byte("x"), 0o644)
+
+	r := in.runWith("n\n", "uninstall")
+	if !strings.Contains(r.stdout, "the Sprixel skill in "+skill.Dir()) {
+		t.Errorf("the plan does not list the skill: %q", r.stdout)
+	}
+	if !in.exists(skill.Path()) {
+		t.Fatal("the skill was removed before the yes")
+	}
+
+	r = in.runWith("y\nn\n", "uninstall")
+	if r.code != ExitOK || in.exists(skill.Dir()) {
+		t.Errorf("code = %d, skill still there = %v, stdout = %q", r.code, in.exists(skill.Dir()), r.stdout)
+	}
+	if !in.exists(other) {
+		t.Error("another skill was removed")
+	}
+}

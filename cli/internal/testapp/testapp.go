@@ -6,8 +6,13 @@
 package testapp
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +22,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Token is the access token the fake app writes.
@@ -138,6 +144,13 @@ func (a *App) Clients() []string {
 		}
 	}
 	return names
+}
+
+// OpenSessions returns how many sessions are open now.
+func (a *App) OpenSessions() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return len(a.sessions)
 }
 
 // SetApproved changes whether clients are allowed.
@@ -266,6 +279,9 @@ var Tools = []map[string]any{
 	{"name": "set_pixels", "description": "Sets pixels.", "inputSchema": map[string]any{
 		"type": "object", "properties": map[string]any{
 			"pixels": map[string]any{"type": "array"}, "dry": map[string]any{"type": "boolean"}}}},
+	{"name": "render_preview", "description": "Renders a frame as a PNG image.", "inputSchema": map[string]any{
+		"type": "object", "properties": map[string]any{
+			"name": map[string]any{"type": "string"}, "frame": map[string]any{"type": "integer"}}}},
 	{"name": "slow", "description": "Waits until the app closes (tests only).", "inputSchema": map[string]any{"type": "object"}},
 }
 
@@ -278,6 +294,21 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 		return text(map[string]any{"code": "awaiting_approval", "message": "the user has not allowed this client yet; ask them to press Allow in the Sprixel app, then try again"}, true)
 	}
 	switch name {
+	case "render_preview":
+		// A real 1x1 PNG, then the info text, like the app sends it.
+		var png bytes.Buffer
+		pixel := image.NewRGBA(image.Rect(0, 0, 1, 1))
+		pixel.Set(0, 0, color.RGBA{R: 255, A: 255})
+		pngEncode(&png, pixel)
+		frame := args["frame"]
+		if frame == nil {
+			frame = 1 // the real tool starts at frame 1
+		}
+		info, _ := json.Marshal(map[string]any{"name": args["name"], "frame": frame, "revision": 7})
+		return map[string]any{"isError": false, "content": []any{
+			map[string]any{"type": "image", "data": base64.StdEncoding.EncodeToString(png.Bytes()), "mimeType": "image/png"},
+			map[string]any{"type": "text", "text": string(info)},
+		}}
 	case "list_sprites":
 		return text(map[string]any{"revision": 1, "sprites": []any{map[string]any{"name": "goblin", "width": 16, "height": 16}}}, false)
 	case "get_sprite":
@@ -286,6 +317,10 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 		}
 		return text(map[string]any{"name": "goblin", "frame": args["frame"], "client": client}, false)
 	case "set_pixels":
+		// wait_ms lets a test make early calls slower than late ones.
+		if ms, ok := args["wait_ms"].(float64); ok {
+			time.Sleep(time.Duration(ms) * time.Millisecond)
+		}
 		return text(map[string]any{"args": args}, false)
 	case "slow":
 		<-release
@@ -293,3 +328,5 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 	}
 	return text(map[string]any{"code": "unknown_tool", "message": fmt.Sprintf("there is no tool %q", name)}, true)
 }
+
+func pngEncode(w *bytes.Buffer, img image.Image) { png.Encode(w, img) }

@@ -13,6 +13,7 @@ pub enum Need {
     Edit,
     Delete,
     Export,
+    OpenProject,
 }
 
 /// An error an AI can read and act on: a stable `code`, a message that says

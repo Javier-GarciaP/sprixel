@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/testapp"
+	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
 )
 
 // appHome starts a fake app in a new home folder.
@@ -164,8 +168,9 @@ func TestToolsListAndApproval(t *testing.T) {
 	}
 }
 
-// Checks the scenario "start" when the app is closed: the command starts it
-// (with the project path made absolute), waits for the server and returns.
+// Checks "start" when the app is closed: the command starts it and waits for
+// the server. The app does not read a project path yet, so a path is checked
+// but NOT passed to the app, and the output says the project was not opened.
 func TestStartStartsTheApp(t *testing.T) {
 	home := t.TempDir()
 	app := testapp.Prepare(t, filepath.Join(home, ".sprixel"))
@@ -185,8 +190,11 @@ func TestStartStartsTheApp(t *testing.T) {
 	if code != ExitOK || !strings.Contains(out.String(), "started") {
 		t.Errorf("code = %d, stdout = %q, stderr = %q", code, out.String(), errOut.String())
 	}
-	if len(got) != 1 || got[0] != project {
-		t.Errorf("app args = %v", got)
+	if len(got) != 0 {
+		t.Errorf("app args = %v, want none", got)
+	}
+	if !strings.Contains(out.String(), "note: the app does not open a project from the command line yet") || !strings.Contains(out.String(), project+" was not opened") {
+		t.Errorf("stdout = %q", out.String())
 	}
 }
 
@@ -217,3 +225,188 @@ func TestStartWithoutDisplay(t *testing.T) {
 }
 
 var errNoDisplayForTest = launcher.ErrNoDisplay
+
+// Checks the scenario "Many calls": every `sprixel tool`, `sprixel tools` and
+// failing call ends its session, so 20 runs leave none open (the app refuses
+// new clients at 16). Also a call that fails (unknown tool) must close.
+func TestCommandsCloseTheirSession(t *testing.T) {
+	home, app := appHome(t)
+	for i := 0; i < 20; i++ {
+		if r := appRun(t, home, "tool", "list_sprites"); r.code != ExitOK {
+			t.Fatalf("call %d: code = %d, stderr = %q", i, r.code, r.err)
+		}
+	}
+	appRun(t, home, "tools")
+	appRun(t, home, "tool", "no_such_tool")
+	if n := app.OpenSessions(); n != 0 {
+		t.Errorf("open sessions = %d, want 0", n)
+	}
+}
+
+// Checks the scenario "Old build": `sprixel start` prints the path and the
+// version of the app; when the version differs from the command it warns and
+// names SPRIXEL_APP. With the same version there is no warning. It also works
+// when the app was already running, and --json carries the same facts.
+func TestStartPrintsPathAndVersion(t *testing.T) {
+	home := t.TempDir()
+	app := testapp.Start(t, filepath.Join(home, ".sprixel"))
+	_ = app
+	fake := filepath.Join(home, "my-sprixel-app")
+	os.WriteFile(fake, []byte("x"), 0o755)
+	t.Setenv("SPRIXEL_APP", fake)
+	old := version.Version
+	t.Cleanup(func() { version.Version = old })
+
+	version.Version = "1.0.0"
+	r := appRun(t, home, "start")
+	for _, want := range []string{"version " + testapp.Version, "app: " + fake, "warning:", "1.0.0", "SPRIXEL_APP"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("missing %q in %q", want, r.stdout)
+		}
+	}
+	r = appRun(t, home, "start", "--json")
+	var data map[string]any
+	if err := json.Unmarshal([]byte(r.stdout), &data); err != nil || data["path"] != fake || data["version"] != testapp.Version || data["warning"] == nil {
+		t.Errorf("json = %q, %v", r.stdout, err)
+	}
+
+	version.Version = testapp.Version
+	if r := appRun(t, home, "start"); strings.Contains(r.stdout, "warning") || !strings.Contains(r.stdout, "app: "+fake) {
+		t.Errorf("same version: %q", r.stdout)
+	}
+}
+
+// Checks the same facts when the command itself starts the app.
+func TestStartedAppIsDescribedToo(t *testing.T) {
+	home := t.TempDir()
+	app := testapp.Prepare(t, filepath.Join(home, ".sprixel"))
+	fake := filepath.Join(home, "my-sprixel-app")
+	os.WriteFile(fake, []byte("x"), 0o755)
+	t.Setenv("SPRIXEL_APP", fake)
+	var out, errOut strings.Builder
+	code := Run([]string{"start"}, Env{Stdout: &out, Stderr: &errOut, Home: home,
+		StartApp: func(...string) (<-chan error, error) { app.Open(); return make(chan error), nil }})
+	if code != ExitOK || !strings.Contains(out.String(), "Sprixel started (port") || !strings.Contains(out.String(), "app: "+fake) {
+		t.Errorf("code = %d, stdout = %q, stderr = %q", code, out.String(), errOut.String())
+	}
+}
+
+// previewFiles lists the PNG files of the previews folder of a fake home.
+func previewFiles(t *testing.T, home string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join(home, ".sprixel", "previews"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
+}
+
+// Checks the scenario "Preview from the shell": the image of render_preview is
+// saved as a real PNG named after the sprite, frame and revision, in
+// ~/.sprixel/previews, only the user can read it, and the output prints its path.
+func TestToolSavesTheImageToAFile(t *testing.T) {
+	home, _ := appHome(t)
+
+	r := appRun(t, home, "tool", "render_preview", "name=goblin", "frame=2")
+
+	path := filepath.Join(home, ".sprixel", "previews", "goblin-2-7.png")
+	if r.code != ExitOK || !strings.Contains(r.stdout, "image saved: "+path) {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || !strings.HasPrefix(string(data), "\x89PNG") {
+		t.Fatalf("the file is not a PNG: %v", err)
+	}
+	if runtime.GOOS != "windows" {
+		for p, want := range map[string]os.FileMode{path: 0o600, filepath.Dir(path): 0o700} {
+			if info, _ := os.Stat(p); info.Mode().Perm() != want {
+				t.Errorf("%s mode = %v, want %v", p, info.Mode().Perm(), want)
+			}
+		}
+	}
+	if len(previewFiles(t, home)) != 1 {
+		t.Errorf("files = %v (no temporary file may stay)", previewFiles(t, home))
+	}
+}
+
+// Checks that --json keeps the base64 data and adds the path.
+func TestToolImageJSONHasDataAndPath(t *testing.T) {
+	home, _ := appHome(t)
+	r := appRun(t, home, "tool", "render_preview", "name=goblin", "--json")
+	var out struct {
+		Images []map[string]string
+	}
+	if err := json.Unmarshal([]byte(r.stdout), &out); err != nil || len(out.Images) != 1 {
+		t.Fatalf("json = %q, %v", r.stdout, err)
+	}
+	image := out.Images[0]
+	if image["data"] == "" || image["mime_type"] != "image/png" || image["path"] != filepath.Join(home, ".sprixel", "previews", "goblin-1-7.png") {
+		t.Errorf("image = %v", image)
+	}
+}
+
+// Checks that a name from the app cannot leave the folder or break the file name.
+func TestPreviewFileNameIsSafe(t *testing.T) {
+	home, _ := appHome(t)
+	appRun(t, home, "tool", "render_preview", "name=../../evil name")
+	for _, name := range previewFiles(t, home) {
+		if strings.ContainsAny(name, `/\ `) || !strings.HasSuffix(name, ".png") {
+			t.Errorf("unsafe name %q", name)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, "evil name-1-7.png")); err == nil {
+		t.Error("a file was written outside the previews folder")
+	}
+}
+
+// Checks the scenario "Many previews": after 25 previews only the 20 newest
+// files stay; the oldest ones are deleted, and other files are not touched.
+func TestOnlyTheTwentyNewestPreviewsStay(t *testing.T) {
+	home, _ := appHome(t)
+	dir := filepath.Join(home, ".sprixel", "previews")
+	os.MkdirAll(dir, 0o700)
+	os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("mine"), 0o600)
+	start := time.Now().Add(-time.Hour)
+	for i := 1; i <= 25; i++ {
+		appRun(t, home, "tool", "render_preview", "name=s"+strconv.Itoa(i))
+		// Give each file its own time, so "newest" does not depend on the clock.
+		os.Chtimes(filepath.Join(dir, "s"+strconv.Itoa(i)+"-1-7.png"), start, start.Add(time.Duration(i)*time.Second))
+	}
+
+	names := previewFiles(t, home)
+	png := 0
+	for _, n := range names {
+		if strings.HasSuffix(n, ".png") {
+			png++
+		}
+	}
+	if png != 20 {
+		t.Fatalf("png files = %d, want 20 (%v)", png, names)
+	}
+	for i := 1; i <= 5; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "s"+strconv.Itoa(i)+"-1-7.png")); err == nil {
+			t.Errorf("s%d is old and must be deleted", i)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "notes.txt")); err != nil {
+		t.Error("a file that is not a preview was deleted")
+	}
+}
+
+// Checks that a folder that cannot be made does not fail the call: the tool
+// worked, so the command warns on stderr, keeps the old base64 hint and exits 0.
+func TestToolImageSaveFailureIsOnlyAWarning(t *testing.T) {
+	home, _ := appHome(t)
+	// "previews" is a file, so the folder cannot be created.
+	os.WriteFile(filepath.Join(home, ".sprixel", "previews"), []byte("x"), 0o600)
+
+	r := appRun(t, home, "tool", "render_preview", "name=goblin")
+
+	if r.code != ExitOK || !strings.Contains(r.err, "could not save the image") || !strings.Contains(r.stdout, "base64 characters") {
+		t.Errorf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+}

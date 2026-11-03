@@ -540,7 +540,7 @@ them is built.
 
 | Command | What it does |
 | --- | --- |
-| `sprixel start [path]` | Start the app, optionally opening a project |
+| `sprixel start` | Start the app (it does not open a project from the command line yet) |
 | `sprixel status` | Say if the app is running |
 | `sprixel mcp add claude` | Connect Claude Code |
 | `sprixel mcp add opencode` | Connect OpenCode |

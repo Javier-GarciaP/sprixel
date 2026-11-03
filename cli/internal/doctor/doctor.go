@@ -45,6 +45,9 @@ type Deps struct {
 	FindApp func() (string, error)
 	// Clients are the AI tools to check.
 	Clients []clients.Client
+	// SkillHome is the home folder where the Claude Code skill lives. Empty
+	// means the skill is not checked.
+	SkillHome string
 	// HasProgram says whether a program is installed (opencode).
 	HasProgram func(name string) bool
 }
@@ -64,6 +67,9 @@ func Run(ctx context.Context, d Deps) []Check {
 	add(serverAnswer(ctx, d, running, token != ""))
 	for _, client := range d.Clients {
 		add(registration(d, client))
+		if client.ID() == "claude" && d.SkillHome != "" {
+			add(skill(d, client))
+		}
 	}
 	return checks
 }
@@ -178,6 +184,23 @@ func registration(d Deps, client clients.Client) Check {
 	}
 	return Check{Name: name, Status: Fail, Detail: "Sprixel is not registered in " + client.Title(),
 		Fix: "run `sprixel mcp add " + client.ID() + "`"}
+}
+
+// skill checks the Claude Code skill. It only matters when Sprixel is
+// registered in Claude Code: otherwise the check is skipped.
+func skill(d Deps, claude clients.Client) Check {
+	if state, err := claude.State(); err != nil || state != clients.StateYes {
+		return Check{Name: "skill", Status: Skip, Detail: "Sprixel is not registered in " + claude.Title() + ", so it has no skill"}
+	}
+	file := clients.Skill{Home: d.SkillHome}
+	fix := "run `sprixel mcp add claude`"
+	switch file.State() {
+	case clients.SkillCurrent:
+		return Check{Name: "skill", Status: OK, Detail: "the Sprixel skill is installed and current (" + file.Path() + ")"}
+	case clients.SkillOld:
+		return Check{Name: "skill", Status: Fail, Detail: "the Sprixel skill is old (" + file.Path() + ")", Fix: fix}
+	}
+	return Check{Name: "skill", Status: Fail, Detail: "the Sprixel skill is not installed", Fix: fix}
 }
 
 func firstLine(text string) string {

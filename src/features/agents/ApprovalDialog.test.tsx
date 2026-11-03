@@ -36,6 +36,7 @@ function App({ api, tab = true }: { api: FakeAgentsApi; tab?: boolean }) {
         api={api}
         clients={state.clients}
         permissions={state.permissions}
+        refresh={state.refreshClients}
       />
     </>
   );
@@ -95,6 +96,46 @@ describe("Approval prompt", () => {
     expect(card.getByText("Connected")).toBeTruthy();
     expect(
       within(screen.getByTestId("top-bar")).getByText("Claude Code"),
+    ).toBeTruthy();
+  });
+
+  // Checks the scenario "Answer fails": the core cannot save the answer, so
+  // the dialog stays open and shows the error (it must not look stuck).
+  it("shows the error and stays open when the answer fails", async () => {
+    const api = new FakeAgentsApi();
+    await start(api, false);
+    act(() => asks(api));
+    api.answerError = "disk is full";
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Allow" }));
+
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert.textContent).toContain("disk is full");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    // The person can try again once the core works.
+    api.answerError = null;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Allow" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  // Checks the scenario "Request already gone": the core answers false (the
+  // agent left), the list is read again and the dialog closes.
+  it("closes and refreshes when the request no longer exists", async () => {
+    const api = new FakeAgentsApi();
+    await start(api, false);
+    act(() => asks(api));
+    api.answerGone = true;
+
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Allow",
+      }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(
+      within(screen.getByTestId("top-bar")).getByText("No agents"),
     ).toBeTruthy();
   });
 

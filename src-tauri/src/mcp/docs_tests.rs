@@ -27,7 +27,7 @@ fn every_tool_is_documented_and_nothing_else() {
     let (_host, core) = core_with(tools::all());
     let real: BTreeSet<String> = core.tools.iter().map(|t| t.name.to_string()).collect();
     assert_eq!(documented_tools(), real);
-    assert_eq!(real.len(), 18);
+    assert_eq!(real.len(), 20);
 }
 
 // Checks that the permissions of the page are the real defaults and that the
@@ -44,6 +44,7 @@ fn the_page_has_the_real_limits_and_defaults() {
     assert!(DOC.contains(&format!("{} connections open at once", limits.connections)));
     assert!(DOC.contains(&format!("{} clients waiting", super::clients::MAX_PENDING)));
     let defaults = super::Permissions::default();
-    assert!(defaults.create && defaults.edit && defaults.export && defaults.ask_on_connect && !defaults.delete);
+    assert!(defaults.create && defaults.edit && defaults.export && defaults.ask_on_connect && !defaults.delete && !defaults.open_project);
     assert!(DOC.contains("| Delete sprites (`delete_sprite`) | **Off** |"));
+    assert!(DOC.contains("| Open projects (`open_project`) | **Off** |"));
 }

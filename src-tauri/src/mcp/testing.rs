@@ -12,6 +12,8 @@ pub struct TestHost {
     pub project: ProjectState,
     pub agents: EditorState,
     pub events: Mutex<Vec<(String, Value)>>,
+    /// The recent projects list the app would keep.
+    pub recent: Mutex<Vec<crate::ipc::preferences::RecentProject>>,
     /// The data folder of the server (token, runtime.json...).
     pub dir: tempfile::TempDir,
 }
@@ -28,6 +30,25 @@ impl Host for TestHost {
     fn emit(&self, event: &str, payload: Value) {
         self.events.lock().unwrap().push((event.to_string(), payload));
     }
+
+    fn recent_projects(&self) -> Vec<crate::ipc::preferences::RecentProject> {
+        self.recent.lock().unwrap().clone()
+    }
+
+    fn open_project(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<crate::ipc::project::ProjectInfo, crate::ipc::project::ProjectError> {
+        let info = crate::ipc::project::open_project(&self.project, path)?;
+        let mut data = crate::ipc::preferences::Data::default();
+        data.recent_projects = self.recent.lock().unwrap().clone();
+        crate::ipc::preferences::add_recent(
+            &mut data,
+            crate::ipc::preferences::RecentProject { path: info.path.clone(), name: info.name.clone() },
+        );
+        *self.recent.lock().unwrap() = data.recent_projects;
+        Ok(info)
+    }
 }
 
 impl Default for TestHost {
@@ -36,6 +57,7 @@ impl Default for TestHost {
             project: ProjectState::default(),
             agents: EditorState::default(),
             events: Mutex::default(),
+            recent: Mutex::default(),
             dir: tempfile::tempdir().unwrap(),
         }
     }

@@ -433,6 +433,7 @@
   "agents.permissions.edit": "Edit pixels",
   "agents.permissions.delete": "Delete sprites",
   "agents.permissions.export": "Export files",
+  "agents.permissions.openProject": "Open projects",
   "agents.permissions.askOnConnect": "Ask me when a new agent connects",
   "agents.permissions.note": "AI changes can be undone, except exported files.",
   "agents.permissions.error": "Could not save the permissions.",
@@ -459,6 +460,7 @@
   "agents.approve.allow": "Allow",
   "agents.approve.reject": "Reject",
   "agents.approve.close": "Close",
+  "agents.approve.error": "Could not save your answer: {message}",
   "agents.indicator.waiting": "Waiting for approval",
   "agents.notify.title": "{agent} wants to connect",
   "agents.notify.body": "Open Sprixel to allow or reject it."
