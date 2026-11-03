@@ -67,6 +67,7 @@ Other commands:
 ```sh
 openspec list                 # specs in progress
 openspec validate --all --strict
+node scripts/bump-version.mjs --check   # every version file matches package.json
 op start --file docs/design/sprixel.op   # open the design in OpenPencil
 ```
 

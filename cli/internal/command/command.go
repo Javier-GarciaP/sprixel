@@ -3,6 +3,8 @@ package command
 
 import (
 	"io"
+	"os"
+	goruntime "runtime"
 	"sort"
 	"strings"
 
@@ -28,6 +30,32 @@ type Env struct {
 	Exe      string
 	LookPath func(string) (string, error)
 	Runner   clients.Runner
+	// GOOS and GOARCH name the system (update and uninstall pick files by
+	// them); Getenv reads environment variables. Empty or nil means the real
+	// ones; tests replace them.
+	GOOS, GOARCH string
+	Getenv       func(string) string
+}
+
+func (e Env) goos() string {
+	if e.GOOS != "" {
+		return e.GOOS
+	}
+	return goruntime.GOOS
+}
+
+func (e Env) goarch() string {
+	if e.GOARCH != "" {
+		return e.GOARCH
+	}
+	return goruntime.GOARCH
+}
+
+func (e Env) getenv(name string) string {
+	if e.Getenv != nil {
+		return e.Getenv(name)
+	}
+	return os.Getenv(name)
 }
 
 // invocation is what a command receives.

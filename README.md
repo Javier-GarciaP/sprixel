@@ -44,9 +44,8 @@ while you watch. You can step in at any moment, stop the AI, or undo what it did
 
 ## Try it (from the source code)
 
-> **There is no installer yet.** Sprixel is building its first public demo, so
-> for now you run it from the source code. The one-line installers below come
-> with the first release.
+> **There is no published release yet.** For now you run Sprixel from the source
+> code. The one-line installers below come with the first release.
 
 You need Node and npm, Rust, Go and Git. The steps for each system are in
 [Contributing](CONTRIBUTING.md#prerequisites).
@@ -63,10 +62,10 @@ npm run build:cli           # builds the sprixel command into bin/
 The demo needs the AI connection, which is being built. Follow the
 [roadmap](docs/roadmap.md) to see how far it is.
 
-## Install (planned)
+## Install
 
-> **Not released yet.** The commands below are the planned way to install
-> Sprixel and will work from the first release.
+> **The first release (0.1.0) is not published yet.** The commands below work
+> once it is. Until then, run Sprixel from the source code (see above).
 
 Linux and macOS:
 
@@ -88,6 +87,44 @@ sprixel mcp add claude      # Claude Code
 sprixel mcp add opencode    # OpenCode
 sprixel doctor              # check that everything works
 ```
+
+What the installer does:
+
+- It installs **for your user only**. It never asks for administrator rights.
+- It downloads the files of the GitHub Release and **checks their SHA-256**
+  before it installs anything. If a check fails, nothing is installed.
+- It shows the MIT license notice and the source URL first, and installs the
+  license and the third-party notices with the app.
+- It adds the `sprixel` command to your PATH if needed and tells you to open a
+  new terminal.
+- It is safe to run again: it upgrades or repairs the installation and keeps
+  your projects, settings and tokens.
+
+Supported systems: Linux x64, macOS (Apple silicon and Intel) and Windows x64.
+
+To install a specific version, add `--version`:
+
+```sh
+curl -fsSL https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.sh | sh -s -- --version 0.2.0
+```
+
+```powershell
+$env:SPRIXEL_VERSION = "0.2.0"; irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.ps1 | iex
+```
+
+Update and remove Sprixel with the same command:
+
+```sh
+sprixel update              # install the latest version
+sprixel uninstall           # remove Sprixel (your projects stay)
+```
+
+**Warnings the first time.** Version 1 is not signed, so your system may warn
+you when you open the app. This is expected. On macOS, right-click Sprixel in
+`~/Applications`, choose **Open** and confirm. On Windows, in the SmartScreen
+window choose **More info** and then **Run anyway**. On Linux the app is an
+AppImage, which may need FUSE 2 (`libfuse2`) on some distributions. See the
+[usage guide](docs/usage.md#install) for more.
 
 > Sprixel is **open source** under the [MIT License](#license). You can use it,
 > change it and share it, and contributions are welcome.

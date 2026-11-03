@@ -1,0 +1,211 @@
+name: Release
+
+# A release starts only when a version tag is pushed (see CONTRIBUTING.md).
+on:
+  push:
+    tags: ["v*"]
+
+# Least permissions: jobs read the code only. The job that creates the release
+# asks for more, and only for itself.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+
+    steps:
+      # The whole history is needed to know which branches hold the commit.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The tag must point to a commit on main
+        run: node scripts/check-tag-branch.mjs "$GITHUB_SHA" origin/main
+
+      - name: The tag must match the version in the code
+        run: node scripts/bump-version.mjs --tag "$TAG"
+
+      - name: The changelog must have notes for this version
+        run: node scripts/release-notes.mjs "$TAG" > /dev/null
+
+  build:
+    name: Build (${{ matrix.target }} ${{ matrix.arch }})
+    # Nothing is built for a wrong tag.
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {
+              runner: ubuntu-latest,
+              target: linux,
+              arch: x64,
+              tauri: "--bundles appimage",
+            }
+          - {
+              runner: macos-latest,
+              target: macos,
+              arch: arm64,
+              tauri: "--bundles app",
+            }
+          - {
+              runner: macos-15-intel,
+              target: macos,
+              arch: x64,
+              tauri: "--bundles app",
+            }
+          - {
+              runner: windows-latest,
+              target: windows,
+              arch: x64,
+              tauri: "--no-bundle",
+            }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.mod
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Install Tauri system libraries (Linux)
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev file
+
+      - run: npm ci
+
+      # No release if a test fails: this job fails and the release job never runs.
+      - run: npm test
+
+      - name: Build the app
+        run: npx tauri build ${{ matrix.tauri }}
+
+      - name: Build the sprixel command
+        run: npm run build:cli
+
+      - name: Collect the release files
+        run: node scripts/stage-release.mjs ${{ matrix.target }} ${{ matrix.arch }} staged
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}-${{ matrix.arch }}
+          path: staged/*
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke test (${{ matrix.target }} ${{ matrix.arch }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { runner: ubuntu-latest, target: linux, arch: x64 }
+          - { runner: macos-latest, target: macos, arch: arm64 }
+          - { runner: macos-15-intel, target: macos, arch: x64 }
+          - { runner: windows-latest, target: windows, arch: x64 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: artifacts
+
+      - name: Assemble the release files
+        run: node scripts/assemble-release.mjs artifacts release
+
+      # The install script runs from the assembled folder, as it will from the
+      # release: this machine is clean and is thrown away after the job.
+      - name: Install with install.sh
+        if: matrix.target != 'windows'
+        shell: bash
+        env:
+          SPRIXEL_BASE_URL: file://${{ github.workspace }}/release
+        run: sh release/install.sh
+
+      - name: Install with install.ps1
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $env:SPRIXEL_BASE_URL = ([Uri](Resolve-Path release).Path).AbsoluteUri
+          ./release/install.ps1
+
+      - name: Read the release version
+        id: version
+        shell: bash
+        run: echo "version=$(cat release/VERSION)" >> "$GITHUB_OUTPUT"
+
+      # sprixel version must show the release version; sprixel doctor must find the app.
+      - name: Run the smoke test
+        run: node scripts/smoke-test.mjs ${{ steps.version.outputs.version }}
+
+  release:
+    name: Publish the release
+    # Runs only if the tag is right, every build job (and so every test) passed
+    # and every system installed the release.
+    needs: [verify, build, smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the only job that can create a release
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: artifacts
+
+      # Puts the files of all systems together, adds install.sh, install.ps1,
+      # LICENSE, THIRD-PARTY.md and VERSION, and writes checksums.txt.
+      - name: Assemble the release files
+        run: node scripts/assemble-release.mjs artifacts release
+
+      - name: Take the release notes from CHANGELOG.md
+        run: node scripts/release-notes.mjs "$TAG" > notes.md
+
+      - name: Create the GitHub Release
+        run: |
+          # A tag with a suffix (-alpha.1, -beta.1, -rc.1) is a pre-release.
+          case "$TAG" in *-*) PRERELEASE=--prerelease ;; *) PRERELEASE= ;; esac
+          gh release create "$TAG" release/* \
+            --title "Sprixel $TAG" \
+            --notes-file notes.md \
+            --verify-tag \
+            $PRERELEASE

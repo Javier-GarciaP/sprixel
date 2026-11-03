@@ -185,11 +185,19 @@ Sprixel follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
 - Projects saved on disk have their own `formatVersion`. Opening an older
   project must keep working through a migration.
 
-The version lives in several files. The release task bumps all of them in
-the same commit (the list is kept in the
+The version lives in several files. One script bumps all of them in the same
+commit (the list is kept in the
 [`install-and-release` spec](openspec/changes/install-and-release/)):
-`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and the Go
-build settings of the CLI.
+
+```sh
+node scripts/bump-version.mjs 0.2.0    # set the version everywhere and check it
+node scripts/bump-version.mjs --check  # fail if the files disagree
+```
+
+`package.json` is the source. The script also writes `package-lock.json`,
+`src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and the default version of the Go
+command. `src-tauri/tauri.conf.json` reads `package.json` by itself, and the
+build puts the version in the `sprixel` command.
 
 ## Releasing a version
 
@@ -197,9 +205,10 @@ Only the maintainer releases. A release moves `dev` into `main`.
 
 1. **Check `dev`.** It builds, all tests pass and finished specs are archived.
 2. **Prepare the release.** Create `feature/release-vX.Y.Z` from `dev`. In one
-   commit (`chore(release): vX.Y.Z`) bump the version in every file and move
-   the "Unreleased" notes of [CHANGELOG.md](CHANGELOG.md) under the new
-   version. Open a pull request into `dev` and merge it.
+   commit (`chore(release): vX.Y.Z`) run `node scripts/bump-version.mjs X.Y.Z`
+   and move the "Unreleased" notes of [CHANGELOG.md](CHANGELOG.md) under a
+   `## [X.Y.Z] - date` heading. Those notes become the text of the GitHub
+   Release. Open a pull request into `dev` and merge it.
 3. **Open the release pull request** from `dev` into `main`, titled
    `release: vX.Y.Z`. Use a **merge commit** (no squash) so both branches keep
    the same history.
@@ -212,11 +221,32 @@ Only the maintainer releases. A release moves `dev` into `main`.
    git push origin vX.Y.Z
    ```
 
-   The tag starts the release pipeline: it builds the installers for Linux,
-   Windows and macOS, the `sprixel` command and the install scripts, and
-   publishes them in a GitHub Release with the changelog notes.
+   The tag starts the release pipeline
+   ([`release.yml`](.github/workflows/release.yml)). It runs these jobs in order,
+   and stops at the first one that fails:
+
+   1. **Check the tag:** the commit is on `main`, the tag is `v` plus the
+      version in the code, and `CHANGELOG.md` has notes for it. A tag that is
+      not on `main` is refused: releases come from `main` only.
+   2. **Build:** on Linux, macOS (Apple silicon and Intel) and Windows it runs
+      the tests, builds the app and builds the `sprixel` command.
+   3. **Smoke test:** on a clean runner of each system it installs the release
+      with `install.sh` or `install.ps1` and runs `sprixel version` and
+      `sprixel doctor`.
+   4. **Release:** it creates the GitHub Release with the app and the command
+      for every system, `install.sh`, `install.ps1`, `LICENSE`,
+      `THIRD-PARTY.md`, `VERSION`, `checksums.txt` (SHA-256) and the changelog
+      notes. Only this job can write to the repository.
+
+   A tag with a suffix (`v0.3.0-alpha.1`, `-beta.N`, `-rc.N`) is published as a
+   **pre-release**. Version 1 is not code signed (see
+   [Usage](docs/usage.md#warnings-the-first-time)).
 5. **Check the release.** Run the install script on a clean machine and run
    `sprixel doctor`.
+
+If the pipeline fails, nothing is published. Fix the problem with a normal pull
+request and release a new `PATCH` version; do not move or delete a tag that was
+pushed.
 
 Fixing a released version: create `fix/<name>` from `dev`, merge it into `dev`,
 and release a new `PATCH` version in the same way.

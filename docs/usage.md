@@ -25,13 +25,81 @@
 
 ## Install
 
-See the [README](../README.md#install). After installing, check everything with:
+See the [README](../README.md#install) for the install commands. After
+installing, check everything with:
 
 ```sh
 sprixel doctor
 ```
 
 Start the app from your applications menu, or with `sprixel start`.
+
+### Where the installer puts things
+
+| System | App | `sprixel` command | License and notices |
+| --- | --- | --- | --- |
+| Linux | `~/.local/bin/sprixel-app` (an AppImage) | `~/.local/bin/sprixel` | `~/.local/share/sprixel/` |
+| macOS | `~/Applications/Sprixel.app` | `~/.local/bin/sprixel` | `~/.local/share/sprixel/` |
+| Windows | `%LOCALAPPDATA%\Sprixel\Sprixel.exe` | `%LOCALAPPDATA%\Sprixel\bin\sprixel.exe` | `%LOCALAPPDATA%\Sprixel\` |
+
+If the command folder is not in your PATH, the installer adds it: on Windows to
+your user PATH, on Linux and macOS with one line (marked `# Added by the Sprixel
+installer`) in `~/.profile` (`~/.zprofile` for zsh, `~/.bash_profile` for bash
+on macOS). Open a new terminal after that.
+
+Running the installer again upgrades or repairs the installation. It never
+touches your projects, `~/.sprixel` (the token, the approved AI clients) or your
+settings.
+
+### Update
+
+```sh
+sprixel update           # install the latest version
+sprixel update --check   # only say if a new version exists
+```
+
+`sprixel update` downloads the latest release, **checks the SHA-256 of every
+file** and only then replaces the app and the command. It says which version it
+moved from and to, or that you are already up to date. If the app is open, close
+it and open it again to use the new version. It only updates a `sprixel` that
+the installer put in place; a command you built from the source code is left
+alone.
+
+### Uninstall
+
+```sh
+sprixel uninstall
+```
+
+It shows what it will remove and asks before doing it: the app, the command, the
+PATH entry and the Sprixel registration in Claude Code and OpenCode. **Your
+projects are never removed.** It asks a second, separate question about the
+local data folder `~/.sprixel` (the port, the access token and the approved AI
+clients); the default answer is no. For scripts: `--yes` confirms the uninstall
+and `--remove-data` also removes the local data folder.
+
+### Warnings the first time
+
+Version 1 is not signed or notarized, so the system may warn you:
+
+- **macOS:** "Sprixel cannot be opened". Right-click the app, choose **Open** and
+  confirm once. The install script itself does not trigger this warning, because
+  `curl` does not mark files as downloaded from the internet.
+- **Windows:** the SmartScreen window "Windows protected your PC". Choose **More
+  info** and then **Run anyway**.
+- **Linux:** the app is an AppImage. If it does not start, install FUSE 2
+  (`libfuse2` on Debian and Ubuntu, `fuse-libs` on Fedora).
+
+You can check the downloads yourself: every release has a `checksums.txt` file
+with the SHA-256 of each file.
+
+### For tests
+
+`SPRIXEL_BASE_URL` replaces the folder the files are downloaded from (for
+example a local folder served for a test). The install scripts accept an
+`http(s)` or `file://` address, `sprixel update` an `http(s)` one. It is meant for
+tests; do not set it otherwise. `install.sh` also reads `SPRIXEL_OS` and
+`SPRIXEL_ARCH`, and `install.ps1` reads `SPRIXEL_ARCH` and `SPRIXEL_SKIP_PATH`.
 
 ## Create a project
 
@@ -481,8 +549,8 @@ them is built.
 | `sprixel tools` | List the tools an AI can use |
 | `sprixel tool <name> key=value ...` | Run one tool from the terminal |
 | `sprixel doctor` | Check the install and the connections |
-| `sprixel update` | Update to the latest version |
-| `sprixel uninstall` | Remove Sprixel |
+| `sprixel update [--check]` | Update to the latest version |
+| `sprixel uninstall [--yes] [--remove-data]` | Remove Sprixel (your projects stay) |
 | `sprixel version` | Show the version |
 
 Every command accepts `--json` (machine-readable output) and `--help`. Exit
