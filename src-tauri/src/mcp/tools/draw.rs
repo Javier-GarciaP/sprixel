@@ -84,7 +84,7 @@ pub(super) fn preview_arg() -> Value {
 }
 
 /// The keys a sprite accepts: those of its palette and `.`.
-fn valid_keys(project: &Project, sprite: &Sprite) -> Vec<String> {
+pub(super) fn valid_keys(project: &Project, sprite: &Sprite) -> Vec<String> {
     let mut keys: Vec<String> = project
         .palette(&sprite.palette)
         .map(|p| p.colors.iter().map(|c| c.key.to_string()).collect())

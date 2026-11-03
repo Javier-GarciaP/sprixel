@@ -27,7 +27,7 @@ fn every_tool_is_documented_and_nothing_else() {
     let (_host, core) = core_with(tools::all());
     let real: BTreeSet<String> = core.tools.iter().map(|t| t.name.to_string()).collect();
     assert_eq!(documented_tools(), real);
-    assert_eq!(real.len(), 30);
+    assert_eq!(real.len(), 33);
 }
 
 // Checks that the permissions of the page are the real defaults and that the

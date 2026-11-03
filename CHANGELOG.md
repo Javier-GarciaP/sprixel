@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Finishing tools for the AI: `auto_outline` draws a one pixel outline (4 or 8
+  neighbors, outside only or inner), `auto_shade` shades a region with a ramp
+  of tones for a light direction, and `analyze_sprite` reports loose pixels,
+  gaps in the outline, unused colors and how each frame differs from the next
+  (changed pixels, box, ground kept).
 - Edit tools for agents: `transform_region` (flip, mirror, move with `wrap`,
   rotate) and `copy_region` (inside a sprite or to another frame or sprite),
   `only_over` and `symmetry` on `set_pixels`, `draw_shape` and `apply_grid`,

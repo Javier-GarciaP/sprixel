@@ -132,6 +132,8 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "apply_grid" => format!("Applied a grid to {name}"),
         "set_pixels" => format!("Set {} pixels on {name}", answer["pixels_set"]),
         "draw_shape" => format!("Drew a {} on {name}", text(args, "shape")),
+        "auto_outline" => format!("Outlined {name}"),
+        "auto_shade" => format!("Shaded {name} from the {}", text(args, "light")),
         "transform_region" => format!("Applied {} to a region of {name}", text(args, "operation")),
         "copy_region" => format!("Copied a region of {name}"),
         "import_reference" => format!("Imported a reference picture into {name}"),

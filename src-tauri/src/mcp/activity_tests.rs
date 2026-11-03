@@ -182,3 +182,17 @@ fn a_client_cannot_use_the_name_of_the_person() {
     let author = project::read(&host.project, |s| s.history.entries()[0].author.clone()).unwrap();
     assert_eq!(author, "USER (agent)");
 }
+
+// Checks the descriptions of the two automatic finishing tools.
+#[test]
+fn outline_and_shade_have_a_description() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "draw_shape", json!({ "name": "slime", "shape": "rectangle", "key": "G", "x": 1, "y": 1, "width": 4, "height": 4, "filled": true })).unwrap();
+    call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R" })).unwrap();
+    call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top-left", "base": "G", "keys": "RG" })).unwrap();
+
+    let summaries: Vec<String> = rows(&core).iter().take(2).map(|r| r.entry.summary.clone()).collect();
+
+    assert_eq!(summaries, ["Shaded slime from the top-left", "Outlined slime"]);
+}

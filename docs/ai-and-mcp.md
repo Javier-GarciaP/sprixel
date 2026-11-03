@@ -111,6 +111,7 @@ description tells the AI the rules, so it does not need this page.
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side). `background`: `checker` (default, gray checkerboard), `light`, `dark` or `transparent`; the images of `apply_grid`, `set_pixels` and `draw_shape` take it too |
 | `render_frames` | One PNG with several frames in a grid (`from`, `to`, `columns`, `scale`, `labels`, `background`), at most 1024 pixels on a side |
 | `render_onion` | One PNG with several frames drawn over each other (`frames`, `scale`, `background`): earlier frames are tinted and see-through, the last one is normal |
+| `analyze_sprite` | Checks a sprite: loose pixels, gaps in the outline (`outline_key`), unused colors, and how each frame differs from the next (`changed_pixels`, `bbox`, `ground_kept`). Changes nothing |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
 | `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |
@@ -136,6 +137,8 @@ description tells the AI the rules, so it does not need this page.
 | `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet. Returns an image of the edited frame |
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`). Returns an image of the edited frame |
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
+| `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). Returns an image of the edited frame |
+| `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns an image of the edited frame |
 | `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. Returns an image of the edited frame |
 | `copy_region` | Copies a region inside a sprite, or to another frame or sprite (same palette), with an offset and `skip_transparent`. Returns an image of the edited frame |
 | `import_reference` | Draws a PNG from the project folder `references/` into a frame, using the nearest colors of the palette (`width`, `height` scale it down, `max_colors` adds colors). Returns an image of the edited frame |
