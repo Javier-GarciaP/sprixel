@@ -20,7 +20,7 @@ import (
 
 func init() {
 	commands = append(commands,
-		command{name: "start", summary: "Start the app, optionally opening a project", usage: "sprixel start [path] [--json]", run: runStart},
+		command{name: "start", summary: "Start the app (it does not open a project yet)", usage: "sprixel start [path] [--json]", run: runStart},
 		command{name: "status", summary: "Say whether the app is running", usage: "sprixel status [--json]", run: runStatus},
 		command{name: "tools", summary: "List the tools an AI can use", usage: "sprixel tools [--json]", run: runTools},
 		command{name: "tool", summary: "Run one tool: sprixel tool <name> key=value ...", usage: "sprixel tool <name> [key=value ...] [--json]", run: runTool},
@@ -73,18 +73,21 @@ func runStart(c *invocation, args []string) int {
 	if len(args) > 1 {
 		return c.p.Fail(ExitUsage, "usage", "unexpected argument: "+args[1], "usage: sprixel start [path]")
 	}
-	var appArgs []string
+	// The app does not read a project path from its command line yet, so the
+	// path is checked but not passed: saying "opened" would be a lie. The
+	// person opens it in the app, or an agent calls `open_project`.
+	ignored := ""
 	if len(args) == 1 {
 		path, err := projectPath(args[0])
 		if err != nil {
 			return c.p.Fail(ExitUsage, "usage", err.Error(), "give the folder of a Sprixel project (it has a sprixel.json file)")
 		}
-		appArgs = append(appArgs, path)
+		ignored = path
 	}
 	if info, ok := runtime.Running(c.dir); ok {
-		return c.printStart("Sprixel is already running", false, info)
+		return c.printStart("Sprixel is already running", false, info, ignored)
 	}
-	exited, err := c.startApp(appArgs...)
+	exited, err := c.startApp()
 	if err != nil {
 		return c.p.Fail(ExitFailure, "start", err.Error(), "")
 	}
@@ -92,13 +95,13 @@ func runStart(c *invocation, args []string) int {
 	if err != nil {
 		return c.p.Fail(ExitFailure, "start", err.Error(), "")
 	}
-	return c.printStart("Sprixel started", true, info)
+	return c.printStart("Sprixel started", true, info, ignored)
 }
 
 // printStart tells which build runs: the path of the app (when this command
 // can find it), its version, and a warning when the version is not the one of
 // this command. An old build left in another place is the usual reason.
-func (c *invocation) printStart(headline string, started bool, info runtime.Info) int {
+func (c *invocation) printStart(headline string, started bool, info runtime.Info, ignoredProject string) int {
 	app, err := launcher.Find(launcher.System(c.env.Home))
 	if err != nil {
 		app = ""
@@ -117,6 +120,12 @@ func (c *invocation) printStart(headline string, started bool, info runtime.Info
 		warning := fmt.Sprintf("the app is version %s but this command is %s. It may be an old build: install the same version of both, or set SPRIXEL_APP to the path of the app you want", info.Version, version.Version)
 		text += "warning: " + warning + "\n"
 		data["warning"] = warning
+	}
+	if ignoredProject != "" {
+		note := "the app does not open a project from the command line yet, so " + ignoredProject + " was not opened. Open it in the app (Open project), or let an AI agent call open_project"
+		text += "note: " + note + "\n"
+		data["note"] = note
+		data["project_opened"] = false
 	}
 	c.p.Print(text, data)
 	return ExitOK

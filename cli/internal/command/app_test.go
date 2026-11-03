@@ -165,8 +165,9 @@ func TestToolsListAndApproval(t *testing.T) {
 	}
 }
 
-// Checks the scenario "start" when the app is closed: the command starts it
-// (with the project path made absolute), waits for the server and returns.
+// Checks "start" when the app is closed: the command starts it and waits for
+// the server. The app does not read a project path yet, so a path is checked
+// but NOT passed to the app, and the output says the project was not opened.
 func TestStartStartsTheApp(t *testing.T) {
 	home := t.TempDir()
 	app := testapp.Prepare(t, filepath.Join(home, ".sprixel"))
@@ -186,8 +187,11 @@ func TestStartStartsTheApp(t *testing.T) {
 	if code != ExitOK || !strings.Contains(out.String(), "started") {
 		t.Errorf("code = %d, stdout = %q, stderr = %q", code, out.String(), errOut.String())
 	}
-	if len(got) != 1 || got[0] != project {
-		t.Errorf("app args = %v", got)
+	if len(got) != 0 {
+		t.Errorf("app args = %v, want none", got)
+	}
+	if !strings.Contains(out.String(), "note: the app does not open a project from the command line yet") || !strings.Contains(out.String(), project+" was not opened") {
+		t.Errorf("stdout = %q", out.String())
 	}
 }
 

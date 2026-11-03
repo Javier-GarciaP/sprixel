@@ -284,7 +284,7 @@ design.
 | `sprixel mcp remove <claude\|opencode>` | Removes only the Sprixel entry |
 | `sprixel mcp list` | Shows if Sprixel is registered in each client |
 | `sprixel doctor` | One line per check (OK, FAIL or SKIP) with how to fix a failure; exit code 1 if one fails |
-| `sprixel start [path]` | Starts the app and returns once the server answers |
+| `sprixel start` | Starts the app, returns once the server answers, and prints the app path and version (it warns if the version differs from the command). It does not open a project: use the app or `open_project` |
 | `sprixel status` | Whether the app runs, with its port and version (exit code 3 if closed) |
 | `sprixel tools`, `sprixel tool <name> key=value ...` | List and call tools |
 | `sprixel version` | The version of the command |

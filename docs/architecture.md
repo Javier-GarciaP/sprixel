@@ -224,7 +224,7 @@ Written in Go, as one small program for Linux, Windows and macOS.
 
 | Command | What it does |
 | --- | --- |
-| `sprixel start [path]` | Starts the app, optionally opening a project |
+| `sprixel start` | Starts the app (a project path is checked but not opened yet) |
 | `sprixel status` | Shows whether the app is running |
 | `sprixel mcp` | MCP server over stdio, used by AI tools. Starts the app if needed |
 | `sprixel mcp add <client>` | Registers Sprixel in Claude Code or OpenCode |
