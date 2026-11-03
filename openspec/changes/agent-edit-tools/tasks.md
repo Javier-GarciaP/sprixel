@@ -10,7 +10,7 @@
 
 ## 3. Region tools
 
-- [ ] 3.1 Add the pure functions (flip, mirror, move, rotate, copy) with unit tests
+- [x] 3.1 Add the pure functions (flip, mirror, move, rotate, copy) with unit tests
 - [ ] 3.2 Add the tool `transform_region` with history, preview and replay; verify every scenario, one history entry and undo
 - [ ] 3.3 Add the tool `copy_region`; verify copy inside a sprite, to another frame and sprite, skip transparent, palette mismatch and region out
 

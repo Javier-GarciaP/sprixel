@@ -16,6 +16,7 @@ mod edit;
 mod export;
 mod projects;
 mod read;
+mod region;
 mod shapes;
 mod structure;
 mod undo;
