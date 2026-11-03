@@ -109,12 +109,18 @@ fn invalid_path(key: &str, why: &str) -> ToolError {
 /// the whole project; if two sprites share the name the error lists their
 /// folders (`ambiguous_name`).
 pub fn sprite(project: &Project, args: &Value) -> Result<SpriteRef, ToolError> {
-    let name = required_str(args, "name")?;
+    sprite_at(project, args, "name")
+}
+
+/// Like `sprite`, with the sprite named by another argument (`create_tag`
+/// uses `sprite`, because its `name` is the name of the animation).
+pub fn sprite_at(project: &Project, args: &Value, key: &str) -> Result<SpriteRef, ToolError> {
+    let name = required_str(args, key)?;
     let mut folder = folder_path(args, "folder")?;
     let mut name = name.to_string();
     if folder.is_none() && name.contains(['/', '\\']) {
-        let mut parts = split_path(&name, "name")?;
-        name = parts.pop().ok_or_else(|| bad("name", "the name of a sprite"))?;
+        let mut parts = split_path(&name, key)?;
+        name = parts.pop().ok_or_else(|| bad(key, "the name of a sprite"))?;
         folder = Some(parts);
     }
     if let Some(folder) = folder {
