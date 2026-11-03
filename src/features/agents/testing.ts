@@ -17,6 +17,7 @@ export const defaultPermissions: Permissions = {
   edit: true,
   delete: false,
   export: true,
+  openProject: false,
   askOnConnect: true,
 };
 

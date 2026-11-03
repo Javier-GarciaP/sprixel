@@ -20,6 +20,7 @@ fn tools() -> Vec<Tool> {
         tool("change", Need::Edit),
         tool("remove", Need::Delete),
         tool("send", Need::Export),
+        tool("open", Need::OpenProject),
     ]
 }
 
@@ -43,7 +44,7 @@ fn runs(host: &testing::TestHost) -> usize {
 fn the_defaults_are_the_safe_ones() {
     assert_eq!(
         Permissions::default(),
-        Permissions { create: true, edit: true, delete: false, export: true, ask_on_connect: true }
+        Permissions { create: true, edit: true, delete: false, export: true, open_project: false, ask_on_connect: true }
     );
 }
 
@@ -69,24 +70,25 @@ fn delete_is_off_by_default() {
 // only the tools that need it, and read tools always work.
 #[test]
 fn each_permission_denies_only_its_tools() {
-    let cases = [("create", "make"), ("edit", "change"), ("delete", "remove"), ("export", "send")];
+    let cases = [("create", "make"), ("edit", "change"), ("delete", "remove"), ("export", "send"), ("openProject", "open")];
     for (switch, denied) in cases {
         let (_host, core) = core_with(tools());
         let session = connect_allowed(&core, "Claude Code");
         // Everything on, then one switch off.
-        let mut all_on = Permissions { create: true, edit: true, delete: true, export: true, ask_on_connect: true };
+        let mut all_on = Permissions { create: true, edit: true, delete: true, export: true, open_project: true, ask_on_connect: true };
         core.set_permissions(all_on).unwrap();
-        for name in ["read", "make", "change", "remove", "send"] {
+        for name in ["read", "make", "change", "remove", "send", "open"] {
             assert_eq!(code(&core, &session, name), "", "{name} with all on");
         }
         match switch {
             "create" => all_on.create = false,
             "edit" => all_on.edit = false,
             "delete" => all_on.delete = false,
+            "openProject" => all_on.open_project = false,
             _ => all_on.export = false,
         }
         core.set_permissions(all_on).unwrap();
-        for name in ["read", "make", "change", "remove", "send"] {
+        for name in ["read", "make", "change", "remove", "send", "open"] {
             let expected = if name == denied { "permission_denied" } else { "" };
             assert_eq!(code(&core, &session, name), expected, "{name} with {switch} off");
         }
@@ -106,6 +108,24 @@ fn a_change_applies_to_the_next_call_without_reconnecting() {
 
     core.set_permissions(Permissions { export: true, ..core.permissions() }).unwrap();
     assert_eq!(code(&core, &session, "send"), "");
+}
+
+// Checks the scenario "Turn it on": "Open projects" is off by default, and
+// turning it on works for a client that is already connected, on its next
+// call. An old permissions file without the field also gives "off".
+#[test]
+fn open_projects_is_off_and_changes_without_reconnecting() {
+    let (host, core) = core_with(tools());
+    let session = connect_allowed(&core, "Claude Code");
+    assert_eq!(code(&core, &session, "open"), "permission_denied");
+
+    core.set_permissions(Permissions { open_project: true, ..core.permissions() }).unwrap();
+    assert_eq!(code(&core, &session, "open"), "");
+
+    let dir = host.dir.path().join(".sprixel");
+    std::fs::write(dir.join(policy::PERMISSIONS_FILE), r#"{"create":true,"delete":true}"#).unwrap();
+    let old = Core::new(host.clone(), tools(), dir).unwrap().permissions();
+    assert!(old.delete && !old.open_project);
 }
 
 // Checks that the permissions apply to every client, not only one.

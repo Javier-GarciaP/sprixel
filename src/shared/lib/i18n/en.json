@@ -433,6 +433,7 @@
   "agents.permissions.edit": "Edit pixels",
   "agents.permissions.delete": "Delete sprites",
   "agents.permissions.export": "Export files",
+  "agents.permissions.openProject": "Open projects",
   "agents.permissions.askOnConnect": "Ask me when a new agent connects",
   "agents.permissions.note": "AI changes can be undone, except exported files.",
   "agents.permissions.error": "Could not save the permissions.",

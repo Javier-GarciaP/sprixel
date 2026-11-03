@@ -19,6 +19,7 @@ export type Permissions = {
   edit: boolean;
   delete: boolean;
   export: boolean;
+  openProject: boolean;
   askOnConnect: boolean;
 };
 

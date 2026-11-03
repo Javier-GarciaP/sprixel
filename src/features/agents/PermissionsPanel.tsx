@@ -8,6 +8,7 @@ const switches: { name: keyof Permissions; label: TranslationKey }[] = [
   { name: "edit", label: "agents.permissions.edit" },
   { name: "delete", label: "agents.permissions.delete" },
   { name: "export", label: "agents.permissions.export" },
+  { name: "openProject", label: "agents.permissions.openProject" },
   { name: "askOnConnect", label: "agents.permissions.askOnConnect" },
 ];
 

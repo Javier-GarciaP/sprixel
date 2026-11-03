@@ -20,13 +20,15 @@ pub struct Permissions {
     pub delete: bool,
     /// Write export files into the project.
     pub export: bool,
+    /// Open another project in the app. Off by default: it can open any folder.
+    pub open_project: bool,
     /// Ask the user before a new client may connect.
     pub ask_on_connect: bool,
 }
 
 impl Default for Permissions {
     fn default() -> Self {
-        Permissions { create: true, edit: true, delete: false, export: true, ask_on_connect: true }
+        Permissions { create: true, edit: true, delete: false, export: true, open_project: false, ask_on_connect: true }
     }
 }
 
@@ -54,6 +56,7 @@ impl Permissions {
             Need::Edit => (self.edit, "edit", "Edit pixels"),
             Need::Delete => (self.delete, "delete", "Delete sprites"),
             Need::Export => (self.export, "export", "Export files"),
+            Need::OpenProject => (self.open_project, "openProject", "Open projects"),
         };
         if allowed {
             return Ok(());

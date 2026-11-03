@@ -433,6 +433,7 @@
   "agents.permissions.edit": "Editar píxeles",
   "agents.permissions.delete": "Borrar sprites",
   "agents.permissions.export": "Exportar archivos",
+  "agents.permissions.openProject": "Abrir proyectos",
   "agents.permissions.askOnConnect": "Pedir aprobación al conectar",
   "agents.permissions.note": "Los cambios de la IA se pueden deshacer, excepto los archivos exportados.",
   "agents.permissions.error": "No se pudieron guardar los permisos.",
