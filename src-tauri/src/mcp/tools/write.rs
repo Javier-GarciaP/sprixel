@@ -35,16 +35,26 @@ pub struct Plan {
     pub busy: Option<(SpriteRef, u32)>,
     /// The sprite the call is about; its path is added to the answer.
     pub sprite: Option<SpriteRef>,
+    /// The answer carries a picture of the busy frame (unless the call says
+    /// `preview: false`).
+    pub preview: bool,
 }
 
 impl Plan {
     pub fn new(ops: Vec<Operation>, extra: Value) -> Plan {
-        Plan { ops, extra, busy: None, sprite: None }
+        Plan { ops, extra, busy: None, sprite: None, preview: false }
     }
 
     pub fn busy(mut self, sprite: &SpriteRef, frame: u32) -> Plan {
         self.busy = Some((sprite.clone(), frame));
         self.sprite = Some(sprite.clone());
+        self
+    }
+
+    /// The answer also has an image of the frame after the write, so the agent
+    /// can look at its work.
+    pub fn preview(mut self) -> Plan {
+        self.preview = true;
         self
     }
 
@@ -145,6 +155,7 @@ pub fn write(
     plan: impl FnOnce(&Session) -> Result<Plan, ToolError>,
 ) -> ToolResult {
     let base = args::optional_u64(input, "base_revision")?;
+    let want_preview = args::optional_bool(input, "preview")?.unwrap_or(true);
     let core = ctx.core;
     // A panic of another write must not block all the others.
     let _one_at_a_time = core.write_lock.lock().unwrap_or_else(|e| e.into_inner());
@@ -187,6 +198,10 @@ pub fn write(
             }
             None => None,
         };
+        let picture = match (&plan.busy, plan.preview && want_preview) {
+            (Some((target, frame)), true) => Some((target.clone(), *frame)),
+            _ => None,
+        };
         let sprite = plan.sprite;
         let touched = if changed { session.apply(ctx.client, plan.ops)? } else { Vec::new() };
         let mut answer = match plan.extra {
@@ -203,10 +218,14 @@ pub fn write(
             revision: session.project.revision,
             touched: touched.iter().map(TargetInfo::from).collect(),
         };
-        Ok((answer, event, changed, replay))
+        // Drawn after the write, so it shows the new pixels.
+        let image = picture.and_then(|(target, frame)| {
+            super::read::write_preview(&session.project, &target, frame).map(|image| (target, frame, image))
+        });
+        Ok((answer, event, changed, replay, image))
     })
     .ok_or_else(ToolError::no_project)?;
-    let (answer, event, changed, replay) = done?;
+    let (mut answer, event, changed, replay, image) = done?;
     if changed {
         core.host.emit(CHANGED_EVENT, serde_json::to_value(event).unwrap_or_default());
     }
@@ -218,6 +237,14 @@ pub fn write(
         }
         // The marker goes away after the UI knows about the change.
         (_, busy) => drop(busy),
+    }
+    // The picture is part of the answer: the JSON goes next to it as text.
+    if let Some((target, frame, image)) = image {
+        if let Ok(png) = crate::export::encode_png(&image) {
+            answer.insert("name".into(), target.name.into());
+            answer.insert("frame".into(), frame.into());
+            return Ok(Output::Image { png, info: Value::Object(answer) });
+        }
     }
     Ok(Output::Json(Value::Object(answer)))
 }

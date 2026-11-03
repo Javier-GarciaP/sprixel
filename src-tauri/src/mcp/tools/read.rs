@@ -222,6 +222,23 @@ fn get_palette(ctx: &Ctx, input: &Value) -> ToolResult {
     })
 }
 
+/// The largest side of the preview a write tool returns with its result.
+pub const WRITE_PREVIEW_SIDE: u32 = 512;
+/// Small sprites are not blown up more than this.
+const WRITE_PREVIEW_MAX_SCALE: u32 = 32;
+
+/// The picture of the frame an agent just wrote, scaled up with sharp pixels
+/// so its side is at most `WRITE_PREVIEW_SIDE`. `None` if it cannot be drawn
+/// (the write itself already worked, so this is never an error).
+pub fn write_preview(project: &Project, target: &SpriteRef, frame: u32) -> Option<crate::render::Image> {
+    let sprite = project.find_sprite(target)?;
+    check_frame(sprite, frame).ok()?;
+    let palette = project.palette(&sprite.palette)?;
+    let side = sprite.width.max(sprite.height).max(1);
+    let scale = (WRITE_PREVIEW_SIDE / side).clamp(1, WRITE_PREVIEW_MAX_SCALE);
+    Some(render_frame(sprite, palette, frame as usize - 1, scale))
+}
+
 fn render_preview(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
     let scale = args::optional_u32(input, "scale")?.unwrap_or(DEFAULT_SCALE);

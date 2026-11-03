@@ -72,3 +72,6 @@ mod live_tests;
 
 #[cfg(test)]
 mod guide_tests;
+
+#[cfg(test)]
+mod preview_tests;

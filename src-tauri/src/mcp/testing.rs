@@ -158,7 +158,12 @@ pub fn open_demo_project(host: &TestHost) {
 pub fn call(core: &Core, session: &str, tool: &str, arguments: Value) -> Result<Value, Value> {
     let reply = rpc(core, Some(session), "tools/call", json!({ "name": tool, "arguments": arguments }));
     let result = &reply["result"];
-    let text = result["content"][0]["text"].as_str().unwrap_or("null");
+    // A result with an image has the JSON as its text part, after the image.
+    let text = result["content"]
+        .as_array()
+        .and_then(|parts| parts.iter().find(|p| p["type"] == "text"))
+        .and_then(|part| part["text"].as_str())
+        .unwrap_or("null");
     let value: Value = serde_json::from_str(text).unwrap_or(Value::Null);
     if result["isError"] == true { Err(value) } else { Ok(value) }
 }
