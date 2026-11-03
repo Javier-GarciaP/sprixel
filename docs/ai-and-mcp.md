@@ -135,6 +135,7 @@ description tells the AI the rules, so it does not need this page.
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`). Returns an image of the edited frame |
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
 | `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. Returns an image of the edited frame |
+| `copy_region` | Copies a region inside a sprite, or to another frame or sprite (same palette), with an offset and `skip_transparent`. Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |

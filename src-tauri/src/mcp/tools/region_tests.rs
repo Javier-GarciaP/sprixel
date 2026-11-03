@@ -149,3 +149,76 @@ fn a_transform_is_one_undoable_entry_with_replay_and_preview() {
     assert_eq!(empty["changed"], false);
     assert_eq!(entries(&host), entries_before, "undo removed one entry and the no-op added none");
 }
+
+/// Makes the 4x4 sprite `goblin` (frame 1: R top left, G bottom right) and
+/// a second palette user: `Characters/goblin` has the palette `main`.
+fn copy(core: &crate::mcp::Core, session: &str, extra: serde_json::Value) -> Result<serde_json::Value, serde_json::Value> {
+    let mut args = json!({ "name": "slime" });
+    args.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+    call(core, session, "copy_region", args)
+}
+
+// Checks the "Copy to another frame" scenario: frame 2 gets the pixels at
+// `to_x`, `to_y` and frame 1 stays.
+#[test]
+fn copy_to_another_frame_leaves_the_source() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    draw(&core, &session);
+    call(&core, &session, "add_frame", json!({ "name": "slime" })).unwrap();
+
+    let done = copy(&core, &session, json!({
+        "region": { "x": 0, "y": 0, "width": 3, "height": 2 }, "to_frame": 2, "to_x": 4, "to_y": 5,
+    })).unwrap();
+
+    assert_eq!(done["pixels_changed"], 4);
+    let two = rows(&host, &[], "slime", 2);
+    assert!(two.ends_with("....RRG./....R.../........"), "{two}");
+    assert_eq!(top(&host, 2), ["RRG.....", "R......."]);
+}
+
+// Checks the "Skip transparent" scenario, and a copy inside the same frame
+// that overlaps its source.
+#[test]
+fn copy_can_skip_transparent_and_overlap() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    draw(&core, &session);
+
+    copy(&core, &session, json!({ "region": { "x": 0, "y": 0, "width": 3, "height": 1 }, "to_x": 1, "to_y": 1, "skip_transparent": true })).unwrap();
+    assert_eq!(top(&host, 2), ["RRG.....", "RRRG...."]);
+
+    copy(&core, &session, json!({ "region": { "x": 0, "y": 0, "width": 3, "height": 1 }, "to_x": 1, "to_y": 0 })).unwrap();
+    assert_eq!(top(&host, 1), ["RRRG...."], "the source was read before the write");
+}
+
+// Checks a copy to another sprite, and the `palette_mismatch` and
+// `region_out` errors, which change nothing.
+#[test]
+fn copy_to_another_sprite_checks_palette_and_size() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    draw(&core, &session);
+
+    let done = copy(&core, &session, json!({
+        "region": { "x": 0, "y": 0, "width": 2, "height": 2 }, "to_sprite": "goblin", "to_folder": "Characters", "to_x": 2, "to_y": 2,
+    })).unwrap();
+    assert_eq!(done["sprite"], "Characters/goblin");
+    assert_eq!(rows(&host, &["Characters"], "goblin", 1), "R.../..../..RR/..R.", "the transparent source pixel erased the G");
+
+    let before = revision(&host);
+    let too_big = copy(&core, &session, json!({ "to_sprite": "goblin", "to_folder": "Characters" })).unwrap_err();
+    assert_eq!(too_big["code"], "region_out");
+    assert_eq!(revision(&host), before);
+
+    project::edit(&host.project, |s| {
+        let palette = crate::document::Palette { name: "other".into(), colors: vec![crate::document::Color { key: 'R', name: "red".into(), hex: "#FF0000".into() }] };
+        s.apply("user", vec![
+            crate::document::Operation::CreatePalette { palette, index: None },
+            crate::document::Operation::CreateSprite { folder: vec![], name: "alien".into(), width: 8, height: 8, palette: "other".into() },
+        ]).unwrap();
+    }).unwrap();
+    let mismatch = copy(&core, &session, json!({ "to_sprite": "alien" })).unwrap_err();
+    assert_eq!(mismatch["code"], "palette_mismatch");
+    assert_eq!(copy(&core, &session, json!({ "to_sprite": "nobody" })).unwrap_err()["code"], "not_found");
+}

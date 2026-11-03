@@ -37,6 +37,29 @@ pub fn tools() -> Vec<Tool> {
         }}),
         need: Need::Edit,
         run: transform_region,
+    },
+    Tool {
+        name: "copy_region",
+        description: concat!(
+            "Copies a rectangle of a frame to a place in the same frame, another frame or another sprite (it must use the same palette). `region` is the source {x, y, width, height} (default: the whole frame) of frame `frame` of sprite `name`. The copy goes to `to_sprite` (default: the same sprite), `to_frame` (default: `frame`), with its top left pixel at `to_x`, `to_y` (default: the same place as the source). With `skip_transparent` the `.` pixels of the source keep what is in the destination.",
+            write_note!()
+        ),
+        schema: json!({ "type": "object", "required": ["name"], "properties": {
+            "name": { "type": "string", "description": "The source sprite." },
+            "folder": { "type": "string" },
+            "frame": { "type": "integer", "minimum": 1, "description": "The source frame. Default 1." },
+            "region": region_schema("The source rectangle. Default: the whole frame."),
+            "to_sprite": { "type": "string", "description": "The destination sprite. Default: the source sprite." },
+            "to_folder": { "type": "string" },
+            "to_frame": { "type": "integer", "minimum": 1, "description": "Default: the source frame." },
+            "to_x": { "type": "integer", "minimum": 0 },
+            "to_y": { "type": "integer", "minimum": 0 },
+            "skip_transparent": { "type": "boolean", "description": "A `.` of the source keeps the destination pixel. Default false." },
+            "preview": preview_arg(),
+            "base_revision": base_revision(),
+        }}),
+        need: Need::Edit,
+        run: copy_region,
     }]
 }
 
@@ -139,6 +162,55 @@ fn transform_region(ctx: &Ctx, input: &Value) -> ToolResult {
             vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame, pixels }]
         };
         Ok(Plan::new(ops, json!({ "pixels_changed": count })).preview().busy(&target, frame))
+    })
+}
+
+fn copy_region(ctx: &Ctx, input: &Value) -> ToolResult {
+    let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
+    let to_frame = args::optional_u32(input, "to_frame")?.unwrap_or(frame);
+    let (to_x, to_y) = (args::optional_u32(input, "to_x")?, args::optional_u32(input, "to_y")?);
+    let skip = args::optional_bool(input, "skip_transparent")?.unwrap_or(false);
+    let to_sprite = args::optional_str(input, "to_sprite")?;
+    write(ctx, input, |session| {
+        let project = &session.project;
+        let source = args::sprite(project, input)?;
+        let from = project.find_sprite(&source).expect("just found");
+        check_frame(from, frame)?;
+        let target = match to_sprite {
+            Some(name) => args::sprite(project, &json!({ "name": name, "folder": input["to_folder"] }))?,
+            None => source.clone(),
+        };
+        let to = project.find_sprite(&target).expect("just found");
+        check_frame(to, to_frame)?;
+        if !crate::document::same_name(&from.palette, &to.palette) {
+            return Err(ToolError::new(
+                "palette_mismatch",
+                format!("{:?} uses the palette {:?} and {:?} uses {:?}; a copy needs the same palette", from.name, from.palette, to.name, to.palette),
+            )
+            .with("from_palette", from.palette.clone())
+            .with("to_palette", to.palette.clone()));
+        }
+        let (x, y, w, h) = args::region(input, "region", from.width, from.height)?.unwrap_or((0, 0, from.width, from.height));
+        let (dx, dy) = (to_x.unwrap_or(x), to_y.unwrap_or(y));
+        if u64::from(dx) + u64::from(w) > u64::from(to.width) || u64::from(dy) + u64::from(h) > u64::from(to.height) {
+            return Err(ToolError::new(
+                "region_out",
+                format!("the copy {w}x{h} at ({dx}, {dy}) does not fit in the {}x{} sprite {:?}", to.width, to.height, to.name),
+            )
+            .with("width", to.width)
+            .with("height", to.height));
+        }
+        let copy = cut(&from.layers[0].frames[frame as usize - 1].pixels, from.width, (x, y, w, h));
+        let current = &to.layers[0].frames[to_frame as usize - 1].pixels;
+        let old = cut(current, to.width, (dx, dy, w, h));
+        let pixels = changes(current, to.width, (dx, dy, w, h), &paste(&old, &copy, skip));
+        let count = pixels.len();
+        let ops = if pixels.is_empty() {
+            Vec::new()
+        } else {
+            vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame: to_frame, pixels }]
+        };
+        Ok(Plan::new(ops, json!({ "pixels_changed": count })).preview().busy(&target, to_frame))
     })
 }
 
