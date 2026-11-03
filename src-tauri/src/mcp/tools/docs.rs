@@ -255,8 +255,32 @@ Game-ready guide: anchors, times, tiles and export\n\
 7. Check before you export: `analyze_sprite` for each sprite (no loose pixels, no outline gaps).\n\
 8. Export with `export`: format sheet writes one PNG and a JSON file with the frames, animations, times and anchors; format png writes one file per frame. Choose the sprites with `scope`. Use `scale` 1 for the engine. Files go inside the project (default `assets/sprites`) and cannot be undone.";
 
+/// The grid of the example of the `tools` guide: an 8x8 gem whose outline has
+/// a gap at x 7, y 3.
+macro_rules! gem_grid {
+    () => {
+        "\
+legend\n\
+\x20\x20K outline #2B1B4A\n\
+\x20\x20J gem #2FB5D6\n\
+\x20\x20L light #B9F3FF\n\
+frame 1\n\
+........\n\
+..KKKK..\n\
+.KLJJJK.\n\
+KJJJJJJ.\n\
+.KJJJJK.\n\
+..KJJK..\n\
+...KK...\n\
+........\n"
+    };
+}
+
+/// The grid of the example of the `tools` guide, for the tests.
+pub const GEM_GRID: &str = gem_grid!();
+
 /// A map of the tools. Also available as the topic `tools`.
-pub const TOOLS_GUIDE: &str = "\
+pub const TOOLS_GUIDE: &str = concat!("\
 Tools guide: which tool for which job\n\
 \n\
 1. Read (they change nothing): `get_project` (folders, palettes, revision), `list_sprites` (sizes, frames, animations), `get_sprite` (the grid; `frame`, `region` and `include_palette` read a part), `get_palette` (the keys), `list_projects` and `open_project` (find and open a project), `get_guide`.\n\
@@ -270,7 +294,18 @@ Tools guide: which tool for which job\n\
 9. Animation and game data: `create_tag`, `set_frame_duration`, `set_anchor`, `remove_anchor`, `export`.\n\
 10. Mistakes: `undo_last_ai_action` takes back your last action, if nothing happened after it.\n\
 Pick the smallest tool: one pixel is `set_pixels`; a shape or a part is `apply_grid`; a copy is `copy_region`; both sides at once is `symmetry`; an outline or shading is `auto_outline` or `auto_shade`; a move or a flip is `transform_region`. Never redraw a whole frame to move or flip something.\n\
-When a call fails read its `message`. Common codes: `unknown_key` (the key is not in the palette), `out_of_range` and `region_out` (outside the sprite), `stale_revision` (read again), `permission_denied` (ask the person).";
+When a call fails read its `message`. Common codes: `unknown_key` (the key is not in the palette), `out_of_range` and `region_out` (outside the sprite), `stale_revision` (read again), `permission_denied` (ask the person).\n\
+\n\
+Worked example: find and fix a gap in an outline (an 8x8 gem).\n\
+1. `create_sprite` with name gem, width 8 and height 8.\n\
+2. `apply_grid` with name gem and this grid. The outline is missing at the right of row 4:\n\
+\n",
+    gem_grid!(),
+    "\n\
+3. `analyze_sprite` with name gem and `outline_key` K. The answer has `outline_gaps` with count 1 and `at` [[6, 3]]: the pixel x 6, y 3 is open to the outside.\n\
+4. `set_pixels` with name gem and pixels [{x: 7, y: 3, key: K}]. LOOK at the image that comes back.\n\
+5. `analyze_sprite` again: `outline_gaps` has count 0 and `loose_pixels` has count 0. Now the sprite is clean."
+);
 
 /// The text of a guide topic, or `None` when it is not a topic.
 pub fn guide(topic: &str) -> Option<&'static str> {

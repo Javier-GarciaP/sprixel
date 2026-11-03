@@ -112,3 +112,6 @@ mod background_tests;
 
 #[cfg(test)]
 mod frames_tests;
+
+#[cfg(test)]
+mod guide_examples_tests;
