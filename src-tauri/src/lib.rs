@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod analysis;
 mod document;
 mod export;
 mod history;
