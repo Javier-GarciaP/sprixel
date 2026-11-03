@@ -14,7 +14,7 @@
 
 - [x] 2.1 Write the guides and the tool `get_guide`; verify topics and the unknown topic error
 - [x] 2.3 Return a preview image from `apply_grid`, `set_pixels` and `draw_shape` (argument `preview`, default true, max side 512) and verify the image, the opt-out and the size cap
-- [ ] 2.2 Rewrite the server instructions and the skill with the workflow and the worked example; verify they match and that every named tool and code exists
+- [x] 2.2 Rewrite the server instructions and the skill with the workflow and the worked example; verify they match and that every named tool and code exists
 
 ## 3. Check with a real agent
 

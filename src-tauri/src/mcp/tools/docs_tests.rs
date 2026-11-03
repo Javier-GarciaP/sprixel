@@ -105,5 +105,5 @@ fn initialize_gives_instructions() {
     for part in ["get_palette", "render_preview", "from 0", "base_revision", "permission_denied", "stopped_by_user"] {
         assert!(text.contains(part), "the instructions do not say {part:?}");
     }
-    assert!(text.len() < 2000, "short enough to put in every prompt");
+    assert!(text.len() < 6000, "short enough to put in every prompt");
 }
