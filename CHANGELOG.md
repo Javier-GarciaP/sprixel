@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Richer guides for the AI: `get_guide` has five new topics (`large-sprites`,
+  `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`, a
+  map of which tool to use for what). Each one has a worked example, and the
+  tests run every example through the real tools. The server instructions, the
+  Claude Code skill and `docs/ai-and-mcp.md` list the topics.
 - Game data for the AI: `set_frame_duration`, anchor points (`set_anchor`,
   `remove_anchor`, saved in the sprite file as an optional `anchors` list),
   `check_tile` and `render_tiled` for seamless tiles. The sheet JSON lists the

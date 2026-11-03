@@ -116,7 +116,7 @@ description tells the AI the rules, so it does not need this page.
 | `render_tiled` | Returns a PNG of a frame repeated 3x3 on a checkerboard, to see the seams of a tile (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
-| `get_guide` | Pixel art guidance for the AI: topic `design`, `animation` or `palette`. Needs no permission |
+| `get_guide` | Pixel art guidance for the AI, by `topic`: `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` or `tools` (a map of which tool to use for what). Needs no permission |
 
 **Open projects** (permission "Open projects")
 
@@ -211,7 +211,7 @@ The most common codes:
 | `not_a_project` | `open_project` got a folder that does not exist or has no `sprixel.json` |
 | `stopped_by_user` | The person pressed Stop; do not continue |
 | `stale_revision` | The project changed since `base_revision`; read it again |
-| `unknown_topic` | `get_guide` got a topic that is not `design`, `animation` or `palette` |
+| `unknown_topic` | `get_guide` got a topic that is not one of the eight (the error lists them) |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
 | `palette_mismatch`, `palette_not_found` | The `palette:` line of a grid names a palette that is not the one of the sprite, or that does not exist (the message says how to fix it) |
@@ -242,9 +242,14 @@ answers with an error. Neither `tool` nor `tools` start the app; use
 
 The AI gets this advice from the server itself: the server instructions carry
 the workflow and a worked example (a 16x16 slime with an idle and a jump frame),
-the tool `get_guide` serves the full guides (`design`, `animation`, `palette`),
-and the Claude Code skill has the same workflow, example and design rules. A
-test fails if the skill and the server differ.
+the tool `get_guide` serves the full guides, and the Claude Code skill has the
+same workflow, example and design rules. A test fails if the skill and the
+server differ. The guides are:
+
+Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`.
+
+Each guide besides the first three has a worked example with exact calls, and a
+test runs those calls through the real tools.
 
 - **Small first.** Text grids work best up to about 32x32. Bigger sprites are
   allowed (up to 512x512) but the AI makes more counting mistakes; for them it

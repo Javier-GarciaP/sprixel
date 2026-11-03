@@ -1,6 +1,9 @@
 //! Spec `agent-live-design`, task 2.1: the tool `get_guide` and the guides.
 
-use super::docs::{ANIMATION_GUIDE, DESIGN_GUIDE, EXAMPLE, EXAMPLE_GRID, INSTRUCTIONS, PALETTE_GUIDE, WORKFLOW};
+use super::docs::{
+    ANIMATION_GUIDE, DESIGN_GUIDE, EXAMPLE, EXAMPLE_GRID, FACES_GUIDE, GAME_READY_GUIDE, GUIDE_LIST, GUIDE_TOPICS,
+    INSTRUCTIONS, LARGE_SPRITES_GUIDE, PALETTE_GUIDE, TOOLS_GUIDE, WALK_GUIDE, WORKFLOW,
+};
 use crate::mcp::testing::{call, core_with, open_demo_project, revision, setup};
 use crate::mcp::{Permissions, tools};
 use serde_json::json;
@@ -14,7 +17,7 @@ fn skill() -> String {
     SKILL_FILE.replace("\r\n", "\n")
 }
 
-// Checks the "Known topic" scenario: each of the three topics gives its text.
+// Checks the "Known topic" scenario: each topic gives its text.
 #[test]
 fn each_topic_gives_its_guide() {
     let (_host, core, session) = setup();
@@ -24,10 +27,19 @@ fn each_topic_gives_its_guide() {
     assert_eq!(animation["topic"], "animation");
     assert_eq!(call(&core, &session, "get_guide", json!({ "topic": "design" })).unwrap()["guide"], DESIGN_GUIDE);
     assert_eq!(call(&core, &session, "get_guide", json!({ "topic": "palette" })).unwrap()["guide"], PALETTE_GUIDE);
+    for (topic, text) in [
+        ("large-sprites", LARGE_SPRITES_GUIDE),
+        ("faces-and-animals", FACES_GUIDE),
+        ("walk-and-attack-cycles", WALK_GUIDE),
+        ("game-ready", GAME_READY_GUIDE),
+        ("tools", TOOLS_GUIDE),
+    ] {
+        assert_eq!(call(&core, &session, "get_guide", json!({ "topic": topic })).unwrap()["guide"], text, "{topic}");
+    }
 }
 
 // Checks the "Unknown topic" scenario: the error says what is wrong and lists
-// the three valid topics, so the agent can pick one.
+// the eight valid topics, so the agent can pick one.
 #[test]
 fn an_unknown_topic_lists_the_valid_ones() {
     let (_host, core, session) = setup();
@@ -36,10 +48,11 @@ fn an_unknown_topic_lists_the_valid_ones() {
 
     assert_eq!(error["code"], "unknown_topic");
     let message = error["message"].as_str().unwrap();
-    for topic in ["design", "animation", "palette"] {
+    for topic in GUIDE_TOPICS {
         assert!(message.contains(topic), "{message}");
     }
-    assert_eq!(error["topics"], json!(["design", "animation", "palette"]));
+    assert_eq!(error["topics"], json!(GUIDE_TOPICS));
+    assert_eq!(GUIDE_TOPICS.len(), 8);
     assert_eq!(call(&core, &session, "get_guide", json!({})).unwrap_err()["code"], "bad_argument");
 }
 
@@ -126,8 +139,17 @@ fn known_names() -> BTreeSet<String> {
         }
     }
     known.extend(["legend", "loop", "frame"].map(String::from));
+    // The values of the arguments that have a list of values (`horizontal`, `mirror`, `move`...).
+    for tool in &core.tools {
+        for property in tool.schema["properties"].as_object().into_iter().flat_map(|p| p.values()) {
+            known.extend(property["enum"].as_array().into_iter().flatten().filter_map(|v| v.as_str()).map(String::from));
+        }
+    }
     // Fields of the answers and of the errors.
-    known.extend(["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors", "ground_kept"].map(String::from));
+    known.extend(
+        ["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors", "ground_kept", "bbox", "changes", "changed_pixels", "loose_pixels", "outline_gaps", "seamless", "mismatch_count"]
+            .map(String::from),
+    );
     // The topics of `get_guide`.
     known.extend(super::docs::GUIDE_TOPICS.map(String::from));
     known
@@ -151,9 +173,57 @@ fn assert_names_are_real(what: &str, text: &str) {
 // agent to a tool that is not there.
 #[test]
 fn every_name_in_the_guides_is_real() {
-    for (name, text) in [("the design guide", DESIGN_GUIDE), ("the animation guide", ANIMATION_GUIDE), ("the palette guide", PALETTE_GUIDE)] {
+    for (name, text) in [
+        ("the design guide", DESIGN_GUIDE),
+        ("the animation guide", ANIMATION_GUIDE),
+        ("the palette guide", PALETTE_GUIDE),
+        ("the large sprites guide", LARGE_SPRITES_GUIDE),
+        ("the faces and animals guide", FACES_GUIDE),
+        ("the walk and attack guide", WALK_GUIDE),
+        ("the game ready guide", GAME_READY_GUIDE),
+        ("the tools guide", TOOLS_GUIDE),
+    ] {
         assert_names_are_real(name, text);
     }
+}
+
+// Checks the "Guides have their rules" scenario: each new guide says the ideas
+// the spec asks for.
+#[test]
+fn the_new_guides_have_their_rules() {
+    let checks: [(&str, &str, &[&str]); 4] = [
+        ("large sprites", LARGE_SPRITES_GUIDE, &["one part at a time", "symmetry", "import_reference", "analyze_sprite", "base_revision"]),
+        ("faces and animals", FACES_GUIDE, &["silhouette first", "eyes", "symmetry", "highlight"]),
+        ("walk and attack", WALK_GUIDE, &["contact", "passing", "4 frames", "set_frame_duration", "ground", "loop closes", "anticipation", "recovery"]),
+        ("game ready", GAME_READY_GUIDE, &["set_anchor", "feet", "set_frame_duration", "check_tile", "render_tiled", "export"]),
+    ];
+    for (name, text, parts) in checks {
+        for part in parts {
+            assert!(text.to_lowercase().contains(part), "the {name} guide does not say {part:?}");
+        }
+    }
+}
+
+// Checks the "No tool is forgotten" scenario: every tool of the server is
+// named in the tools guide, so a new tool cannot be left out of the map.
+#[test]
+fn the_tools_guide_names_every_tool() {
+    let (_host, core) = core_with(tools::all());
+    for tool in &core.tools {
+        assert!(TOOLS_GUIDE.contains(&format!("`{}`", tool.name)), "the tools guide does not name {}", tool.name);
+    }
+}
+
+// Checks the "Instructions, skill and docs agree" scenario: the same sentence
+// lists the topics in the three places, and it names all eight.
+#[test]
+fn the_instructions_the_skill_and_the_docs_list_the_same_guides() {
+    for topic in GUIDE_TOPICS {
+        assert!(GUIDE_LIST.contains(&format!("`{topic}`")), "the list does not name {topic}");
+    }
+    assert!(INSTRUCTIONS.contains(GUIDE_LIST), "the instructions");
+    assert!(skill().contains(GUIDE_LIST), "the skill");
+    assert!(DOC.replace("\r\n", "\n").contains(GUIDE_LIST), "docs/ai-and-mcp.md");
 }
 
 // Checks the same for the other places an agent reads: the workflow, the
