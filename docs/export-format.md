@@ -185,6 +185,72 @@ of its own (100 ms is the value of a new frame) and is inside an animation
 lasts `1000 / fps` of that animation, rounded (12 fps gives 83 ms). A frame in
 more than one animation uses the first one.
 
+## Using the JSON in a game engine
+
+The JSON has what an engine needs: the rectangle of each frame, how long it
+lasts, its anchor points and the animations. The mapping below is the
+intended one. It was **not** tested with the engines themselves; it is a
+guide to write a small import script.
+
+Take the example above (the sprite `hero`, animation `walk`, positions 1 to 2 in
+`frames`, 12 fps, `loop`).
+
+### Godot 4 (`SpriteFrames`)
+
+| Sprixel | Godot |
+| --- | --- |
+| `meta.image` | One `Texture2D`. |
+| `frames[].frame` | An `AtlasTexture` with `atlas` = the texture and `region` = `Rect2(x, y, w, h)`. |
+| `animations[]` | One animation of the `SpriteFrames` per entry. Use `sprite + "_" + name` as the name when several sprites share the sheet. |
+| `animations[].fps` | `set_animation_speed(name, fps)`. |
+| `animations[].mode` | `loop` is `set_animation_loop(name, true)`; `once` is `false`. `pingpong` does not exist in `SpriteFrames`: add the frames again in reverse order (without the first and last) and loop. |
+| `frames[].duration` | The `duration` argument of `add_frame`. In Godot it is **relative**: a frame lasts `duration / fps` seconds, so use `duration_ms / (1000.0 / fps)` (1.0 is a normal frame). |
+| `frames[].anchors` | A `Marker2D` child with that name. Its `position` is `Vector2(x, y)` minus half the frame size when the `AnimatedSprite2D` is `centered`. To follow frame anchors, change the marker in the `frame_changed` signal. |
+
+```gdscript
+var data = JSON.parse_string(FileAccess.get_file_as_string("res://kit.json"))
+var texture: Texture2D = load("res://" + data.meta.image)
+var frames := SpriteFrames.new()
+for anim in data.animations:
+    var name = anim.sprite + "_" + anim.name
+    frames.add_animation(name)
+    frames.set_animation_speed(name, anim.fps)
+    frames.set_animation_loop(name, anim.mode == "loop")
+    for i in range(anim.from, anim.to + 1):
+        var f = data.frames[i]
+        var atlas := AtlasTexture.new()
+        atlas.atlas = texture
+        atlas.region = Rect2(f.frame.x, f.frame.y, f.frame.w, f.frame.h)
+        frames.add_frame(name, atlas, f.duration / (1000.0 / anim.fps))
+```
+
+### Unity
+
+| Sprixel | Unity |
+| --- | --- |
+| `meta.image` | A texture with Sprite Mode **Multiple** and **Filter Mode: Point (no filter)**. |
+| `frames[].frame` | One sprite rectangle per frame. Unity counts `y` from the **bottom**: `y_unity = meta.size.h - y - h`. |
+| `frames[].anchors` | A custom pivot (normalized: `x / w`, `1 - y / h`), or a child `Transform` per anchor at `((x - w / 2) / pixelsPerUnit, (h / 2 - y) / pixelsPerUnit)`. |
+| `animations[]` | One `AnimationClip` per entry with a sprite curve (`ObjectReferenceKeyframe`). |
+| `frames[].duration` | The time of each keyframe is the sum of the durations before it, divided by 1000. |
+| `animations[].mode` | `loop` is `clip.wrapMode = Loop` (`loopTime` in the clip settings); `once` is `Once`; `pingpong` is `PingPong`. |
+| `animations[].fps` | Not needed: the durations already hold the time. Set `clip.frameRate` to `fps` if you like. |
+
+```csharp
+// Editor script: build the keyframes of one animation.
+var keys = new List<ObjectReferenceKeyframe>();
+float time = 0f;
+for (int i = anim.from; i <= anim.to; i++) {
+    keys.Add(new ObjectReferenceKeyframe { time = time, value = sprites[i] });
+    time += data.frames[i].duration / 1000f;
+}
+var binding = EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite");
+AnimationUtility.SetObjectReferenceCurve(clip, binding, keys.ToArray());
+```
+
+In both engines `frames[].duration` is already final: a frame without its own
+duration uses `1000 / fps` (see [Durations](#durations)).
+
 ## PNG files
 
 One PNG per frame, with the scale applied and no spacing. The file name is the
