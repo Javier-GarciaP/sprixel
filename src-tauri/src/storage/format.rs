@@ -1,4 +1,4 @@
-use crate::document::{Color, Frame, Layer, Palette, Sprite, Tag, TagMode};
+use crate::document::{Anchor, Color, Frame, Layer, Palette, Sprite, Tag, TagMode};
 use super::migrate::FileKind;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -49,6 +49,19 @@ struct SpriteFile {
     frame_durations: Vec<u32>,
     layers: Vec<LayerFile>,
     tags: Vec<TagFile>,
+    /// Added after version 1 first shipped: old files do not have it, and a
+    /// sprite with no anchors does not write it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    anchors: Vec<AnchorFile>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct AnchorFile {
+    name: String,
+    x: u32,
+    y: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    frame: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -151,6 +164,11 @@ pub fn sprite_to_text(sprite: &Sprite) -> String {
                 mode: t.mode.as_str().to_string(),
             })
             .collect(),
+        anchors: sprite
+            .anchors
+            .iter()
+            .map(|a| AnchorFile { name: a.name.clone(), x: a.x, y: a.y, frame: a.frame })
+            .collect(),
     })
 }
 
@@ -195,7 +213,11 @@ pub fn sprite_from_text(name: &str, text: &str, palette: &Palette) -> Result<Spr
         frame_durations: file.frame_durations,
         layers,
         tags,
-        anchors: Vec::new(),
+        anchors: file
+            .anchors
+            .into_iter()
+            .map(|a| Anchor { name: a.name, x: a.x, y: a.y, frame: a.frame })
+            .collect(),
     };
     sprite.validate(palette).map_err(|e| e.to_string())?;
     Ok(sprite)
