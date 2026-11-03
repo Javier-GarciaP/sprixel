@@ -46,6 +46,15 @@ tool calls to operations.
   call is applied entirely or not at all.
 - **Connection state** from a request heartbeat and the stdio bridge closing.
 
+- **Each agent undoes only its own last action.** The core can undo the last
+  action of any AI, but the `undo_last_ai_action` tool is stricter: it refuses
+  when the last action is from another agent, so one agent cannot hide the work
+  of another.
+- **The `export` tool has extra guards for agents.** It refuses hidden folders
+  (like `.git`), the folders of the project that hold sprites and palettes, names
+  that are not valid on Windows, and images of more than 64 million pixels. The
+  Export tab of the app does not apply these guards: a person chose the folder.
+
 ## Risks / Trade-offs
 
 - [A local process with the token can do everything allowed] → permissions,
