@@ -20,4 +20,4 @@
 
 ## 5. Docs
 
-- [ ] 5.1 List the tools in `docs/ai-and-mcp.md`, the activity log, the guide text and the skill, the text grid page and `CHANGELOG.md`; run all checks and `npx openspec validate --all --strict`
+- [x] 5.1 List the tools in `docs/ai-and-mcp.md`, the activity log, the guide text and the skill, the text grid page and `CHANGELOG.md`; run all checks and `npx openspec validate --all --strict`

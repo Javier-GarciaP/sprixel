@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Edit tools for agents: `transform_region` (flip, mirror, move with `wrap`,
+  rotate) and `copy_region` (inside a sprite or to another frame or sprite),
+  `only_over` and `symmetry` on `set_pixels`, `draw_shape` and `apply_grid`,
+  and `region` and `include_palette` on `get_sprite` to read big sprites cheaply.
+- `import_reference` draws a PNG from the `references/` folder of the project
+  into a frame, reduced to the sprite palette (optionally adding colors).
 - Watch the AI draw: the editor replays each agent write (at most 8 seconds)
   with a cursor that carries the agent name, keeps the frame busy until the
   replay ends, and follows the agent to its sprite and frame when you are free.

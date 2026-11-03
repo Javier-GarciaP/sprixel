@@ -106,7 +106,7 @@ description tells the AI the rules, so it does not need this page.
 | --- | --- |
 | `get_project` | Project name, revision, folders, palettes and number of sprites |
 | `list_sprites` | Sprites with size, frames, palette, animations and who edited them last |
-| `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations |
+| `get_sprite` | One sprite as a [text grid](text-grid-format.md), with its animations. For a big sprite, `frame` and `region` (`x`, `y`, `width`, `height`) read only a part, and `include_palette` false leaves out the color legend; the part is still a valid grid |
 | `get_palette` | The colors with their one-letter keys |
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
@@ -153,11 +153,36 @@ Every write tool is **atomic**: it is applied whole or not at all, as one entry
 of the history by the agent. Every write returns the new `revision` and takes
 an optional `base_revision`.
 
-The three pixel tools (`apply_grid`, `set_pixels`, `draw_shape`) return a PNG
+The pixel tools (`apply_grid`, `set_pixels`, `draw_shape`, `transform_region`,
+`copy_region` and `import_reference`) return a PNG
 of the frame they edited, at most 512 pixels on a side, next to their usual
 answer. The AI must look at it and fix what is wrong. Pass `preview` false to
 skip the image. With `sprixel tool` the image is saved to a file and its path
 is printed.
+
+`apply_grid` (with `x` and `y`), `set_pixels` and `draw_shape` also take two
+optional arguments:
+
+- `only_over`: one palette key. Only the pixels that have that key before the
+  call change; the others stay. Use it to shade or recolor one material.
+- `symmetry`: `horizontal` (left to right), `vertical` (top to bottom) or
+  `both`. Every pixel is also written at its mirrored place. The mirror line is
+  the center of the sprite, or `axis` (`{x, y}`, whole or half numbers). If a
+  mirrored pixel would fall outside the sprite the call fails with
+  `out_of_range` and nothing changes.
+
+`transform_region` works on a `region` (default: the whole frame) with the
+operations `flip_horizontal`, `flip_vertical`, `mirror` (`direction`), `move`
+(`dx`, `dy`, `wrap`) and `rotate` (`degrees` 90, 180 or 270; 90 and 270 need a
+square). `copy_region` copies a `region` to `to_x`, `to_y` of the same or
+another frame (`to_frame`) or sprite (`to_sprite`, `to_folder`; same palette).
+
+`import_reference` reads a PNG only from the folder `references/` of the open
+project. The file path must be relative with no `..`, must not be (or go
+through) a symbolic link, must end with `.png`, and is limited to 2 MB and 512
+pixels on a side. Colors become the nearest palette color; alpha under 128 is
+transparent; `max_colors` allows new colors to be added to the palette, and
+`width` and `height` scale the picture down.
 
 ### Errors
 
@@ -177,7 +202,9 @@ The most common codes:
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
 | `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
 | `out_of_range`, `unknown_key` | A pixel outside the sprite, or a key that is not in the palette (`valid_keys` lists the ones that are) |
-| `invalid_path`, `outside_project` | A path that is not allowed |
+| `region_out`, `palette_mismatch` | A region that does not fit in the sprite, or a copy between sprites with different palettes |
+| `bad_image` | `import_reference` got a file that is not a valid PNG |
+| `invalid_path`, `outside_project` | A path that is not allowed (also a reference file outside `references/`) |
 | `limit_exceeded` | A limit was passed (see [Security](#security)) |
 
 The same tools can be called from a terminal with the `sprixel` command:
