@@ -96,8 +96,9 @@ fn create_tag(ctx: &Ctx, input: &Value) -> ToolResult {
     write(ctx, input, |session| {
         let target = args::sprite_at(&session.project, input, "sprite")?;
         let tag = Tag { name: name.clone(), from, to, fps, mode };
-        let ops = vec![Operation::AddTag { sprite: target, tag, index: None }];
-        Ok(Plan::new(ops, json!({ "animation": name, "from": from, "to": to, "fps": fps, "mode": mode.as_str() })))
+        let ops = vec![Operation::AddTag { sprite: target.clone(), tag, index: None }];
+        let extra = json!({ "animation": name, "from": from, "to": to, "fps": fps, "mode": mode.as_str() });
+        Ok(Plan::new(ops, extra).about(&target))
     })
 }
 
@@ -168,6 +169,6 @@ fn delete_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
     write(ctx, input, |session| {
         let target = args::sprite(&session.project, input)?;
         let ops = vec![Operation::DeleteSprite { sprite: target.clone() }];
-        Ok(Plan::new(ops, json!({ "deleted": target.name, "folder": args::join(&target.folder) })))
+        Ok(Plan::new(ops, json!({ "deleted": target.name, "folder": args::join(&target.folder) })).about(&target))
     })
 }

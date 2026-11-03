@@ -59,6 +59,7 @@ pub fn run() {
             ipc::mcp::mcp_remove_client,
             ipc::mcp::mcp_permissions,
             ipc::mcp::mcp_set_permissions,
+            ipc::mcp::mcp_activity,
             ipc::load_preferences,
             ipc::save_settings,
             ipc::add_recent_project,

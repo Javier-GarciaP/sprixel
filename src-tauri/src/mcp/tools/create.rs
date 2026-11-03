@@ -80,7 +80,8 @@ fn create_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
             "name": name, "folder": args::join(&folder), "width": width, "height": height,
             "palette": palette.unwrap_or_else(|| "main".to_string()),
         });
-        Ok(Plan::new(ops, extra))
+        let created = SpriteRef { folder: folder.clone(), name: name.clone() };
+        Ok(Plan::new(ops, extra).about(&created))
     })
 }
 

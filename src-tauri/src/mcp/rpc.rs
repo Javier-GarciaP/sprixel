@@ -166,9 +166,13 @@ impl Core {
             let names: Vec<&str> = self.tools.iter().map(|t| t.name).collect();
             ToolError::new("unknown_tool", format!("there is no tool {name:?}; the tools are {}", names.join(", ")))
         })?;
-        tool.need_check(&self.permissions())?;
         let ctx = super::tool::Ctx { core: self, client: &client.name };
-        (tool.run)(&ctx, arguments)
+        let outcome = tool.need_check(&self.permissions()).and_then(|()| (tool.run)(&ctx, arguments));
+        // Reading tools are not actions: they are not logged.
+        if tool.need != super::Need::Nothing {
+            self.record(&client.name, tool.name, arguments, &outcome);
+        }
+        outcome
     }
 }
 

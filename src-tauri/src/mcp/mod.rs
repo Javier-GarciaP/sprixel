@@ -5,6 +5,7 @@
 // The app does not start the server yet.
 #![allow(dead_code, unused_imports)]
 
+mod activity;
 mod base64;
 mod clients;
 mod host;
@@ -22,6 +23,7 @@ mod tools;
 #[cfg(test)]
 mod testing;
 
+pub use activity::{ACTIVITY_EVENT, Entry as ActivityEntry, Row as ActivityRow};
 pub use clients::{ClientInfo, Standing};
 pub use policy::Permissions;
 pub use host::{Host, TauriHost};
@@ -48,6 +50,7 @@ pub struct Core {
     pub(crate) permissions: Mutex<Permissions>,
     /// Taken by every write of an agent, so they happen one at a time.
     pub(crate) write_lock: Mutex<()>,
+    pub(crate) activity: Mutex<activity::Activity>,
     pub(crate) limits: limits::Limits,
     pub(crate) rate: Mutex<limits::RateLimiter>,
     /// Connections being served now.
@@ -69,6 +72,7 @@ impl Core {
             clients: Mutex::new(clients::Clients::load(&data_dir)),
             permissions: Mutex::new(Permissions::load(&data_dir)),
             write_lock: Mutex::new(()),
+            activity: Mutex::default(),
             limits: limits::Limits::default(),
             rate: Mutex::default(),
             connections: AtomicUsize::new(0),
@@ -109,6 +113,38 @@ impl Core {
         *self.permissions.lock().unwrap() = permissions;
         self.host.emit(PERMISSIONS_EVENT, serde_json::to_value(permissions).unwrap_or_default());
         Ok(())
+    }
+
+    /// The activity of the clients, newest first. `can_undo` is true only for
+    /// the most recent AI action while it is still the latest entry of the
+    /// history of the project.
+    pub fn activity(&self) -> Vec<ActivityRow> {
+        let entries = self.activity.lock().unwrap().newest_first();
+        let state = crate::ipc::project::read(self.host.project(), |session| {
+            (session.project.revision, session.history.entries().last().map(|e| e.author.clone()))
+        });
+        let mut undo_taken = false;
+        entries
+            .into_iter()
+            .map(|entry| {
+                // Only the newest action that changed the project can offer Undo.
+                let changed = entry.result == "ok" && entry.revision.is_some();
+                let can_undo = changed
+                    && !undo_taken
+                    && state.as_ref().is_some_and(|(revision, last)| {
+                        entry.revision == Some(*revision) && last.as_deref() == Some(entry.client.as_str())
+                    });
+                undo_taken |= changed;
+                ActivityRow { entry, can_undo }
+            })
+            .collect()
+    }
+
+    /// Adds a finished call to the log and tells the UI.
+    pub(crate) fn record(&self, client: &str, tool: &str, args: &serde_json::Value, outcome: &ToolResult) {
+        let entry = activity::entry_for(client, tool, args, outcome);
+        let entry = self.activity.lock().unwrap().add(entry);
+        self.host.emit(ACTIVITY_EVENT, serde_json::to_value(entry).unwrap_or_default());
     }
 
     /// The clients and their state, for the Agents tab.
@@ -165,3 +201,6 @@ mod approval_tests;
 
 #[cfg(test)]
 mod policy_tests;
+
+#[cfg(test)]
+mod activity_tests;

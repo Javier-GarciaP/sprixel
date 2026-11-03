@@ -24,15 +24,24 @@ pub struct Plan {
     pub extra: Value,
     /// The frame to mark as busy while the operations are applied.
     pub busy: Option<(SpriteRef, u32)>,
+    /// The sprite the call is about; its path is added to the answer.
+    pub sprite: Option<SpriteRef>,
 }
 
 impl Plan {
     pub fn new(ops: Vec<Operation>, extra: Value) -> Plan {
-        Plan { ops, extra, busy: None }
+        Plan { ops, extra, busy: None, sprite: None }
     }
 
     pub fn busy(mut self, sprite: &SpriteRef, frame: u32) -> Plan {
         self.busy = Some((sprite.clone(), frame));
+        self.sprite = Some(sprite.clone());
+        self
+    }
+
+    /// Says which sprite the call is about (for the answer and the activity log).
+    pub fn about(mut self, sprite: &SpriteRef) -> Plan {
+        self.sprite = Some(sprite.clone());
         self
     }
 }
@@ -93,11 +102,16 @@ pub fn write(
             busy = Some(Busy::start(ctx, sprite, *frame));
         }
         let changed = !plan.ops.is_empty();
+        let sprite = plan.sprite;
         let touched = if changed { session.apply(ctx.client, plan.ops)? } else { Vec::new() };
         let mut answer = match plan.extra {
             Value::Object(map) => map,
             _ => Map::new(),
         };
+        if let Some(sprite) = &sprite {
+            let path = args::join(&[sprite.folder.clone(), vec![sprite.name.clone()]].concat());
+            answer.insert("sprite".into(), path.into());
+        }
         answer.insert("revision".into(), session.project.revision.into());
         answer.insert("changed".into(), changed.into());
         let event = ChangedEvent {

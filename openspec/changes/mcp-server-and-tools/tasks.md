@@ -26,7 +26,7 @@
 
 ### 4. Agent activity
 
-- [ ] 4.1 Implement the activity log, attribution and the "last edited by" data, and verify the log entries
+- [x] 4.1 Implement the activity log, attribution and the "last edited by" data, and verify the log entries
 - [ ] 4.2 Implement busy frames, user stroke queuing and Stop with `stopped_by_user`, and verify the stop and busy scenarios with a simulated agent
 - [ ] 4.3 Implement `undo_last_ai_action` and the Undo availability rule, and verify the `newer_changes` case
 

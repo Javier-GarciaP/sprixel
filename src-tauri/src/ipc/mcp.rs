@@ -2,7 +2,7 @@
 //! approval. The server decides; these commands only pass the answers of the
 //! person to it.
 
-use crate::mcp::{ClientInfo, Core, Permissions};
+use crate::mcp::{ActivityRow, ClientInfo, Core, Permissions};
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -46,4 +46,11 @@ pub fn mcp_permissions(app: tauri::AppHandle) -> Result<Permissions, String> {
 #[tauri::command]
 pub fn mcp_set_permissions(app: tauri::AppHandle, permissions: Permissions) -> Result<(), String> {
     core(&app)?.set_permissions(permissions).map_err(|e| e.to_string())
+}
+
+/// What the agents did in this session, newest first. Only the most recent AI
+/// action can have `can_undo`.
+#[tauri::command]
+pub fn mcp_activity(app: tauri::AppHandle) -> Result<Vec<ActivityRow>, String> {
+    Ok(core(&app)?.activity())
 }
