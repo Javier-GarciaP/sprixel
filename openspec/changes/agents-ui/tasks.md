@@ -4,7 +4,7 @@
 
 ## 1. Events and state
 
-- [ ] 1.1 Subscribe to the core events (connections, approvals, activity, busy) and verify a test with a simulated stream
+- [x] 1.1 Subscribe to the core events (connections, approvals, activity, busy) and verify a test with a simulated stream
 
 ## 2. Agents tab
 
