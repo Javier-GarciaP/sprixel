@@ -127,3 +127,18 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - The palette editor list shows all the colors, with no row cut in half.
 - The errors of the Text view now show in the language of the app (Spanish or
   English), with the line and the numbers.
+
+- `sprixel tool` and `sprixel tools` close their app session when they finish,
+  so the app no longer reaches its limit of 16 clients.
+- `sprixel mcp` sends the tool calls of an AI to the app one after another, in
+  order.
+- The approval dialog closes after any answer and shows the error when the
+  answer cannot be saved.
+- New tools `list_projects` and `open_project`, and a new permission "Open
+  projects" (off by default).
+- `sprixel mcp add claude` installs a skill that teaches Claude Code how to use
+  Sprixel; `mcp remove`, `uninstall` and `doctor` know about it.
+- `sprixel start` prints the app path and version and warns when the version
+  differs from the command. It says that it does not open a project path yet.
+- `sprixel tool` saves the PNG of `render_preview` to `~/.sprixel/previews/`
+  and prints its path.

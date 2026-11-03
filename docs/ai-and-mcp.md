@@ -44,7 +44,7 @@ What these commands do:
 
 | Command | What it writes |
 | --- | --- |
-| `sprixel mcp add claude` | Runs `claude mcp add sprixel --scope user -- sprixel mcp` |
+| `sprixel mcp add claude` | Runs `claude mcp add sprixel --scope user -- sprixel mcp` and writes the Sprixel skill to `~/.claude/skills/sprixel/SKILL.md` (see below) |
 | `sprixel mcp add opencode` | Adds a local `sprixel` MCP server to the OpenCode config file |
 
 The first time an agent connects, the app asks you to **allow or reject** it.
@@ -280,10 +280,10 @@ design.
 | Command | What it does |
 | --- | --- |
 | `sprixel mcp` | The MCP server over stdio that AI tools start. It starts the app if needed (waits up to 20 seconds) and reconnects if the app restarts |
-| `sprixel mcp add <claude\|opencode>` | Registers it. Safe to run twice; prints what changed and how to undo it |
-| `sprixel mcp remove <claude\|opencode>` | Removes only the Sprixel entry |
+| `sprixel mcp add <claude\|opencode>` | Registers it. Safe to run twice; prints what changed and how to undo it. For Claude Code it also writes the skill again if it is missing or old |
+| `sprixel mcp remove <claude\|opencode>` | Removes only the Sprixel entry (and, for Claude Code, the skill folder) |
 | `sprixel mcp list` | Shows if Sprixel is registered in each client |
-| `sprixel doctor` | One line per check (OK, FAIL or SKIP) with how to fix a failure; exit code 1 if one fails |
+| `sprixel doctor` | One line per check (OK, FAIL or SKIP) with how to fix a failure, including whether the Claude Code skill is installed and current; exit code 1 if one fails |
 | `sprixel start` | Starts the app, returns once the server answers, and prints the app path and version (it warns if the version differs from the command). It does not open a project: use the app or `open_project` |
 | `sprixel status` | Whether the app runs, with its port and version (exit code 3 if closed) |
 | `sprixel tools`, `sprixel tool <name> key=value ...` | List and call tools |
@@ -293,6 +293,31 @@ Every command accepts `--json` (valid JSON only on stdout, also for errors)
 and `--help`. Exit codes: **0** ok, **1** failure (for example a failed doctor
 check), **2** usage error, **3** the app is not running, **4** a tool answered
 with an error.
+
+`sprixel tool` and `sprixel tools` end their session in the app when they
+finish, so many calls never fill the limit of clients. `sprixel mcp` runs the
+`tools/call` messages of an AI one after another, in the order they arrived.
+
+When a tool returns an image (`render_preview`), `sprixel tool` saves it as a
+PNG in `~/.sprixel/previews/<sprite>-<frame>-<revision>.png` (readable only by
+you), keeps the 20 newest files and prints `image saved: <path>`, so an AI that
+only has a shell can open the file and see its work. With `--json` each image
+keeps its `data` (base64) and has a `path` too.
+
+### The Claude Code skill
+
+`sprixel mcp add claude` installs a small skill that teaches Claude Code how to
+use Sprixel: how to connect, the order of the tools, the rules for coordinates
+and frames, and what to do with each error code. The file comes inside the
+`sprixel` command (no download). `sprixel mcp remove claude` and
+`sprixel uninstall` delete its folder, `~/.claude/skills/sprixel/`, and
+nothing else of Claude Code. Advice about drawing well comes in a later spec.
+
+### Which app starts
+
+`sprixel start` prints the path and the version of the app. If the version is
+not the one of the command, it warns: an old build in another place is the
+usual reason. Choose the app by setting `SPRIXEL_APP` to its path.
 
 Where the command looks for the app to start it: `SPRIXEL_APP` (a path), then
 next to the command (`sprixel-app`), then the usual places of each system

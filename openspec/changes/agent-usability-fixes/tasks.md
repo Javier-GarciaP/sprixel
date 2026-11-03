@@ -28,4 +28,4 @@
 
 ## 6. Docs
 
-- [ ] 6.1 Update `docs/ai-and-mcp.md` and `docs/roadmap.md` and run `openspec validate --all --strict`
+- [x] 6.1 Update `docs/ai-and-mcp.md` and `docs/roadmap.md` and run `openspec validate --all --strict`
