@@ -47,3 +47,7 @@ export function cardsFor(clients: AgentClient[]): Card[] {
 
 // The name an agent has in the core, for the buttons that name it.
 export const nameOf = (card: Card) => card.clients[0]?.name ?? card.kind.name;
+
+// The command the person pastes in a terminal. It is made from the id of the
+// agent, so it stays the same as the CLI (`sprixel mcp add <client>`).
+export const commandFor = (id: AgentKindId) => `sprixel mcp add ${id}`;

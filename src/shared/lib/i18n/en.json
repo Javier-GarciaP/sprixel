@@ -435,5 +435,18 @@
   "agents.permissions.export": "Export files",
   "agents.permissions.askOnConnect": "Ask me when a new agent connects",
   "agents.permissions.note": "AI changes can be undone, except exported files.",
-  "agents.permissions.error": "Could not save the permissions."
+  "agents.permissions.error": "Could not save the permissions.",
+  "agents.connect.title": "Connect an AI",
+  "agents.connect.close": "Close",
+  "agents.connect.step1": "Copy this command",
+  "agents.connect.step2": "Paste it in your terminal and press Enter",
+  "agents.connect.step3": "Wait for the connection",
+  "agents.connect.install": "It needs the sprixel command. To install it, see the Install section of the README.",
+  "agents.connect.copy": "Copy",
+  "agents.connect.copied": "Copied",
+  "agents.connect.copyError": "Could not copy. Select the command and copy it by hand.",
+  "agents.connect.waiting": "Waiting for connection...",
+  "agents.connect.help": "Not connecting? Check that {agent} is installed and that Sprixel is open.",
+  "agents.connect.slow": "It is taking a long time. Run sprixel doctor in your terminal: it checks what is wrong.",
+  "agents.connect.cancel": "Cancel"
 }

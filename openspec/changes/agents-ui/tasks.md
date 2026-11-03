@@ -14,7 +14,7 @@
 
 ## 3. Connecting
 
-- [ ] 3.1 Build the Connect dialog with tabs, Copy, waiting state, timeout help and a fixed size, and verify against screens 31 and 32
+- [x] 3.1 Build the Connect dialog with tabs, Copy, waiting state, timeout help and a fixed size, and verify against screens 31 and 32
 - [ ] 3.2 Build the approval prompt, the waiting indicator and the system notification, and verify allow and reject flows
 
 ## 4. Top bar and editor

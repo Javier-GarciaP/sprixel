@@ -435,5 +435,18 @@
   "agents.permissions.export": "Exportar archivos",
   "agents.permissions.askOnConnect": "Pedir aprobación al conectar",
   "agents.permissions.note": "Los cambios de la IA se pueden deshacer, excepto los archivos exportados.",
-  "agents.permissions.error": "No se pudieron guardar los permisos."
+  "agents.permissions.error": "No se pudieron guardar los permisos.",
+  "agents.connect.title": "Conectar una IA",
+  "agents.connect.close": "Cerrar",
+  "agents.connect.step1": "Copia este comando",
+  "agents.connect.step2": "Pégalo en tu terminal y pulsa Enter",
+  "agents.connect.step3": "Espera la conexión",
+  "agents.connect.install": "Necesita el comando sprixel. Para instalarlo, mira la sección Install del README.",
+  "agents.connect.copy": "Copiar",
+  "agents.connect.copied": "Copiado",
+  "agents.connect.copyError": "No se pudo copiar. Selecciona el comando y cópialo a mano.",
+  "agents.connect.waiting": "Esperando conexión...",
+  "agents.connect.help": "¿No conecta? Comprueba que {agent} esté instalado y que Sprixel esté abierto.",
+  "agents.connect.slow": "Está tardando mucho. Ejecuta sprixel doctor en tu terminal: comprueba qué falla.",
+  "agents.connect.cancel": "Cancelar"
 }
