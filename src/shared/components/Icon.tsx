@@ -13,6 +13,7 @@ const paths = {
   keyboard: "M3 7h18v10H3zM7 11h2M11 11h2M15 11h2M8 14h8",
   close: "M6 6l12 12M18 6L6 18",
   check: "M5 13l4 4L19 7",
+  copy: "M9 9h11v11H9zM5 15V4h11",
   download: "M12 4v11M7 11l5 5 5-5M5 20h14",
 };
 

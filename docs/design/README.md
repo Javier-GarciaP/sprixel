@@ -382,7 +382,7 @@ specs win**. The designs will be updated when the matching feature is built.
 
 | Design shows | The specs say |
 | --- | --- |
-| "Connect an AI" shows a long `claude mcp add ... --header` command with a token | The command is `sprixel mcp add claude` (or `opencode`). The `sprixel` command reads the token from a local file, so you never copy it. See [AI and MCP](../ai-and-mcp.md). |
+| "Connect an AI" shows a long `claude mcp add ... --header` command with a token | The command is `sprixel mcp add claude` (or `opencode`). The `sprixel` command reads the token from a local file, so you never copy it. See [AI and MCP](../ai-and-mcp.md). The app now shows this command. |
 | The text view shows Spanish words (`paleta:`, `frame 1`) | The keywords in a text grid are always English (`palette`, `frame`). The editor can show translated labels around them. See [Text grid format](../text-grid-format.md). |
 | The Spanish interface only | Every text comes from a translation file in Spanish and English. |
 | The Project menu is a drop-down | There is no native window menu (File, Edit, View); every command lives in this menu and has a shortcut. |

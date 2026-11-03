@@ -9,6 +9,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Agents tab: Claude Code and OpenCode cards, activity list with Stop and
+  Undo, permissions panel, Connect dialog, approval prompt and top bar state.
 - Project planning: concept, design (36 screens in light and dark), version 1
   specs and documentation.
 - Pixel canvas editor: exact pixels over a gray checkerboard, zoom from 100% to

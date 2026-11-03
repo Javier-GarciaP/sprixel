@@ -114,3 +114,22 @@ describe("Shell layout", () => {
     }
   });
 });
+
+describe("Shell agents slot", () => {
+  // Checks that the top bar shows what the Agents feature gives it, and
+  // "No agents" when it gives nothing.
+  it("shows the agents indicator of the feature", () => {
+    renderShell({
+      topBar: {
+        project: <span>Dungeon Kit</span>,
+        status: <span>Saved</span>,
+        hasProject: true,
+        activeTab: "project",
+        onTab: vi.fn(),
+        agents: <span>Claude Code · OpenCode</span>,
+      },
+    });
+    expect(screen.getByText("Claude Code · OpenCode")).toBeTruthy();
+    expect(screen.queryByText("No agents")).toBeNull();
+  });
+});

@@ -437,6 +437,15 @@ The format is explained in [Text grid format](text-grid-format.md).
 In the **Agents** tab you can see everything the AI did and choose what it may
 do (create, edit, delete, export).
 
+- **Connect** opens a dialog with the command to copy (`sprixel mcp add claude`
+  or `sprixel mcp add opencode`). It waits and shows **Connected** when the
+  agent arrives. After 60 seconds it suggests running `sprixel doctor`.
+- The first time an agent connects, a prompt asks you to **Allow** or
+  **Reject** it. The top bar shows **Waiting for approval** until you answer.
+  If you close the prompt, you can answer from the agent card.
+- The activity list shows what each agent did. The action in progress has
+  **Stop**; only the latest finished action has **Undo**.
+
 ## Export
 
 Open the **Export** tab and follow the three steps:

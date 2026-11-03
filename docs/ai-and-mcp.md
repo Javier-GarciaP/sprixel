@@ -1,9 +1,9 @@
 # AI and MCP
 
-> **Status: the server, the tools and the `sprixel` command are built** (the
-> `mcp-server-and-tools` and `cli-sprixel` specs). The **Agents** tab
-> (approval prompt, permissions, activity, Stop and Undo buttons) comes in the
-> `agents-ui` spec. An MCP client can also connect directly over HTTP (see
+> **Status: the server, the tools, the `sprixel` command and the Agents tab are
+> built** (the `mcp-server-and-tools`, `cli-sprixel` and `agents-ui` specs). The
+> **Agents** tab has the approval prompt, the permissions, the activity, and the
+> Stop and Undo buttons. An MCP client can also connect directly over HTTP (see
 > [Connect without the command](#connect-without-the-command)).
 
 Sprixel is made to be used by an AI. An AI agent such as Claude Code or
