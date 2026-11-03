@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Previews for the AI: `render_preview` and the image of every write now sit on a
+  gray checkerboard by default (so white pixels are visible); the `background`
+  option can be `checker`, `light`, `dark` or `transparent`. New tools
+  `render_frames` (all frames in one grid, with optional numbers) and
+  `render_onion` (frames over each other, earlier ones tinted). `sprixel tool`
+  saves their images as files too.
 - Watch the AI draw: the editor replays each agent write (at most 8 seconds)
   with a cursor that carries the agent name, keeps the frame busy until the
   replay ends, and follows the agent to its sprite and frame when you are free.

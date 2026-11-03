@@ -14,4 +14,4 @@
 
 ## 3. Docs
 
-- [ ] 3.1 Update the guide, the skill, `docs/ai-and-mcp.md` and `CHANGELOG.md`, and run `openspec validate --all --strict`
+- [x] 3.1 Update the guide, the skill, `docs/ai-and-mcp.md` and `CHANGELOG.md`, and run `openspec validate --all --strict`
