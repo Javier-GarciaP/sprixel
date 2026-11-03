@@ -15,5 +15,5 @@
 
 ## 3. Docs and guides
 
-- [ ] 3.1 Update `docs/ai-and-mcp.md`, the design guide, `SKILL.md` and `CHANGELOG.md`, and verify the docs and guide tests pass
+- [x] 3.1 Update `docs/ai-and-mcp.md`, the design guide, `SKILL.md` and `CHANGELOG.md`, and verify the docs and guide tests pass
 - [ ] 3.2 Run format, lint, all tests, builds and `openspec validate --all --strict`

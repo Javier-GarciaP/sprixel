@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Finishing tools for the AI: `auto_outline` draws a one pixel outline (4 or 8
+  neighbors, outside only or inner), `auto_shade` shades a region with a ramp
+  of tones for a light direction, and `analyze_sprite` reports loose pixels,
+  gaps in the outline, unused colors and how each frame differs from the next
+  (changed pixels, box, ground kept).
 - Watch the AI draw: the editor replays each agent write (at most 8 seconds)
   with a cursor that carries the agent name, keeps the frame busy until the
   replay ends, and follows the agent to its sprite and frame when you are free.
