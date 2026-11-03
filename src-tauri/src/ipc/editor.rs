@@ -122,6 +122,9 @@ pub struct EditorState(Mutex<Agents>);
 struct Agents {
     writing: Option<AgentWrite>,
     stop_requested: bool,
+    /// The agents the user stopped. Their write calls fail with
+    /// `stopped_by_user` until the user lets them continue.
+    stopped: std::collections::HashSet<String>,
 }
 
 impl EditorState {
@@ -135,14 +138,36 @@ impl EditorState {
         self.0.lock().unwrap().writing = None;
     }
 
-    /// The Stop button: the frame is free at once and the agent must stop.
+    /// The Stop button: the frame is free at once and the agent that was
+    /// writing must stop. It stays stopped until `resume`.
     pub fn stop(&self) {
         let mut agents = self.0.lock().unwrap();
-        agents.writing = None;
+        if let Some(write) = agents.writing.take() {
+            agents.stopped.insert(write.agent);
+        }
         agents.stop_requested = true;
     }
 
-    // The MCP server reads it; nothing in the app does yet.
+    /// Stops one agent by name (the Agents tab), writing or not.
+    pub fn stop_agent(&self, name: &str) {
+        let mut agents = self.0.lock().unwrap();
+        if agents.writing.as_ref().is_some_and(|w| w.agent == name) {
+            agents.writing = None;
+        }
+        agents.stopped.insert(name.to_string());
+        agents.stop_requested = true;
+    }
+
+    /// The user lets a stopped agent continue.
+    pub fn resume(&self, name: &str) {
+        self.0.lock().unwrap().stopped.remove(name);
+    }
+
+    pub fn is_stopped(&self, name: &str) -> bool {
+        self.0.lock().unwrap().stopped.contains(name)
+    }
+
+    // Tests read it; the agents check `is_stopped` instead.
     #[allow(dead_code)]
     pub fn stop_requested(&self) -> bool {
         self.0.lock().unwrap().stop_requested
@@ -326,6 +351,8 @@ pub fn agent_activity(agents: tauri::State<EditorState>) -> Option<AgentWrite> {
 pub fn agent_stop(app: tauri::AppHandle, agents: tauri::State<EditorState>) {
     agents.stop();
     let _ = tauri::Emitter::emit(&app, AGENT_EVENT, Option::<AgentWrite>::None);
+    // The Agents tab shows that the agent is stopped.
+    let _ = tauri::Emitter::emit(&app, "mcp://clients-changed", ());
 }
 
 /// Development only: pretends an agent writes to a frame for a while, so the

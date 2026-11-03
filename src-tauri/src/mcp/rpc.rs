@@ -6,7 +6,7 @@
 use super::sessions::{Session, clean_name};
 use super::tool::{Output, ToolError, ToolResult};
 use super::clients::Standing;
-use super::{CLIENTS_EVENT, CLIENT_PENDING_EVENT, Core, base64};
+use super::{tools, CLIENTS_EVENT, CLIENT_PENDING_EVENT, Core, base64};
 use serde_json::{Value, json};
 
 /// The protocol versions the server speaks. The first is the newest.
@@ -167,7 +167,13 @@ impl Core {
             ToolError::new("unknown_tool", format!("there is no tool {name:?}; the tools are {}", names.join(", ")))
         })?;
         let ctx = super::tool::Ctx { core: self, client: &client.name };
-        let outcome = tool.need_check(&self.permissions()).and_then(|()| (tool.run)(&ctx, arguments));
+        let outcome = tool.need_check(&self.permissions()).and_then(|()| {
+            // A stopped client cannot write until the person lets it continue.
+            if tool.need != super::Need::Nothing && self.host.agents().is_stopped(&client.name) {
+                return Err(tools::write::stopped());
+            }
+            (tool.run)(&ctx, arguments)
+        });
         // Reading tools are not actions: they are not logged.
         if tool.need != super::Need::Nothing {
             self.record(&client.name, tool.name, arguments, &outcome);

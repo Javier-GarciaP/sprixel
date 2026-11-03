@@ -42,7 +42,7 @@ fn a_new_client_is_pending_and_blocked() {
     let session = connect(&core, "Claude Code");
 
     assert_eq!(events(&host, CLIENT_PENDING_EVENT), vec![json!({ "name": "Claude Code", "version": "1.0" })]);
-    assert_eq!(core.clients(), vec![ClientInfo { name: "Claude Code".into(), version: "1.0".into(), state: "pending" }]);
+    assert_eq!(core.clients(), vec![ClientInfo { name: "Claude Code".into(), version: "1.0".into(), state: "pending", stopped: false }]);
     assert_eq!(tools_listed(&core, &session), 0);
     assert_eq!(error_code(&call(&core, &session)), "awaiting_approval");
     assert!(events(&host, "tool-ran").is_empty());

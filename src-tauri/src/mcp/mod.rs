@@ -51,6 +51,11 @@ pub struct Core {
     /// Taken by every write of an agent, so they happen one at a time.
     pub(crate) write_lock: Mutex<()>,
     pub(crate) activity: Mutex<activity::Activity>,
+    /// Tests only: runs in the middle of a write call (after the frame is
+    /// marked busy, before the operations are applied), to simulate an agent
+    /// that is slow or a user who presses Stop at that moment.
+    #[cfg(test)]
+    pub(crate) pause: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     pub(crate) limits: limits::Limits,
     pub(crate) rate: Mutex<limits::RateLimiter>,
     /// Connections being served now.
@@ -73,6 +78,8 @@ impl Core {
             permissions: Mutex::new(Permissions::load(&data_dir)),
             write_lock: Mutex::new(()),
             activity: Mutex::default(),
+            #[cfg(test)]
+            pause: Mutex::new(None),
             limits: limits::Limits::default(),
             rate: Mutex::default(),
             connections: AtomicUsize::new(0),
@@ -147,9 +154,29 @@ impl Core {
         self.host.emit(ACTIVITY_EVENT, serde_json::to_value(entry).unwrap_or_default());
     }
 
+    /// The Stop button of the Agents tab: the agent's work in progress is
+    /// cancelled and its next write calls fail with `stopped_by_user`, until
+    /// `resume_agent`.
+    pub fn stop_agent(&self, name: &str) {
+        self.host.agents().stop_agent(name);
+        self.log("an agent was stopped by the user");
+        self.host.emit(crate::ipc::editor::AGENT_EVENT, serde_json::Value::Null);
+        self.host.emit(CLIENTS_EVENT, serde_json::Value::Null);
+    }
+
+    /// The user lets a stopped agent continue.
+    pub fn resume_agent(&self, name: &str) {
+        self.host.agents().resume(name);
+        self.host.emit(CLIENTS_EVENT, serde_json::Value::Null);
+    }
+
     /// The clients and their state, for the Agents tab.
     pub fn clients(&self) -> Vec<ClientInfo> {
-        self.clients.lock().unwrap().list()
+        let mut list = self.clients.lock().unwrap().list();
+        for client in &mut list {
+            client.stopped = self.host.agents().is_stopped(&client.name);
+        }
+        list
     }
 
     /// The user allows or rejects a client that waits. False if none waits.
@@ -204,3 +231,6 @@ mod policy_tests;
 
 #[cfg(test)]
 mod activity_tests;
+
+#[cfg(test)]
+mod stop_tests;

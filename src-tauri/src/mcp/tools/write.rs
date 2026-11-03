@@ -71,6 +71,14 @@ impl Drop for Busy<'_> {
     }
 }
 
+/// The error of a client that the user stopped.
+pub fn stopped() -> ToolError {
+    ToolError::new(
+        "stopped_by_user",
+        "the person pressed Stop. Do not continue; wait until they let you continue (Agents tab) and ask them what to do",
+    )
+}
+
 pub fn stale(base: u64, current: u64) -> ToolError {
     ToolError::new(
         "stale_revision",
@@ -100,6 +108,18 @@ pub fn write(
         let plan = plan(&*session)?;
         if let Some((sprite, frame)) = &plan.busy {
             busy = Some(Busy::start(ctx, sprite, *frame));
+        }
+        #[cfg(test)]
+        {
+            let pause = core.pause.lock().unwrap().clone();
+            if let Some(pause) = pause {
+                pause();
+            }
+        }
+        // The last moment to cancel: the person may have pressed Stop while
+        // the call was in progress. Nothing has been applied yet.
+        if core.host.agents().is_stopped(ctx.client) {
+            return Err(stopped());
         }
         let changed = !plan.ops.is_empty();
         let sprite = plan.sprite;

@@ -54,3 +54,17 @@ pub fn mcp_set_permissions(app: tauri::AppHandle, permissions: Permissions) -> R
 pub fn mcp_activity(app: tauri::AppHandle) -> Result<Vec<ActivityRow>, String> {
     Ok(core(&app)?.activity())
 }
+
+/// Stop an agent: its work in progress is cancelled and it cannot write.
+#[tauri::command]
+pub fn mcp_stop_agent(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    core(&app)?.stop_agent(&name);
+    Ok(())
+}
+
+/// Let a stopped agent continue.
+#[tauri::command]
+pub fn mcp_resume_agent(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    core(&app)?.resume_agent(&name);
+    Ok(())
+}

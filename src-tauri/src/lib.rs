@@ -60,6 +60,8 @@ pub fn run() {
             ipc::mcp::mcp_permissions,
             ipc::mcp::mcp_set_permissions,
             ipc::mcp::mcp_activity,
+            ipc::mcp::mcp_stop_agent,
+            ipc::mcp::mcp_resume_agent,
             ipc::load_preferences,
             ipc::save_settings,
             ipc::add_recent_project,

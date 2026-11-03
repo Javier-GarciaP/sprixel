@@ -44,6 +44,8 @@ pub struct ClientInfo {
     pub name: String,
     pub version: String,
     pub state: &'static str,
+    /// The user pressed Stop for this client and has not let it continue.
+    pub stopped: bool,
 }
 
 pub struct Clients {
@@ -142,11 +144,13 @@ impl Clients {
                 Decision::Allowed => "allowed",
                 Decision::Rejected => "rejected",
             },
+            stopped: false,
         });
         let pending = self.pending.iter().map(|(name, version)| ClientInfo {
             name: name.clone(),
             version: version.clone(),
             state: "pending",
+            stopped: false,
         });
         known.chain(pending).collect()
     }

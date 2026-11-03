@@ -16,7 +16,7 @@ mod export;
 mod read;
 mod shapes;
 mod structure;
-mod write;
+pub(super) mod write;
 
 use super::Tool;
 
