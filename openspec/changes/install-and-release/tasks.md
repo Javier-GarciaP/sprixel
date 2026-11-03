@@ -2,8 +2,8 @@
 
 ## 1. Versioning
 
-- [ ] 1.1 Add the version source and the bump script that updates and checks every version file, and verify a test that bumps a copy of the repository
-- [ ] 1.2 Add the check that fails when the tag and the code version differ and verify with a wrong tag
+- [x] 1.1 Add the version source and the bump script that updates and checks every version file, and verify a test that bumps a copy of the repository
+- [x] 1.2 Add the check that fails when the tag and the code version differ and verify with a wrong tag
 
 ## 2. Installers
 
@@ -13,8 +13,8 @@
 
 ## 3. Update and uninstall
 
-- [ ] 3.1 Implement `sprixel update` with the same checks and verify the up-to-date and upgrade cases
-- [ ] 3.2 Implement `sprixel uninstall` with confirmations and verify projects stay untouched
+- [x] 3.1 Implement `sprixel update` with the same checks and verify the up-to-date and upgrade cases
+- [x] 3.2 Implement `sprixel uninstall` with confirmations and verify projects stay untouched
 
 ## 4. Release pipeline
 
@@ -24,5 +24,5 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Update `README.md`, `CONTRIBUTING.md` and `docs/usage.md` (install, update, uninstall, system warnings) and verify the commands match the real scripts
+- [x] 5.1 Update `README.md`, `CONTRIBUTING.md` and `docs/usage.md` (install, update, uninstall, system warnings) and verify the commands match the real scripts
 - [ ] 5.2 Publish `0.1.0` following the release steps and verify the install command works from a clean machine
