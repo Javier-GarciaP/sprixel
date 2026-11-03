@@ -7,6 +7,7 @@ import (
 	goruntime "runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/clients"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
@@ -117,7 +118,24 @@ func (c *invocation) startApp(args ...string) (<-chan error, error) {
 	if err != nil {
 		return nil, err
 	}
-	return launcher.Start(path, args...)
+	// Another process (an AI tool with its own bridge) may be starting the
+	// app right now: wait for it instead of opening a second window.
+	release, ok := launcher.ClaimStart(runtime.Dir(c.env.Home), 20*time.Second)
+	if !ok {
+		return make(chan error), nil // never fires: the caller waits for the app
+	}
+	exited, err := launcher.Start(path, args...)
+	if err != nil {
+		release()
+		return nil, err
+	}
+	done := make(chan error, 1)
+	go func() {
+		err := <-exited
+		release()
+		done <- err
+	}()
+	return done, nil
 }
 
 func find(name string) *command {
