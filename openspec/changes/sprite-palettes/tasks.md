@@ -8,7 +8,7 @@
 ## 2. Palette tools
 
 - [x] 2.1 Add `create_palette` and `set_sprite_palette`; verify colors, auto keys, name taken, undo and the permission
-- [ ] 2.2 Add `own_palette` to `create_sprite`; verify the name, one history entry and the conflict with `palette`
+- [x] 2.2 Add `own_palette` to `create_sprite`; verify the name, one history entry and the conflict with `palette`
 - [ ] 2.3 Add `remove_unused_colors`; verify removed keys, `.` untouched and undo
 - [ ] 2.4 Add `generate_ramp` and the `ramp` option of `create_palette`; verify keys, reuse of an equal hex and palette_full
 

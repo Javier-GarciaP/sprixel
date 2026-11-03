@@ -95,3 +95,40 @@ fn palette_tools_need_the_edit_permission() {
         assert_eq!(call(&core, &session, tool, args).unwrap_err()["code"], "permission_denied", "{tool}");
     }
 }
+
+// Checks "Sprite with own palette": the sprite uses a new empty palette with
+// its name, the answer says so, and ONE undo removes the sprite and the palette.
+#[test]
+fn own_palette_creates_a_palette_named_like_the_sprite() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let before = entries(&host);
+
+    let made = call(&core, &session, "create_sprite", json!({ "name": "orc", "width": 8, "height": 8, "own_palette": true })).unwrap();
+
+    assert_eq!(made["palette"], "orc");
+    let palette = call(&core, &session, "get_palette", json!({ "palette": "orc" })).unwrap();
+    assert_eq!(palette["colors"].as_array().unwrap().len(), 0);
+    assert_eq!(entries(&host), before + 1);
+    browser::undo(&host.project).unwrap();
+    assert_eq!(call(&core, &session, "get_palette", json!({ "palette": "orc" })).unwrap_err()["code"], "not_found");
+    assert_eq!(call(&core, &session, "list_sprites", json!({})).unwrap()["sprites"].as_array().unwrap().len(), 2);
+}
+
+// Checks the conflicts: `own_palette` with `palette` is a bad argument; a
+// palette that already has the sprite name is `name_exists`; a sprite name that
+// is taken leaves no palette behind. Nothing changes in any case.
+#[test]
+fn own_palette_conflicts_change_nothing() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let before = revision(&host);
+    let run = |args| call(&core, &session, "create_sprite", args).unwrap_err();
+
+    assert_eq!(run(json!({ "name": "orc", "width": 8, "height": 8, "own_palette": true, "palette": "main" }))["code"], "bad_argument");
+    assert_eq!(run(json!({ "name": "main", "width": 8, "height": 8, "own_palette": true }))["code"], "name_exists");
+    assert_eq!(run(json!({ "name": "SLIME", "width": 8, "height": 8, "own_palette": true }))["code"], "name_exists");
+    assert_eq!(revision(&host), before);
+    let project = call(&core, &session, "get_project", json!({})).unwrap();
+    assert_eq!(project["palettes"].as_array().unwrap().len(), 1);
+}
