@@ -16,7 +16,7 @@
 
 ## 4. Skill
 
-- [ ] 4.1 Write the embedded `SKILL.md` and install it from `sprixel mcp add claude`; verify first add and re-run
+- [x] 4.1 Write the embedded `SKILL.md` and install it from `sprixel mcp add claude`; verify first add and re-run
 - [ ] 4.2 Delete it in remove and uninstall and check it in doctor; verify each
 
 ## 5. Launcher

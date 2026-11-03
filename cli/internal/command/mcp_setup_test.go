@@ -82,6 +82,47 @@ func TestMCPAddTwice(t *testing.T) {
 	}
 }
 
+// Checks the scenarios "First add" and "Already registered" of the skill:
+// the first add writes ~/.claude/skills/sprixel/SKILL.md (in a temporary
+// home), and running it again, when Sprixel is already registered, repairs a
+// file that is missing or old.
+func TestMCPAddClaudeInstallsTheSkill(t *testing.T) {
+	f := &fakeClaude{}
+	home := t.TempDir()
+	path := filepath.Join(home, ".claude", "skills", "sprixel", "SKILL.md")
+
+	r := setupIn(t, home, f, "mcp", "add", "claude")
+	data, err := os.ReadFile(path)
+	if r.code != ExitOK || err != nil || !strings.HasPrefix(string(data), "---\nname: sprixel") {
+		t.Fatalf("first add: code = %d, err = %v, stderr = %q", r.code, err, r.err)
+	}
+	if !strings.Contains(r.stdout, "skill:   "+path) {
+		t.Errorf("stdout = %q", r.stdout)
+	}
+
+	os.WriteFile(path, []byte("old"), 0o644)
+	r = setupIn(t, home, f, "mcp", "add", "claude")
+	data, _ = os.ReadFile(path)
+	if !strings.Contains(r.stdout, "already registered") || !strings.HasPrefix(string(data), "---\nname: sprixel") {
+		t.Errorf("second add did not write the skill: %q, %q", r.stdout, data)
+	}
+
+	os.Remove(path)
+	setupIn(t, home, f, "mcp", "add", "claude", "--json")
+	if _, err := os.Stat(path); err != nil {
+		t.Error("a missing skill was not written again")
+	}
+}
+
+// Checks that OpenCode gets no skill: only Claude Code has this feature.
+func TestMCPAddOpenCodeInstallsNoSkill(t *testing.T) {
+	home := t.TempDir()
+	setupIn(t, home, &fakeClaude{}, "mcp", "add", "opencode")
+	if _, err := os.Stat(filepath.Join(home, ".claude")); err == nil {
+		t.Error("a .claude folder was made")
+	}
+}
+
 // Checks the registered command: when sprixel is not on the PATH, the full
 // path of the program is registered, so the AI tool can start it. This is also
 // the Windows case (a path with a drive letter and backslashes is one argument).

@@ -35,6 +35,9 @@ func runMCPSetup(c *invocation, args []string) int {
 	return c.p.Fail(ExitUsage, "usage", "unknown mcp command: "+args[0], mcpUsage)
 }
 
+// skill is the Claude Code skill of Sprixel, in the home of this run.
+func (c *invocation) skill() clients.Skill { return clients.Skill{Home: c.env.Home} }
+
 func (c *invocation) client(id string) (clients.Client, bool) {
 	return clients.ByID(id, c.env.Home, c.env.Runner)
 }
@@ -89,7 +92,24 @@ func mcpAdd(c *invocation, client clients.Client) int {
 	default:
 		text = "Registered Sprixel in " + client.Title() + ". It starts `" + command + " mcp`.\n  changed: " + result.Where + "\n  undo:    " + undo + "\n"
 	}
-	c.p.Print(text, map[string]string{"client": client.ID(), "result": state, "changed": result.Where, "undo": undo})
+	data := map[string]string{"client": client.ID(), "result": state, "changed": result.Where, "undo": undo}
+	if client.ID() == "claude" {
+		// The skill is written also when Sprixel was already registered, so a
+		// missing or old file is fixed by running the command again.
+		skill := c.skill()
+		written, err := skill.Install()
+		if err != nil {
+			return c.p.Fail(ExitFailure, "skill", "Sprixel is registered, but the skill file could not be written: "+err.Error(),
+				"check that "+skill.Dir()+" can be written, then run the command again")
+		}
+		data["skill"] = skill.Path()
+		if written {
+			text += "  skill:   " + skill.Path() + "\n"
+		} else {
+			text += "  skill:   " + skill.Path() + " is up to date\n"
+		}
+	}
+	c.p.Print(text, data)
 	return ExitOK
 }
 
