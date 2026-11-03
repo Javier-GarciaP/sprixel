@@ -113,6 +113,20 @@ describe("zoom", () => {
     expect(pixelAt(view(), pointer)).toEqual(before);
   });
 
+  // Checks that Control and the wheel over the canvas calls preventDefault
+  // (so the webview does not zoom) and still zooms only the canvas. A React
+  // handler is passive and cannot do this, so the listener is a native one.
+  it("prevents the page zoom with Control and the wheel", async () => {
+    render(<Harness />);
+    await screen.findByText("400%");
+    const notPrevented = fireEvent.wheel(screen.getByTestId("canvas-area"), {
+      ctrlKey: true,
+      deltaY: -100,
+    });
+    expect(notPrevented).toBe(false);
+    await screen.findByText("500%");
+  });
+
   // Checks that the wheel alone does not zoom.
   it("ignores the wheel without Control", async () => {
     render(<Harness />);

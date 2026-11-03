@@ -129,3 +129,5 @@ and the project follows [Semantic Versioning](https://semver.org/).
   English), with the line and the numbers.
 - The frame thumbnails and the preview of a big or wide sprite now fit their
   box instead of covering the tools and the neighbors.
+- Zooming with Control and the mouse wheel (or a pinch) now zooms only the pixel
+  canvas, not the whole app.
