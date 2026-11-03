@@ -58,9 +58,13 @@ export function makeRelease(dir, { version = "0.2.0", wrongChecksum } = {}) {
   fs.writeFileSync(path.join(stage, "Sprixel.exe"), `app ${version}\n`);
   fs.writeFileSync(path.join(stage, "LICENSE"), "MIT License (fixture)\n");
   fs.writeFileSync(path.join(stage, "THIRD-PARTY.md"), "notices\n");
-  execFileSync("zip", ["-qr", path.join(dir, "Sprixel-windows-x64.zip"), "."], {
-    cwd: stage,
-  });
+  const zip = path.join(dir, "Sprixel-windows-x64.zip");
+  // Windows has tar (bsdtar), which writes zip files; elsewhere use zip.
+  if (process.platform === "win32") {
+    execFileSync("tar", ["-a", "-c", "-f", zip, "-C", stage, "."]);
+  } else {
+    execFileSync("zip", ["-qr", zip, "."], { cwd: stage });
+  }
   fs.rmSync(stage, { recursive: true });
   names.push("Sprixel-windows-x64.zip");
 

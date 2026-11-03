@@ -37,9 +37,12 @@ describe("stage-release", () => {
     expect(
       fs.readFileSync(path.join(out, "Sprixel-linux-x64.AppImage"), "utf8"),
     ).toBe("app");
-    expect(
-      fs.statSync(path.join(out, "sprixel-linux-x64")).mode & 0o100,
-    ).toBeTruthy();
+    // Windows has no execute bit.
+    if (process.platform !== "win32") {
+      expect(
+        fs.statSync(path.join(out, "sprixel-linux-x64")).mode & 0o100,
+      ).toBeTruthy();
+    }
   });
 
   it("packs Sprixel.app into a tar.gz on macOS", () => {
