@@ -1,0 +1,93 @@
+name: Release
+
+# A release starts only when a version tag is pushed (see CONTRIBUTING.md).
+on:
+  push:
+    tags: ["v*"]
+
+# Least permissions: jobs read the code only. The job that creates the release
+# asks for more, and only for itself.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }} ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {
+              runner: ubuntu-latest,
+              target: linux,
+              arch: x64,
+              tauri: "--bundles appimage",
+            }
+          - {
+              runner: macos-latest,
+              target: macos,
+              arch: arm64,
+              tauri: "--bundles app",
+            }
+          - {
+              runner: macos-15-intel,
+              target: macos,
+              arch: x64,
+              tauri: "--bundles app",
+            }
+          - {
+              runner: windows-latest,
+              target: windows,
+              arch: x64,
+              tauri: "--no-bundle",
+            }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.mod
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Install Tauri system libraries (Linux)
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev file
+
+      - run: npm ci
+
+      # No release if a test fails: this job fails and the release job never runs.
+      - run: npm test
+
+      - name: Build the app
+        run: npx tauri build ${{ matrix.tauri }}
+
+      - name: Build the sprixel command
+        run: npm run build:cli
+
+      - name: Collect the release files
+        run: node scripts/stage-release.mjs ${{ matrix.target }} ${{ matrix.arch }} staged
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}-${{ matrix.arch }}
+          path: staged/*
+          if-no-files-found: error
