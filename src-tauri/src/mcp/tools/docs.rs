@@ -420,8 +420,32 @@ LOOK at the frames with `render_frames` (name walker, `labels` true). The lowest
 10. `create_tag` with sprite walker, name attack, from 5, to 7, fps 10, mode once. Then LOOK at `render_frames` (`from` 5, `to` 7) and `render_onion` (`frames` [5, 6, 7])."
 );
 
+/// The grass tile of the `game-ready` guide: an 8x8 tile whose right edge does
+/// not match the left edge in row 3 (x 7, y 3).
+macro_rules! grass_grid {
+    () => {
+        "\
+legend\n\
+\x20\x20M grass #4F9D3A\n\
+\x20\x20Q light grass #7BC85A\n\
+\x20\x20Z dark grass #2F6B2A\n\
+frame 1\n\
+MMZMMMQM\n\
+MMMMQMMM\n\
+ZMMMMMMZ\n\
+MMQMMMMZ\n\
+MMMMMZMM\n\
+MQMMMMMM\n\
+MMMZMMQM\n\
+MMZMMMQM\n"
+    };
+}
+
+/// The grid of the grass tile, for the tests.
+pub const GRASS_GRID: &str = grass_grid!();
+
 /// What a game needs from a sprite. Also available as the topic `game-ready`.
-pub const GAME_READY_GUIDE: &str = "\
+pub const GAME_READY_GUIDE: &str = concat!("\
 Game-ready guide: anchors, times, tiles and export\n\
 \n\
 1. One size. All frames of a character have the same size, and so do the characters of one game (16, 32 or 48). Leave one empty pixel around the shape for the outline.\n\
@@ -431,7 +455,20 @@ Game-ready guide: anchors, times, tiles and export\n\
 5. Tiles repeat, so the first column must equal the last column and the first row must equal the last row. Call `check_tile`: it says if the tile is seamless and lists the pixels that differ. `render_tiled` shows the tile 3 by 3 so you can see the seams. Fix them with `set_pixels`. Avoid a single bright pixel that makes the repetition obvious.\n\
 6. One palette for a set. Keep the keys of the same material equal in every sprite. At the end call `remove_unused_colors`.\n\
 7. Check before you export: `analyze_sprite` for each sprite (no loose pixels, no outline gaps).\n\
-8. Export with `export`: format sheet writes one PNG and a JSON file with the frames, animations, times and anchors; format png writes one file per frame. Choose the sprites with `scope`. Use `scale` 1 for the engine. Files go inside the project (default `assets/sprites`) and cannot be undone.";
+8. Export with `export`: format sheet writes one PNG and a JSON file with the frames, animations, times and anchors; format png writes one file per frame. Choose the sprites with `scope`. Use `scale` 1 for the engine. Files go inside the project (default `assets/sprites`) and cannot be undone.\n\
+\n\
+Worked example: the walker of the walk guide and a grass tile, ready for a game.\n\
+1. `set_anchor` with sprite walker, name feet, x 5 and y 9: the point where it stands, for the whole sprite.\n\
+2. `set_anchor` with sprite walker, name head, x 6 and y 3 for the whole sprite, and again with `frame` 1 and with `frame` 3 and y 4: in those frames the body is 1 pixel lower. An anchor of a frame wins over the one of the sprite.\n\
+3. `get_sprite` with name walker: read `anchors` and `frame_durations` to check them.\n\
+4. The tile: `create_sprite` with name grass, width 8 and height 8, then `apply_grid` with name grass and this grid. By mistake, at y 3 the last pixel is not equal to the first one:\n\
+\n",
+    grass_grid!(),
+    "\n\
+5. `check_tile` with name grass: `seamless` is false and `mismatch_count` is 1. The pair is x 0 and x 7 at y 3. Fix it with `set_pixels` and pixels [{x: 7, y: 3, key: M}], then call `check_tile` again: `seamless` is true. LOOK at `render_tiled` to see it repeated.\n\
+6. `analyze_sprite` for walker and for grass: nothing loose.\n\
+7. `export` with `scope` sprites, `sprites` [walker, grass] and `format` sheet: a PNG and a JSON file with the frames, animations, times and anchors, in `assets/sprites`."
+);
 
 /// The grid of the example of the `tools` guide: an 8x8 gem whose outline has
 /// a gap at x 7, y 3.

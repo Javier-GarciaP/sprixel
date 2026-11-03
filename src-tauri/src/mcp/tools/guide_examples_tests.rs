@@ -2,7 +2,7 @@
 //! real tools, so a guide cannot teach calls that do not work.
 
 use super::docs::{
-    CAT_GRID, FACES_GUIDE, GEM_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE, WALK_GUIDE,
+    CAT_GRID, FACES_GUIDE, GAME_READY_GUIDE, GEM_GRID, GRASS_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE, WALK_GUIDE,
     WALKER_GRID,
 };
 use crate::mcp::testing::{call, open_demo_project, rows, setup};
@@ -179,4 +179,46 @@ fn the_walk_example_makes_a_three_frame_attack() {
     assert_eq!(sprite["animations"][0]["mode"], "once", "{sprite}");
     let report = call(&core, &session, "analyze_sprite", json!({ "name": "walker", "outline_key": "K" })).unwrap();
     assert_eq!(report["frame_reports"][5]["loose_pixels"]["count"], 0, "{report}");
+}
+
+// Checks the example of the `game-ready` guide: the anchors (one for the whole
+// sprite, one that a frame overrides), a tile with one seam that `check_tile`
+// finds and `set_pixels` fixes, and the export of both sprites.
+#[test]
+fn the_game_ready_example_sets_anchors_fixes_a_tile_and_exports() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    assert!(GAME_READY_GUIDE.contains(GRASS_GRID));
+    make_walker(&core, &session);
+
+    let anchor = |x: u32, y: u32, name: &str, frame: Option<u32>| {
+        let mut args = json!({ "sprite": "walker", "name": name, "x": x, "y": y });
+        if let Some(frame) = frame {
+            args["frame"] = json!(frame);
+        }
+        call(&core, &session, "set_anchor", args).unwrap();
+    };
+    anchor(5, 9, "feet", None);
+    anchor(6, 3, "head", None);
+    anchor(6, 4, "head", Some(1));
+    anchor(6, 4, "head", Some(3));
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "walker", "frame": 1 })).unwrap();
+    assert_eq!(sprite["anchors"].as_array().unwrap().len(), 4, "{sprite}");
+
+    call(&core, &session, "create_sprite", json!({ "name": "grass", "width": 8, "height": 8 })).unwrap();
+    call(&core, &session, "apply_grid", json!({ "name": "grass", "grid": GRASS_GRID })).unwrap();
+    let seams = call(&core, &session, "check_tile", json!({ "name": "grass" })).unwrap();
+    assert_eq!((seams["seamless"].clone(), seams["mismatch_count"].clone()), (json!(false), json!(1)), "{seams}");
+    call(&core, &session, "set_pixels", json!({ "name": "grass", "pixels": [{ "x": 7, "y": 3, "key": "M" }] })).unwrap();
+    assert_eq!(call(&core, &session, "check_tile", json!({ "name": "grass" })).unwrap()["seamless"], true);
+    call(&core, &session, "render_tiled", json!({ "name": "grass" })).unwrap();
+
+    for name in ["walker", "grass"] {
+        let report = call(&core, &session, "analyze_sprite", json!({ "name": name })).unwrap();
+        assert_eq!(report["frame_reports"][0]["loose_pixels"]["count"], 0, "{report}");
+    }
+    let done = call(&core, &session, "export", json!({ "scope": "sprites", "sprites": ["walker", "grass"], "format": "sheet" })).unwrap();
+    let files = done["files"].as_array().unwrap_or_else(|| panic!("{done}"));
+    assert!(files.iter().any(|f| f.as_str().unwrap().ends_with(".png")) && files.iter().any(|f| f.as_str().unwrap().ends_with(".json")), "{done}");
+    assert!(files.iter().all(|f| f.as_str().unwrap().starts_with("assets/sprites")), "{done}");
 }
