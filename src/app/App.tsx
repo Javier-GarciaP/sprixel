@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { AgentsScreen, coreAgentsApi, useAgents } from "@/features/agents";
+import {
+  AgentsIndicator,
+  AgentsScreen,
+  ApprovalDialog,
+  coreAgentsApi,
+  notifyApproval,
+  useAgents,
+} from "@/features/agents";
 import { EditorScreen } from "@/features/canvas-editor";
 import { ExportScreen } from "@/features/export";
 import {
@@ -83,7 +90,16 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
     [],
   );
   // What the core says about the agents, for the Agents tab.
-  const agents = useAgents(coreAgentsApi);
+  // A new agent that waits while the window is in the background is also
+  // told with a system notification.
+  const agents = useAgents(coreAgentsApi, (event) => {
+    if (event.type === "pending") {
+      notifyApproval(
+        t("agents.notify.title", { agent: event.name }),
+        t("agents.notify.body"),
+      );
+    }
+  });
   const save = useSaveStatus(project !== null);
   useWindowTitle(project?.name ?? null);
 
@@ -241,6 +257,7 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
           <SaveStatus state={save.state} onRetry={save.retry} />
         ) : null,
         hasProject: project !== null,
+        agents: <AgentsIndicator clients={agents.clients} />,
         activeTab: settingsOpen ? null : tab,
         onTab: (next) => {
           setSettingsOpen(false);
@@ -279,6 +296,11 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
           onClose={() => setNewProjectFrom(null)}
         />
       )}
+      <ApprovalDialog
+        api={coreAgentsApi}
+        clients={agents.clients}
+        permissions={agents.permissions}
+      />
       {notice && <Toast tone="error" message={notice} />}
     </Shell>
   );

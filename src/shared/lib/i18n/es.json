@@ -448,5 +448,18 @@
   "agents.connect.waiting": "Esperando conexión...",
   "agents.connect.help": "¿No conecta? Comprueba que {agent} esté instalado y que Sprixel esté abierto.",
   "agents.connect.slow": "Está tardando mucho. Ejecuta sprixel doctor en tu terminal: comprueba qué falla.",
-  "agents.connect.cancel": "Cancelar"
+  "agents.connect.cancel": "Cancelar",
+  "agents.approve.title": "{agent} quiere conectarse",
+  "agents.approve.text": "Un agente de IA pide usar este proyecto. Permítelo solo si lo iniciaste tú.",
+  "agents.approve.connection": "Conexión",
+  "agents.approve.local": "Local · este equipo",
+  "agents.approve.can": "Podrá",
+  "agents.approve.cannot": "No podrá",
+  "agents.approve.nothing": "Nada",
+  "agents.approve.allow": "Permitir",
+  "agents.approve.reject": "Rechazar",
+  "agents.approve.close": "Cerrar",
+  "agents.indicator.waiting": "Esperando aprobación",
+  "agents.notify.title": "{agent} quiere conectarse",
+  "agents.notify.body": "Abre Sprixel para permitirlo o rechazarlo."
 }
