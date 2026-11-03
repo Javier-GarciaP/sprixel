@@ -4,6 +4,7 @@ mod args;
 mod create;
 mod docs;
 mod draw;
+mod export;
 mod read;
 mod shapes;
 mod structure;
@@ -20,6 +21,7 @@ pub fn all() -> Vec<Tool> {
     tools.extend(create::tools());
     tools.extend(draw::tools());
     tools.extend(structure::tools());
+    tools.extend(export::tools());
     tools
 }
 
@@ -34,3 +36,6 @@ mod draw_tests;
 
 #[cfg(test)]
 mod structure_tests;
+
+#[cfg(test)]
+mod export_tests;

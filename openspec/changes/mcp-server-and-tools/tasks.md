@@ -37,7 +37,7 @@
 
 ## Demo, built with the export-spritesheet spec
 
-- [ ] 3.5 Implement `export` and verify files stay inside the project
+- [x] 3.5 Implement `export` and verify files stay inside the project
 
 ## After the demo
 
