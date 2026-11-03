@@ -20,13 +20,11 @@ vi.mock("@/features/agents", async (original) => {
 });
 vi.mock("./api/project", async (original) => ({
   ...(await original<typeof import("./api/project")>()),
-  openProject: vi
-    .fn()
-    .mockResolvedValue({
-      name: "Dungeon Kit",
-      path: "/p/kit",
-      damagedFiles: 0,
-    }),
+  openProject: vi.fn().mockResolvedValue({
+    name: "Dungeon Kit",
+    path: "/p/kit",
+    damagedFiles: 0,
+  }),
   projectStatus: vi.fn().mockResolvedValue({ status: "saved" }),
   pickFolder: vi.fn().mockResolvedValue("/p/kit"),
 }));
