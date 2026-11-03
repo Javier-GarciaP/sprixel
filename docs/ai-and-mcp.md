@@ -1,10 +1,9 @@
 # AI and MCP
 
-> **Status: the server and the tools are built** (the `mcp-server-and-tools`
-> spec). The `sprixel` command (`sprixel mcp add`, `doctor`, `tool`) and the
-> **Agents** tab (approval prompt, permissions, activity, Stop and Undo
-> buttons) come in the `cli-sprixel` and `agents-ui` specs. Until then an MCP
-> client can connect directly over HTTP (see
+> **Status: the server, the tools and the `sprixel` command are built** (the
+> `mcp-server-and-tools` and `cli-sprixel` specs). The **Agents** tab
+> (approval prompt, permissions, activity, Stop and Undo buttons) comes in the
+> `agents-ui` spec. An MCP client can also connect directly over HTTP (see
 > [Connect without the command](#connect-without-the-command)).
 
 Sprixel is made to be used by an AI. An AI agent such as Claude Code or
@@ -32,9 +31,6 @@ This is the same idea OpenPencil uses: the app is the live server and a small
 command is its remote control.
 
 ## Connect your AI
-
-> The `sprixel` command is built in the `cli-sprixel` spec. What follows is how
-> it will work.
 
 First install Sprixel (see the [README](../README.md#install)). Then:
 
@@ -165,13 +161,20 @@ The most common codes:
 | `invalid_path`, `outside_project` | A path that is not allowed |
 | `limit_exceeded` | A limit was passed (see [Security](#security)) |
 
-The same tools can be called from a terminal with the `sprixel` command
-(planned in the `cli-sprixel` spec):
+The same tools can be called from a terminal with the `sprixel` command:
 
 ```sh
 sprixel tools
 sprixel tool get_sprite name=goblin
+sprixel tool set_pixels pixels='[{"x":1,"y":2,"key":"a"}]' --json
 ```
+
+`sprixel tool` connects as the client **Sprixel CLI**, so the app asks you to
+allow it once, like any AI. Values are typed by the tool's schema: text stays
+text, and numbers, `true`/`false`, lists and objects are written as JSON.
+Add `--json` to get the result as JSON only. The exit code is 4 when the tool
+answers with an error. Neither `tool` nor `tools` start the app; use
+`sprixel start`.
 
 ## Drawing tips for an AI
 
@@ -262,6 +265,32 @@ Note: the name an agent gives itself ("Claude Code") is only a label. The real
 protection is the token and your approval. A program of your own user that can
 read the token file can use the app like an agent; that is the limit of this
 design.
+
+## The `sprixel` command
+
+| Command | What it does |
+| --- | --- |
+| `sprixel mcp` | The MCP server over stdio that AI tools start. It starts the app if needed (waits up to 20 seconds) and reconnects if the app restarts |
+| `sprixel mcp add <claude\|opencode>` | Registers it. Safe to run twice; prints what changed and how to undo it |
+| `sprixel mcp remove <claude\|opencode>` | Removes only the Sprixel entry |
+| `sprixel mcp list` | Shows if Sprixel is registered in each client |
+| `sprixel doctor` | One line per check (OK, FAIL or SKIP) with how to fix a failure; exit code 1 if one fails |
+| `sprixel start [path]` | Starts the app and returns once the server answers |
+| `sprixel status` | Whether the app runs, with its port and version (exit code 3 if closed) |
+| `sprixel tools`, `sprixel tool <name> key=value ...` | List and call tools |
+| `sprixel version` | The version of the command |
+
+Every command accepts `--json` (valid JSON only on stdout, also for errors)
+and `--help`. Exit codes: **0** ok, **1** failure (for example a failed doctor
+check), **2** usage error, **3** the app is not running, **4** a tool answered
+with an error.
+
+Where the command looks for the app to start it: `SPRIXEL_APP` (a path), then
+next to the command (`sprixel-app`), then the usual places of each system
+(`~/.local/bin/sprixel-app` on Linux, `/Applications/Sprixel.app` on macOS,
+`%LOCALAPPDATA%\Sprixel\Sprixel.exe` on Windows), and the build folder when
+you built from source. Linux needs `DISPLAY` or `WAYLAND_DISPLAY`; without a
+screen the command says that Sprixel needs a desktop session.
 
 ## Two things to know
 

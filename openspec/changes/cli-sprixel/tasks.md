@@ -27,7 +27,7 @@
 
 ### 5. Documentation
 
-- [ ] 5.1 Update `docs/usage.md` and `docs/ai-and-mcp.md` with the final commands and verify each command shown runs
+- [x] 5.1 Update `docs/usage.md` and `docs/ai-and-mcp.md` with the final commands and verify each command shown runs
 
 ## After the demo
 
