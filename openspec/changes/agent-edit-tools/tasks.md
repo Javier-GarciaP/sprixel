@@ -2,7 +2,7 @@
 
 ## 1. Reading
 
-- [ ] 1.1 Add `region` and `include_palette` to `get_sprite` (partial text grid); verify the region, no legend, region out, old behavior and that the result parses as a grid
+- [x] 1.1 Add `region` and `include_palette` to `get_sprite` (partial text grid); verify the region, no legend, region out, old behavior and that the result parses as a grid
 
 ## 2. Shared pixel helper
 
