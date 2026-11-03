@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Javier-GarciaP/sprixel/cli/internal/clients"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/launcher"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/runtime"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/version"
@@ -21,6 +22,12 @@ type Env struct {
 	// StartApp starts the Sprixel app with the given arguments. When it is
 	// nil the real launcher is used. Tests replace it.
 	StartApp func(args ...string) (<-chan error, error)
+	// Exe is the path of the running command; LookPath finds programs on the
+	// PATH; Runner runs other programs (the `claude` command). All three have
+	// real defaults and are replaced in tests.
+	Exe      string
+	LookPath func(string) (string, error)
+	Runner   clients.Runner
 }
 
 // invocation is what a command receives.

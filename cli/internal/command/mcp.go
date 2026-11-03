@@ -9,17 +9,17 @@ import (
 func init() {
 	commands = append(commands, command{
 		name:    "mcp",
-		summary: "MCP server over stdio for AI tools (add, remove and list register it)",
-		usage:   "sprixel mcp",
+		summary: "MCP server over stdio for AI tools; `mcp add|remove|list` registers it",
+		usage:   "sprixel mcp [add|remove <claude|opencode> | list] [--json]",
 		run:     runMCP,
 	})
 }
 
-// runMCP is the stdio bridge. Stdout is the MCP stream, so the printer is not
+// runMCP runs the bridge, or add, remove and list. Stdout is the MCP stream, so the printer is not
 // used here: every message for people goes to stderr.
 func runMCP(c *invocation, args []string) int {
 	if len(args) > 0 {
-		return c.p.Fail(ExitUsage, "usage", "unexpected argument: "+args[0], "usage: sprixel mcp")
+		return runMCPSetup(c, args)
 	}
 	b := bridge.New(bridge.Config{
 		Dir:   c.dir,
