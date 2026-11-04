@@ -304,6 +304,12 @@ commands.push(
     group: "editor",
     shortcut: "Shift+A",
   },
+  {
+    id: "view.background",
+    labelKey: "command.view.background",
+    group: "editor",
+    shortcut: "Shift+B",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);

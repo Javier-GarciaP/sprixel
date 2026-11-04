@@ -11,3 +11,9 @@ export type {
 export { chosenTag, rangeOf } from "./animation";
 export { useFramesInfo } from "./useFramesInfo";
 export { PreviewPanel, type Clock } from "./PreviewPanel";
+export {
+  backgroundStyle,
+  nextBackground,
+  previewBackgrounds,
+  type PreviewBackground,
+} from "./background";

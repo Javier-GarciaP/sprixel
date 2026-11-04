@@ -5,6 +5,8 @@ import {
   FramesColumn,
   PreviewPanel,
   chosenTag,
+  nextBackground,
+  type PreviewBackground,
   coreFramesApi,
   rangeOf,
   useFramesInfo,
@@ -37,6 +39,7 @@ import { SelectionBar } from "./SelectionBar";
 import { OutlinePanel } from "./OutlinePanel";
 import { ShadePanel } from "./ShadePanel";
 import { ReviewPanel } from "./ReviewPanel";
+import { PreviewTools } from "./PreviewTools";
 import { AnchorLabels } from "./AnchorLabels";
 import { AnchorPanel, type AnchorTarget } from "./AnchorPanel";
 import { anchorAt, effectiveAnchors, keyOf, sameKey } from "../tools/anchors";
@@ -317,6 +320,8 @@ function Ready(props: ReadyProps) {
   const [selection, setSelection] = useState<Rect | null>(null);
   const selectionRef = useRef<Rect | null>(null);
   const [wrap, setWrap] = useState(false);
+  // What shows behind the transparent pixels of the preview.
+  const [background, setBackground] = useState<PreviewBackground>("checker");
   // The panel with a preview that is open, and the pixels it shows.
   const [panel, setPanel] = useState<"outline" | "shade" | "review" | null>(
     null,
@@ -635,6 +640,7 @@ function Ready(props: ReadyProps) {
     "selection.moveUp": () => nudge(0, -1),
     "selection.moveDown": () => nudge(0, 1),
     "selection.wrap": () => setWrap((on) => !on),
+    "view.background": () => setBackground(nextBackground),
     "draw.symmetry": () => props.onSymmetry(nextSymmetry(props.symmetry)),
     "edit.outline": () =>
       setPanel((now) => (now === "outline" ? null : "outline")),
@@ -885,13 +891,20 @@ function Ready(props: ReadyProps) {
       </section>
       <RightPanel
         preview={
-          <PreviewPanel
-            api={props.framesApi}
-            sprite={sprite}
-            info={framesInfo}
-            tag={chosenTag(tags, animation)}
-            clock={props.clock}
-          />
+          <>
+            <PreviewPanel
+              api={props.framesApi}
+              sprite={sprite}
+              info={framesInfo}
+              tag={chosenTag(tags, animation)}
+              clock={props.clock}
+              background={background}
+            />
+            <PreviewTools
+              background={background}
+              onBackground={setBackground}
+            />
+          </>
         }
         agent={writing ? agentText : null}
         palette={
