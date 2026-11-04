@@ -30,9 +30,15 @@ type Props = {
   tags: Tag[];
   animation: string | null;
   onAnimation: (animation: string | null) => void;
+  // The play button of a group: choose that animation and play it. Without it
+  // the button only chooses the animation.
+  onPlay?: (animation: string) => void;
   // The own duration of each frame (the default means none of its own).
   durations?: number[];
 };
+
+// Above this many frames the groups start closed.
+export const COLLAPSE_ABOVE = 40;
 
 const button =
   "flex h-7 flex-1 items-center justify-center rounded border border-border bg-surface text-sm text-text hover:bg-surface-2";
@@ -50,13 +56,15 @@ export function FramesColumn({
   tags,
   animation,
   onAnimation,
+  onPlay,
   durations = [],
 }: Props) {
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
   const { groups, overlaps } = groupsOf(tags, frameCount);
   // Groups the person closed (true) or opened (false). Without a choice, all
-  // groups are open.
+  // groups are open, except in a long sprite (more than COLLAPSE_ABOVE
+  // frames), where all start closed so the strip stays short.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
 
   const [menu, setMenu] = useState<{
@@ -74,6 +82,7 @@ export function FramesColumn({
   const [dialog, setDialog] = useState<
     { kind: "new" } | { kind: "rename"; name: string } | null
   >(null);
+  const spriteKey = JSON.stringify([...sprite.folder, sprite.name]);
   const names = tags.map((tag) => tag.name);
   const menuTag = tags.find((tag) => tag.name === groupMenu?.name);
   const menuSize = menuTag ? menuTag.to - menuTag.from + 1 : 0;
@@ -191,7 +200,8 @@ export function FramesColumn({
         </p>
       )}
       {groups.map((group) => {
-        const open = !closed[group.id];
+        const key = `${spriteKey}|${group.id}`;
+        const open = !(closed[key] ?? frameCount > COLLAPSE_ABOVE);
         return (
           <section
             key={group.id}
@@ -205,8 +215,10 @@ export function FramesColumn({
               group={group}
               open={open}
               chosen={group.tag?.name === animation}
-              onToggle={() => setClosed({ ...closed, [group.id]: open })}
-              onPlay={() => group.tag && onAnimation(group.tag.name)}
+              onToggle={() => setClosed({ ...closed, [key]: open })}
+              onPlay={() =>
+                group.tag && (onPlay ?? onAnimation)(group.tag.name)
+              }
               onMenu={(box) =>
                 group.tag &&
                 setGroupMenu({

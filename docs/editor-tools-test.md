@@ -125,6 +125,24 @@ Open the palette editor (click the palette, or the pencil in the palette panel).
 | 9.1 | Ask an agent to draw on the frame you have open, and press a selection button while it draws | A message says an agent is drawing. Nothing changes |
 | 9.2 | Open the Outline panel while the agent draws and press Apply | The panel shows the same message |
 
+## 10. Animations in the frames strip
+
+Use a sprite with a base frame and about 8 frames. Linux only.
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 10.1 | Click **New animation…**, type "walk", frames 4, speed 8, then Create | A **walk** group appears with 4 new frames that look like frame 1. One Undo removes the group and the frames |
+| 10.2 | Create a second animation called "WALK" | The dialog says the name is already used and the button stays off |
+| 10.3 | Create "jump" with mode **Once** | A **jump** group appears after walk. The **Base** group is first |
+| 10.4 | Hover each button of a header (arrow, play, menu) | A tooltip shows its name |
+| 10.5 | Click the arrow of a header | Its frames hide. Every header keeps the same height and order; only the frames below it move up |
+| 10.6 | Click the play button of **jump** | The preview plays only the frames of jump, then stops (mode Once) |
+| 10.7 | Open the header menu of walk and choose **Rename…**, then "stroll" | The group shows the new name. One Undo brings "walk" back |
+| 10.8 | Open the menu and choose **Duplicate** | A "stroll copy" group appears with the same frames. One Undo |
+| 10.9 | Open the menu and choose **Delete animation (keep frames)** | The group is gone; its frames stay in the strip. One Undo |
+| 10.10 | Open the menu and choose **Delete animation and its frames** | The group and its frames are gone and the later animations follow their frames. One Undo |
+| 10.11 | Make a sprite of 41 frames or more with an animation | The groups start closed and show only the frame count. The arrow opens one |
+
 ## Notes
 
 Write here what failed (number, what you saw):

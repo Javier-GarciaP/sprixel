@@ -16,6 +16,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The frames strip is grouped by animation: a collapsible header for each one
+  (name, speed, how it ends, play and a menu to rename, duplicate or delete it
+  with or without its frames), a Base group first and a No animation group
+  last. "New animation…" copies the base frame. Groups start closed above 40
+  frames. Every action is one step of Undo.
 - Power tools for people in the editor, the same ones the AI has: a selection
   bar (flip, rotate, mirror a half, move with the arrow keys and wrap), copy
   and paste between frames and sprites, a symmetry mode with the axis on the

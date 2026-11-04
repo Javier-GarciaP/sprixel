@@ -34,6 +34,8 @@ type Props = {
   clock?: Clock;
   // What shows behind the transparent pixels.
   background?: PreviewBackground;
+  // Grows each time a group asks to be played: the preview starts playing.
+  playToken?: number;
 };
 
 // A small canvas that plays the animation, or all the frames, with play and
@@ -46,6 +48,7 @@ export function PreviewPanel({
   tag,
   clock = screenClock,
   background = "checker",
+  playToken = 0,
 }: Props) {
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
@@ -98,6 +101,11 @@ export function PreviewPanel({
     setShown(from);
     setPlaying(false);
   }, [from, to]);
+
+  // After the effect above, so a new range plays from its first frame.
+  useEffect(() => {
+    if (playToken > 0) setPlaying(true);
+  }, [playToken]);
 
   useEffect(() => {
     if (!playing || steps.length === 0) return;
