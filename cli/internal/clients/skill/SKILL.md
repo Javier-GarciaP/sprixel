@@ -116,7 +116,7 @@ frame 2
 
 For a game engine, a sprite can carry more than pixels:
 
-- Animations: `create_animation` makes a named animation from the base frame; `duplicate_animation`, `rename_animation`, `delete_animation` (`with_frames` also deletes its frames) and `move_frame` organize them. An animation never shares a frame with another one (`animation_overlap`). Read the guide `animations-from-base`.
+- Animations: `create_animation` makes a named animation from the base frame; `duplicate_animation`, `rename_animation`, `delete_animation` (`with_frames` also deletes its frames) and `move_frame` organize them. An animation never shares a frame with another one (`animation_overlap`). `set_part` names a rectangle (head, tail) and `transform_region` and `copy_region` accept it as `part`. Read the guide `animations-from-base`.
 - `set_frame_duration`: how long one frame lasts, in milliseconds (10 to 10000), or `null` to follow the animation speed. `get_sprite` lists them in `frame_durations` (`null` = follows the animation speed).
 - `set_anchor` and `remove_anchor`: named points such as feet or hand (`x`, `y`, and an optional `frame`). `get_sprite` lists the `anchors`. The `export` JSON gives them to the game.
 - `resize_sprite`: changes the canvas size (1 to 512 per side; `anchor` says where the drawing stays, `center` by default). Anchors move with the drawing; the ones that end outside are removed and listed in the answer.

@@ -17,4 +17,4 @@
 ## 3. Parts (phase 2, agent A after 1.5)
 
 - [x] 3.1 Add the optional `parts` list to the model, the operations, the file (optional field, `format_version` note) and verify old projects open
-- [ ] 3.2 Add `set_part`, `remove_part` and `part` in the region tools, update the guide and skill; verify
+- [x] 3.2 Add `set_part`, `remove_part` and `part` in the region tools, update the guide and skill; verify

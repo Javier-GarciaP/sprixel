@@ -238,7 +238,7 @@ A sprite has a base frame and several named animations. Each animation owns its 
 \n\
 1. Draw the base first: frame 1, the sprite at rest, finished (shape, colors, outline). Everything else is made from it.\n\
 2. One animation per action. Call `create_animation` with `sprite`, `name` (idle, walk, attack), `frames` and `fps`. It copies the base `frames` times at the end of the sprite and tags the copies, in one call and one Undo step, with no pixels sent. `base_frame` copies another frame; `mode` is loop, once or pingpong.\n\
-3. Change only what moves. In the frames of the animation use `transform_region` and `copy_region` with `frames` (a list like [8, 9] or a range as text like \"8-13\"): the same region and operation on every frame in ONE step. For a different pose per frame use `apply_grid` with `x`, `y` and `frame` on the part that moves.\n\
+3. Change only what moves. In the frames of the animation use `transform_region` and `copy_region` with `frames` (a list like [8, 9] or a range as text like \"8-13\"): the same region and operation on every frame in ONE step. To move a body part again and again, name it once with `set_part` (head, tail) and send `part` instead of `region`. For a different pose per frame use `apply_grid` with `x`, `y` and `frame` on the part that moves.\n\
 4. Look at each animation. `render_frames` with `from`, `to` and `labels` shows its frames in one image; `render_onion` shows the movement. Fix what looks wrong before the next animation.\n\
 5. Variants and fixes. `duplicate_animation` copies an animation under a new name (a fast walk); `rename_animation` renames; `delete_animation` removes the name and keeps the frames, unless `with_frames` is true; `move_frame` puts a frame in another place and the animations follow their frames.\n\
 6. Errors. `name_exists`: the animation name is used (names ignore case). `animation_overlap`: the frames belong to another animation; use `at` to place the new frames after it, or `create_tag` on frames that belong to none.\n\
@@ -248,9 +248,10 @@ A sprite has a base frame and several named animations. Each animation owns its 
 \n\
 Example: a walk with 6 frames, then an attack.\n\
 1. `create_animation` {\"sprite\":\"goat\",\"name\":\"walk\",\"frames\":6,\"fps\":10}\n\
-2. `transform_region` {\"name\":\"goat\",\"frames\":\"3-5\",\"region\":{\"x\":20,\"y\":4,\"width\":12,\"height\":10},\"operation\":\"move\",\"dx\":0,\"dy\":1}\n\
-3. `render_frames` {\"name\":\"goat\",\"from\":2,\"to\":7,\"labels\":true}, and LOOK at it.\n\
-4. `create_animation` {\"sprite\":\"goat\",\"name\":\"attack\",\"frames\":4,\"fps\":12,\"mode\":\"once\"}"
+2. `set_part` {\"sprite\":\"goat\",\"name\":\"head\",\"x\":20,\"y\":4,\"width\":12,\"height\":10}\n\
+3. `transform_region` {\"name\":\"goat\",\"frames\":\"3-5\",\"part\":\"head\",\"operation\":\"move\",\"dx\":0,\"dy\":1}\n\
+4. `render_frames` {\"name\":\"goat\",\"from\":2,\"to\":7,\"labels\":true}, and LOOK at it.\n\
+5. `create_animation` {\"sprite\":\"goat\",\"name\":\"attack\",\"frames\":4,\"fps\":12,\"mode\":\"once\"}"
 );
 
 /// How to choose and build the colors. Also available as the topic `palette`.
@@ -565,7 +566,7 @@ Tools guide: which tool for which job\n\
 2. See: `render_preview` (one frame), `render_frames` (many frames, `labels`), `render_onion` (the movement), `render_tiled` (a tile 3 by 3), `open_sprite` (shows a sprite to the person). Every pixel write also returns an image.\n\
 3. Create: `create_folder`, `create_sprite` (`own_palette` for a palette of its own), `add_frame` (`copy_of` copies a frame), `delete_frame`, `delete_sprite`, `resize_sprite` (change the canvas size, with an `anchor` for where the drawing stays).\n\
 4. Draw: `apply_grid` (a frame or a region from text; best for shapes), `set_pixels` (single pixels), `draw_shape` (line, rectangle, ellipse, fill). `symmetry` and `only_over` work on all three.\n\
-5. Edit: `transform_region` (flip, mirror, move, rotate), `copy_region` (copy to another place, frame or sprite; both take `frames` to change many frames in one step), `import_reference` (a PNG from `references/`).\n\
+5. Edit: `set_part` and `remove_part` (name a rectangle such as head; then use `part` instead of `region`), `transform_region` (flip, mirror, move, rotate), `copy_region` (copy to another place, frame or sprite; both take `frames` to change many frames in one step), `import_reference` (a PNG from `references/`).\n\
 6. Finish: `auto_outline` when the shape is done, `auto_shade` for lit and shadow tones.\n\
 7. Check: `analyze_sprite` (loose pixels, outline gaps, unused colors, what changes between frames), `check_tile` (seams of a tile).\n\
 8. Colors: `set_palette_color`, `generate_ramp`, `create_palette`, `set_sprite_palette`, `remove_unused_colors`.\n\
@@ -613,6 +614,8 @@ Example calls (the tool, then its arguments as JSON; change the names and number
 `rename_animation` {\"sprite\":\"walker\",\"name\":\"walk-fast\",\"new_name\":\"run\"}\n\
 `delete_animation` {\"sprite\":\"walker\",\"name\":\"run\",\"with_frames\":true}\n\
 `move_frame` {\"name\":\"walker\",\"from\":5,\"to\":2}\n\
+`set_part` {\"sprite\":\"walker\",\"name\":\"head\",\"x\":2,\"y\":0,\"width\":6,\"height\":5}\n\
+`remove_part` {\"sprite\":\"walker\",\"name\":\"head\"}\n\
 `create_tag` {\"sprite\":\"walker\",\"name\":\"walk\",\"from\":1,\"to\":4,\"fps\":10,\"mode\":\"loop\"}\n\
 `set_frame_duration` {\"name\":\"walker\",\"frame\":2,\"milliseconds\":80}\n\
 `set_anchor` {\"sprite\":\"walker\",\"name\":\"feet\",\"x\":4,\"y\":9}\n\
