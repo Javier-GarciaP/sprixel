@@ -17,6 +17,7 @@
 - [Text view](#text-view)
 - [Work with an AI](#work-with-an-ai)
 - [Export](#export)
+- [Power tools](#power-tools)
 - [Settings](#settings)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [The `sprixel` command](#the-sprixel-command)
@@ -256,6 +257,7 @@ name and key.
 | Ellipse | `C` |
 | Select | `M` |
 | Move | `V` |
+| Anchor | `A` |
 
 - **Pencil** and **Eraser** paint or clear the pixels you touch, with no gaps,
   even if you move the mouse fast.
@@ -268,6 +270,7 @@ name and key.
   draw when you let go. Hold `Shift` for a line in 45-degree steps, a square or
   a circle. Rectangle and Ellipse can be **Outline** or **Filled** (the switch
   appears above the canvas).
+- **Anchor** puts a named point on the sprite (see [Power tools](#power-tools)).
 - **Select** chooses a rectangle (click without dragging to clear it).
   **Move** drags the selected pixels, or the whole frame when nothing is
   selected. What leaves the canvas is cut off.
@@ -463,6 +466,66 @@ Open the **Export** tab and follow the three steps:
 Press **Export**. When it finishes, press **Open folder**. The files are
 described in the [export format](export-format.md).
 
+## Power tools
+
+These are the tools an AI agent has, for you. Every action is one step of
+Undo. All the keys are in [Keyboard shortcuts](#keyboard-shortcuts).
+
+### Selection
+
+Choose a rectangle with **Select**. A bar shows its size and these buttons: flip
+horizontally or vertically, rotate 90 degrees left or right or 180, mirror a
+half onto the other half, **Copy** and **Paste**. A rotation of 90 degrees needs
+a square selection. The arrow keys move the pixels inside the selection one
+pixel; with **Wrap** on, what leaves one side comes back on the other. With
+nothing selected, the actions work on the whole frame.
+
+Copy a region and paste it in any frame, or in another sprite that uses the
+same palette. If the palette is different, a message says so and nothing
+changes. The pasted piece becomes the selection, so you can move it.
+
+### Symmetry
+
+The **Symmetry** switch above the canvas draws everything mirrored: horizontal
+(left to right), vertical (top to bottom) or both. A dashed line shows the axis,
+which is the center of the sprite. It works with the Pencil, Eraser, Line,
+Rectangle, Ellipse and Bucket. A mirrored stroke is one step of Undo.
+
+### Outline, Shade and Review
+
+- **Outline...** draws a one pixel outline with a color you choose (4 or 8
+  neighbors, skip the holes, or draw inside the shape).
+- **Shade...** shades the pixels of a base color with a ramp of tones for a
+  direction of light. It can work only inside the selection.
+- Both panels show a **preview** on the canvas. Nothing is saved until you press
+  **Apply**; **Cancel** and `Escape` change nothing.
+- **Review sprite** lists loose pixels, gaps in the outline (choose the outline
+  color), colors that nothing uses and how each frame differs from the next.
+  Click a pixel in the list and the canvas marks it.
+
+### Palette tools
+
+In the palette editor: **Generate ramp** makes tones of one color (3 to 9 steps
+and a hue shift) with a preview, and **Remove unused colors** lists the colors
+no sprite uses and asks before it removes them. Both work on the saved palette,
+so press Done first if you edited a color.
+
+### Frame duration and anchors
+
+Under each frame you can type how long it lasts, in milliseconds (10 to 10000).
+An empty box means the speed of its animation decides; the box then shows that
+time. The **Anchor** tool puts named points (for example `feet` or `hand`) on
+the sprite or on one frame: click an empty pixel to make one, drag one to move
+it, and rename or delete it in the panel. A game reads them from the sprite
+sheet JSON.
+
+### Preview tools
+
+Under the preview: the background (checker, light or dark), a **Tile preview**
+that repeats the frame 3 times on each side and warns if the edges do not match,
+and in the onion skin panel the number of previous frames (1 to 3), older ones
+fainter.
+
 ## Settings
 
 Open **Settings** from the bottom left corner of the window. It has two pages.
@@ -515,11 +578,13 @@ On macOS use `Cmd` instead of `Ctrl`. The same list is in
 | Ellipse | `C` |
 | Select | `M` |
 | Move | `V` |
+| Anchor | `A` |
 
 **Editor and view**
 
 | Command | Shortcut |
 | --- | --- |
+| Swap colors | `X` |
 | Undo | `Ctrl+Z` |
 | Redo | `Ctrl+Shift+Z` |
 | Previous frame | `,` |
@@ -529,7 +594,27 @@ On macOS use `Cmd` instead of `Ctrl`. The same list is in
 | Fit to window | `Ctrl+0` |
 | Move the view | `Space` |
 | Onion skin | `O` |
-| Swap colors | `X` |
+| Flip horizontally | `H` |
+| Flip vertically | `Shift+H` |
+| Rotate 90° right | `Shift+R` |
+| Rotate 180° | `Shift+U` |
+| Rotate 90° left | `Shift+L` |
+| Mirror the left half onto the right | `Shift+M` |
+| Mirror the top half onto the bottom | `Shift+N` |
+| Move the selection left | `←` |
+| Move the selection right | `→` |
+| Move the selection up | `↑` |
+| Move the selection down | `↓` |
+| Wrap around when moving | `W` |
+| Copy | `Ctrl+C` |
+| Paste | `Ctrl+V` |
+| Symmetry mode | `S` |
+| Outline... | `Shift+O` |
+| Shade... | `Shift+S` |
+| Review sprite | `Shift+A` |
+| Preview background | `Shift+B` |
+| Tile preview | `T` |
+| Onion skin frames | `Shift+F` |
 
 The project menu (click the project name) has these commands: New project, Open, Open recent, Rename project, Save a copy as, Show
 in folder, Export and Close project. There is no Save command because the

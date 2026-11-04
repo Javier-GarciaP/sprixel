@@ -9,6 +9,15 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Power tools for people in the editor, the same ones the AI has: a selection
+  bar (flip, rotate, mirror a half, move with the arrow keys and wrap), copy
+  and paste between frames and sprites, a symmetry mode with the axis on the
+  canvas, Outline and Shade panels with a live preview, a Review panel that
+  marks loose pixels and outline gaps, Generate ramp and Remove unused colors
+  in the palette editor, a duration for each frame, anchors with the Anchor
+  tool, a preview background (checker, light, dark), a 3x3 tile preview with a
+  seam warning and an onion skin of up to 3 frames. Every action is one step of
+  Undo. `docs/editor-tools-test.md` is the manual test page.
 - Richer guides for the AI: `get_guide` has five new topics (`large-sprites`,
   `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`, a
   map of which tool to use for what). Each one has a worked example, and the

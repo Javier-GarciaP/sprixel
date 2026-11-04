@@ -49,4 +49,4 @@
 
 ## 10. Manual test page and end
 
-- [ ] 10.1 Write `docs/editor-tools-test.md` and `CHANGELOG.md` lines, run all checks and `npx openspec validate --all --strict`
+- [x] 10.1 Write `docs/editor-tools-test.md` and `CHANGELOG.md` lines, run all checks and `npx openspec validate --all --strict`
