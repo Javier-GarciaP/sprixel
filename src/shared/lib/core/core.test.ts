@@ -23,6 +23,7 @@ import {
   projectUndo,
   renameFolder,
   renameSprite,
+  resizeSprite,
   spriteFrame,
 } from ".";
 
@@ -78,6 +79,22 @@ describe("core api", () => {
     expect(invoke).toHaveBeenNthCalledWith(3, "create_folder", {
       parent: [],
       name: "Enemigos",
+    });
+  });
+
+  // Checks that the canvas change uses the argument names of the Rust command.
+  it("calls resize_sprite", async () => {
+    insideApp();
+    invoke.mockResolvedValue(null);
+
+    await resizeSprite(["A"], "goblin", 24, 8, "bottom-right");
+
+    expect(invoke).toHaveBeenCalledWith("resize_sprite", {
+      folder: ["A"],
+      name: "goblin",
+      width: 24,
+      height: 8,
+      anchor: "bottom-right",
     });
   });
 

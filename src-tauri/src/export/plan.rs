@@ -19,6 +19,27 @@ pub enum Format {
     PngFiles,
 }
 
+/// The layout of the JSON file of the sheet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum JsonFormat {
+    /// The Sprixel layout (`docs/export-format.md`).
+    #[default]
+    Sprixel,
+    /// The array form of the Aseprite sprite sheet, read by the importers of
+    /// Godot and Unity.
+    Aseprite,
+}
+
+impl JsonFormat {
+    pub fn parse(text: &str) -> Option<JsonFormat> {
+        match text {
+            "sprixel" => Some(JsonFormat::Sprixel),
+            "aseprite" => Some(JsonFormat::Aseprite),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Options {
     /// 1, 2, 4 or 8.
@@ -27,11 +48,12 @@ pub struct Options {
     pub spacing: u32,
     /// The pattern of the frame names. `{sprite}`, `{animation}` and `{frame}`.
     pub naming: String,
+    pub json_format: JsonFormat,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Options { scale: 1, spacing: 0, naming: DEFAULT_NAMING.to_string() }
+        Options { scale: 1, spacing: 0, naming: DEFAULT_NAMING.to_string(), json_format: JsonFormat::default() }
     }
 }
 

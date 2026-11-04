@@ -88,6 +88,7 @@ function Export({
     scale: 1,
     spacing: 1,
     naming: null,
+    jsonFormat: "sprixel",
   });
   const [output, setOutput] = useState(DEFAULT_OUTPUT);
   const [summary, setSummary] = useState<Summary | null>(null);

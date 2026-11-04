@@ -165,6 +165,19 @@ pub fn create_sprite(
 }
 
 #[tauri::command]
+pub fn resize_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    width: u32,
+    height: u32,
+    anchor: String,
+) -> Result<(), CoreError> {
+    finish(&app, browser::resize_sprite(&state, &folder, &name, width, height, &anchor))
+}
+
+#[tauri::command]
 pub fn create_folder(
     app: tauri::AppHandle,
     state: tauri::State<ProjectState>,

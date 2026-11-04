@@ -225,7 +225,7 @@ selected and no sprite, `F2` renames the folder and `Delete` asks to delete it.
 1. In the **Project** tab, press **New sprite**.
 2. Type a name and choose a folder. The dialog starts on the folder you have
    open.
-3. Choose the canvas size once: a preset (8x8, 16x16, 32x32, 64x64) or any width
+3. Choose the canvas size: a preset (8x8, 16x16, 32x32, 64x64) or any width
    and height from 1 to 512, for example 120x30. Typing a size clears the
    preset. From 128 pixels on, a warning says that drawing with an AI is less
    accurate and the editor can be slower, but you can still create it.
@@ -238,8 +238,22 @@ The name must not be empty, must be valid as a file name and must not be used
 by another sprite or folder in that folder (ignoring case). If it is not, the
 field turns red with the reason and **Create sprite** stays disabled.
 
+The size can be changed later only on purpose: select the sprite and press
+**Change canvas…** in the details panel (see [Change the canvas](#change-the-canvas)).
+
 Use folders to keep things in order (characters, enemies, items). See [The
 Project tab](#the-project-tab) to rename, duplicate, move and delete.
+
+### Change the canvas
+
+Select a sprite in the Project tab and press **Change canvas…**. Type the new
+width and height (1 to 512) and choose where the drawing stays with the nine
+squares (for example **Center** adds the same space on every side, **Top
+left** adds it to the right and bottom). Every frame and layer is cropped or
+extended with transparent pixels. Anchors such as `feet` move with the drawing;
+those that end outside the new canvas are removed. It is one step: **Undo**
+(Ctrl+Z) brings the old size, the pixels and the anchors back. An AI can do the
+same with the tool `resize_sprite`.
 
 ## Draw
 
@@ -460,8 +474,10 @@ Open the **Export** tab and follow the three steps:
    - **Single PNG files:** one image per frame.
    - **GIF:** an animated GIF per animation (planned: it comes after the
      first demo).
-3. **Options:** scale (1x to 8x), spacing between frames, and the folder to
-   save in (inside the project, `assets/sprites` by default).
+3. **Options:** scale (1x to 8x), spacing between frames, the **JSON format**
+   (**Sprixel**, or **Aseprite** for the importers of Godot and Unity), and the
+   folder to save in (inside the project, `assets/sprites` by default). To use
+   the files in an engine, read [Game engines](game-engines.md).
 
 Press **Export**. When it finishes, press **Open folder**. The files are
 described in the [export format](export-format.md).

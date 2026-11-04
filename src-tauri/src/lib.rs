@@ -95,6 +95,7 @@ pub fn run() {
             ipc::sprite_frame,
             ipc::check_name,
             ipc::create_sprite,
+            ipc::resize_sprite,
             ipc::create_folder,
             ipc::rename_sprite,
             ipc::rename_folder,

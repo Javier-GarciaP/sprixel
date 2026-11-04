@@ -13,6 +13,7 @@ import {
   projectUndo,
   renameFolder,
   renameSprite,
+  resizeSprite,
   spriteFrame,
   type FolderNode,
   type ProjectTree,
@@ -36,6 +37,7 @@ import { NewSpriteDialog } from "./NewSpriteDialog";
 import { PaletteList } from "./PaletteList";
 import { BrowserIcon } from "./icons";
 import { RenameDialog } from "./RenameDialog";
+import { ResizeDialog } from "./ResizeDialog";
 import { SelectionBar } from "./SelectionBar";
 import { SelectionDetails } from "./SelectionDetails";
 import { SearchResultsList } from "./SearchResultsList";
@@ -84,6 +86,7 @@ type Dialog =
   | { kind: "folder"; thenMove?: SpriteSummary[] }
   | { kind: "rename-sprite"; sprite: SpriteTarget }
   | { kind: "rename-folder"; path: string[] }
+  | { kind: "resize-sprite"; sprite: SpriteSummary }
   | { kind: "delete-folder"; path: string[] }
   | { kind: "delete-sprites"; sprites: SpriteSummary[] };
 
@@ -608,6 +611,9 @@ function Browser({
               onOpen={open}
               onRename={askRename}
               onDuplicate={duplicate}
+              onResize={(sprite) =>
+                setDialog({ kind: "resize-sprite", sprite })
+              }
               onDelete={(sprite) => trash([sprite])}
               moveItems={moveMenuItems(selected, {
                 actions: spriteActions,
@@ -646,6 +652,21 @@ function Browser({
           parent={dialog.sprite.folder}
           name={dialog.sprite.name}
           rename={(newName) => doRenameSprite(dialog.sprite, newName)}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "resize-sprite" && (
+        <ResizeDialog
+          sprite={dialog.sprite}
+          resize={(width, height, anchor) =>
+            resizeSprite(
+              dialog.sprite.folder,
+              dialog.sprite.name,
+              width,
+              height,
+              anchor,
+            )
+          }
           onClose={() => setDialog(null)}
         />
       )}

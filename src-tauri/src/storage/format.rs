@@ -13,12 +13,28 @@ pub struct Manifest {
     pub active_palette: Option<String>,
 }
 
+/// Files without a `formatVersion` are the first ones: version 1.
+fn first_version() -> u32 {
+    1
+}
+
+impl SpriteFile {
+    /// Fills what the first files did not have: 100 ms for every frame.
+    fn fill_old_defaults(&mut self) {
+        if self.frame_durations.is_empty() {
+            let frames = self.layers.first().map_or(0, |l| l.frames.len());
+            self.frame_durations = vec![crate::document::DEFAULT_FRAME_MS; frames];
+        }
+    }
+}
+
 // The structs below are the shape of the JSON files. Their field order is
 // the order in the files, so writing is always the same.
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ManifestFile {
+    #[serde(default = "first_version")]
     format_version: u32,
     name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -28,6 +44,7 @@ struct ManifestFile {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PaletteFile {
+    #[serde(default = "first_version")]
     format_version: u32,
     colors: Vec<ColorFile>,
 }
@@ -42,10 +59,13 @@ struct ColorFile {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SpriteFile {
+    #[serde(default = "first_version")]
     format_version: u32,
     width: u32,
     height: u32,
     palette: String,
+    /// The first files had no durations: they get 100 ms per frame.
+    #[serde(default)]
     frame_durations: Vec<u32>,
     layers: Vec<LayerFile>,
     tags: Vec<TagFile>,
@@ -175,7 +195,8 @@ pub fn sprite_to_text(sprite: &Sprite) -> String {
 /// The sprite name is the name of its file, so it is given here. The sprite
 /// is checked against its palette, so a file that breaks a rule is refused.
 pub fn sprite_from_text(name: &str, text: &str, palette: &Palette) -> Result<Sprite, String> {
-    let file: SpriteFile = from_text(text)?;
+    let mut file: SpriteFile = from_text(text)?;
+    file.fill_old_defaults();
     if file.palette.to_lowercase() != palette.name.to_lowercase() {
         return Err(format!(
             "the sprite uses palette {:?}, not {:?}",
@@ -272,10 +293,11 @@ fn from_text<T: for<'de> Deserialize<'de>>(text: &str) -> Result<T, String> {
 
 /// The `formatVersion` of a parsed file.
 pub(super) fn version_of(value: &Value) -> Result<u32, String> {
-    let version = value
-        .get("formatVersion")
-        .and_then(Value::as_u64)
-        .ok_or("the file has no formatVersion")?;
+    // The first files had no `formatVersion`: they are version 1.
+    let Some(version) = value.get("formatVersion") else {
+        return Ok(1);
+    };
+    let version = version.as_u64().ok_or("formatVersion must be a whole number")?;
     Ok(u32::try_from(version).unwrap_or(u32::MAX))
 }
 
@@ -289,7 +311,11 @@ pub(super) fn canonical_text(kind: FileKind, value: Value) -> Result<String, Str
     match kind {
         FileKind::Manifest => rewrite::<ManifestFile>(value),
         FileKind::Palette => rewrite::<PaletteFile>(value),
-        FileKind::Sprite => rewrite::<SpriteFile>(value),
+        FileKind::Sprite => {
+            let mut file: SpriteFile = serde_json::from_value(value).map_err(|e| e.to_string())?;
+            file.fill_old_defaults();
+            Ok(to_text(&file))
+        }
     }
 }
 

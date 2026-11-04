@@ -17,6 +17,7 @@ mod edit;
 mod export;
 pub(crate) mod gamedata;
 pub(crate) mod palettes;
+mod resize;
 mod projects;
 mod read;
 mod reference;
@@ -49,6 +50,7 @@ pub fn all() -> Vec<Tool> {
     tools.extend(palettes::tools());
     tools.extend(export::tools());
     tools.extend(gamedata::tools());
+    tools.extend(resize::tools());
     tools.extend(undo::tools());
     tools
 }
@@ -103,6 +105,12 @@ mod preview_tests;
 
 #[cfg(test)]
 mod gamedata_tests;
+
+#[cfg(test)]
+mod resize_tests;
+
+#[cfg(test)]
+mod engines_docs_tests;
 
 #[cfg(test)]
 mod analysis_tests;

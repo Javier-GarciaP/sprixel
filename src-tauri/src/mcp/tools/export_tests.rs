@@ -162,3 +162,30 @@ fn export_errors_are_clear() {
     assert_eq!(run(json!({ "format": "gif" })), "bad_argument");
     assert!(!root(&host).join("assets").exists(), "a failed export leaves no folder behind");
 }
+
+// Checks the `json_format` argument: `aseprite` writes the Aseprite layout
+// (`frames` is an array with `filename`; `meta.frameTags`), the default is the
+// Sprixel layout, and another name is a `bad_argument`.
+#[test]
+fn json_format_chooses_the_layout_of_the_json() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let read = |done: &serde_json::Value| -> serde_json::Value {
+        let file = done["files"].as_array().unwrap().iter().map(|f| f.as_str().unwrap()).find(|f| f.ends_with(".json")).unwrap();
+        serde_json::from_str(&std::fs::read_to_string(root(&host).join(file)).unwrap()).unwrap()
+    };
+
+    let ase = call(&core, &session, "export", json!({ "scope": "folder", "folder": "Characters", "json_format": "aseprite" })).unwrap();
+    let json = read(&ase);
+    assert!(json["frames"][0]["filename"].is_string(), "{json}");
+    assert!(json["meta"]["frameTags"].is_array());
+
+    let default = call(&core, &session, "export", json!({ "scope": "folder", "folder": "Characters" })).unwrap();
+    let json = read(&default);
+    assert!(json["frames"][0]["frame_number"].is_number(), "{json}");
+    assert!(json["animations"].is_array());
+
+    let error = call(&core, &session, "export", json!({ "json_format": "hash" })).unwrap_err();
+    assert_eq!(error["code"], "bad_argument");
+    assert_eq!(error["argument"], "json_format");
+}

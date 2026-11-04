@@ -146,3 +146,48 @@ fn frames_list_their_anchors() {
     ]));
     assert_eq!(anchors(3), serde_json::json!([{ "name": "Feet", "x": 2, "y": 2 }]));
 }
+
+fn frames_of(files: &[ExportFile]) -> Vec<serde_json::Value> {
+    let json: serde_json::Value = serde_json::from_str(&json_of(files)).unwrap();
+    json["frames"].as_array().unwrap().clone()
+}
+
+// Checks that `index` is the position in `frames` (from 0, across sprites) and
+// `frame_number` is the number inside the sprite (from 1), so both are there
+// for a reader that needs either one.
+#[test]
+fn frames_have_an_index_and_a_frame_number() {
+    let files = build(&sheet_project(), &Scope::Project, &options(1, 0), "kit").unwrap();
+    let frames = frames_of(&files);
+    let pairs: Vec<(u64, u64)> =
+        frames.iter().map(|f| (f["index"].as_u64().unwrap(), f["frame_number"].as_u64().unwrap())).collect();
+    // blob has 1 frame, hero has 3.
+    assert_eq!(pairs, vec![(0, 1), (1, 1), (2, 2), (3, 3)]);
+}
+
+// Checks that the pivot is the `feet` anchor of the frame (ignoring case, a
+// frame anchor first) multiplied by the scale, and 0,0 with no anchors.
+#[test]
+fn the_pivot_is_the_feet_anchor() {
+    let files = build(&sheet_project(), &Scope::Project, &options(2, 0), "kit").unwrap();
+    let pivots: Vec<(u64, u64)> = frames_of(&files)
+        .iter()
+        .map(|f| (f["pivot"]["x"].as_u64().unwrap(), f["pivot"]["y"].as_u64().unwrap()))
+        .collect();
+    // blob: no anchors. hero 1 and 2: feet 0,1. hero 3: the frame anchor "Feet" 1,1.
+    assert_eq!(pivots, vec![(0, 0), (0, 2), (0, 2), (2, 2)]);
+}
+
+// Checks that without a `feet` anchor the first anchor of the frame (by name) is the pivot.
+#[test]
+fn without_feet_the_first_anchor_is_the_pivot() {
+    let mut p = project();
+    let mut s = sprite("orc", 1);
+    s.anchors = vec![
+        Anchor { name: "hand".to_string(), x: 1, y: 0, frame: None },
+        Anchor { name: "head".to_string(), x: 0, y: 0, frame: None },
+    ];
+    p.root.sprites.push(s);
+    let files = build(&p, &Scope::Project, &options(1, 0), "kit").unwrap();
+    assert_eq!(frames_of(&files)[0]["pivot"], serde_json::json!({ "x": 1, "y": 0 }));
+}

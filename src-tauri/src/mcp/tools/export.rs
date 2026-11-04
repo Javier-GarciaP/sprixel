@@ -6,7 +6,7 @@
 
 use super::args;
 use crate::document::SpriteRef;
-use crate::ipc::export::{self, FormatArg, OptionsArg, ScopeArg};
+use crate::ipc::export::{self, FormatArg, JsonFormatArg, OptionsArg, ScopeArg};
 use crate::mcp::{Ctx, Need, Output, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
@@ -14,7 +14,7 @@ pub fn tools() -> Vec<Tool> {
     vec![Tool {
         name: "export",
         description: "Exports sprites as files for a game engine, into a folder INSIDE the project (default `assets/sprites`). \
-`format` `sheet` writes one PNG sprite sheet and a JSON file that describes it; `png` writes one PNG file for every frame. \
+`format` `sheet` writes one PNG sprite sheet and a JSON file that describes it (`json_format` `aseprite` writes the Aseprite layout that Godot and Unity importers read); `png` writes one PNG file for every frame. \
 `scope` is `project` (all sprites), `folder` (with `folder`) or `sprites` (with `sprites`, a list of sprite names or paths). \
 The answer lists the files written, as paths from the project folder. Exported files cannot be undone.",
         schema: json!({ "type": "object", "properties": {
@@ -24,6 +24,7 @@ The answer lists the files written, as paths from the project folder. Exported f
             "format": { "type": "string", "enum": ["sheet", "png"], "description": "Default `sheet`." },
             "scale": { "type": "integer", "enum": [1, 2, 4, 8], "description": "Default 1." },
             "spacing": { "type": "integer", "minimum": 0, "maximum": 16, "description": "Pixels between frames in the sheet. Default 0." },
+            "json_format": { "type": "string", "enum": ["sprixel", "aseprite"], "description": "For format `sheet`: the layout of the JSON. `sprixel` (default) or `aseprite`, the Aseprite sprite sheet JSON that the Godot and Unity importers read." },
             "naming": { "type": "string", "description": "The name of each frame. Uses {sprite}, {animation} and {frame}. Default `{sprite}_{animation}_{frame}`." },
             "output": { "type": "string", "description": "A folder inside the project. Default `assets/sprites`." },
         }}),
@@ -58,10 +59,18 @@ fn export(ctx: &Ctx, input: &Value) -> ToolResult {
             return Err(ToolError::new("bad_argument", format!("`format` is {other:?}; use sheet or png")).with("argument", "format"));
         }
     };
+    let json_format = match args::optional_str(input, "json_format")?.unwrap_or("sprixel") {
+        "sprixel" => JsonFormatArg::Sprixel,
+        "aseprite" => JsonFormatArg::Aseprite,
+        other => {
+            return Err(ToolError::new("bad_argument", format!("`json_format` is {other:?}; use sprixel or aseprite")).with("argument", "json_format"));
+        }
+    };
     let options = OptionsArg {
         scale: args::optional_u32(input, "scale")?.unwrap_or(1),
         spacing: args::optional_u32(input, "spacing")?.unwrap_or(0),
         naming: args::optional_str(input, "naming")?.map(str::to_string),
+        json_format,
     };
     let output = args::optional_str(input, "output")?.unwrap_or(crate::export::DEFAULT_OUTPUT);
     check_output(output)?;

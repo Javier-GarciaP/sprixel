@@ -463,6 +463,32 @@ pub fn rename_sprite(
     })
 }
 
+/// Changes the canvas size of a sprite (see `Operation::ResizeSprite`).
+/// `anchor` is one of the nine names, for example `center`.
+pub fn resize_sprite(
+    state: &ProjectState,
+    folder: &[String],
+    name: &str,
+    width: u32,
+    height: u32,
+    anchor: &str,
+) -> Result<((), ChangedEvent), CoreError> {
+    let anchor = crate::document::ResizeAnchor::parse(anchor)
+        .ok_or_else(|| CoreError { code: "bad_argument".to_string(), message: format!("{anchor:?} is not an anchor") })?;
+    change(state, |session| {
+        let touched = session.apply(
+            "user",
+            vec![Operation::ResizeSprite {
+                sprite: SpriteRef { folder: folder.to_vec(), name: name.to_string() },
+                width,
+                height,
+                anchor,
+            }],
+        )?;
+        Ok(((), touched))
+    })
+}
+
 /// Changes the name of a folder. Returns its new path.
 pub fn rename_folder(
     state: &ProjectState,

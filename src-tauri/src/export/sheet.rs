@@ -1,4 +1,4 @@
-use super::plan::{self, ExportFile, Item, Options, Scope};
+use super::plan::{self, ExportFile, Item, JsonFormat, Options, Scope};
 use super::ExportError;
 use crate::document::{Anchor, Project, Sprite};
 use crate::render::{FRAMES_PER_ROW, Image, Placement, pack_rows, render_frame};
@@ -49,6 +49,10 @@ struct Pivot {
 struct JsonFrame {
     name: String,
     sprite: String,
+    /// Position in `frames`, from 0.
+    index: usize,
+    /// Number of the frame inside its sprite, from 1.
+    frame_number: usize,
     frame: Rect,
     /// Milliseconds.
     duration: u32,
@@ -94,6 +98,19 @@ fn frame_anchors(sprite: &Sprite, index: usize, scale: u32) -> Vec<JsonAnchor> {
         .into_iter()
         .map(|a| JsonAnchor { name: a.name.clone(), x: a.x * scale, y: a.y * scale })
         .collect()
+}
+
+/// The pivot of a frame: its `feet` anchor (ignoring case), else its first
+/// anchor, else 0,0. The anchors are already sorted and scaled.
+fn pivot_of(anchors: &[JsonAnchor]) -> Pivot {
+    let found = anchors
+        .iter()
+        .find(|a| a.name.eq_ignore_ascii_case("feet"))
+        .or_else(|| anchors.first());
+    match found {
+        Some(a) => Pivot { x: a.x, y: a.y },
+        None => Pivot { x: 0, y: 0 },
+    }
 }
 
 /// Encodes RGBA pixels as a PNG.
@@ -144,16 +161,38 @@ pub fn build(
     let (sheet, placements) = render_sheet(&items, options);
     let png = encode_png(&sheet)?;
 
+    if options.json_format == JsonFormat::Aseprite {
+        let sprites = plan::sprites_of(project, scope);
+        let text = super::aseprite::json(
+            &items,
+            &placements,
+            &sprites,
+            format!("{name}.png"),
+            (sheet.width, sheet.height),
+            options.scale,
+        )?;
+        return Ok(vec![
+            ExportFile { name: format!("{name}.png"), bytes: png },
+            ExportFile { name: format!("{name}.json"), bytes: text.into_bytes() },
+        ]);
+    }
+
     let frames = items
         .iter()
         .zip(&placements)
-        .map(|(item, at)| JsonFrame {
-            name: item.name.clone(),
-            sprite: item.sprite.name.clone(),
-            frame: Rect { x: at.x, y: at.y, w: at.w, h: at.h },
-            duration: item.duration_ms,
-            pivot: Pivot { x: 0, y: 0 },
-            anchors: frame_anchors(item.sprite, item.index, options.scale),
+        .enumerate()
+        .map(|(position, (item, at))| {
+            let anchors = frame_anchors(item.sprite, item.index, options.scale);
+            JsonFrame {
+                name: item.name.clone(),
+                sprite: item.sprite.name.clone(),
+                index: position,
+                frame_number: item.index + 1,
+                frame: Rect { x: at.x, y: at.y, w: at.w, h: at.h },
+                duration: item.duration_ms,
+                pivot: pivot_of(&anchors),
+                anchors,
+            }
         })
         .collect();
     let mut animations = Vec::new();

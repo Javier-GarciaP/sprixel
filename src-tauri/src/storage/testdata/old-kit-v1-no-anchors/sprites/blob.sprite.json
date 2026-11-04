@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "width": 2,
+  "height": 1,
+  "palette": "main",
+  "frameDurations": [100, 250],
+  "layers": [
+    { "name": "Layer 1", "frames": [ [ "R." ], [ ".R" ] ] }
+  ],
+  "tags": []
+}

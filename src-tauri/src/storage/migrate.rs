@@ -43,11 +43,28 @@ impl Migrator {
         Migrator { steps }
     }
 
+    /// Runs one step per version, in order, until `value` has version
+    /// `target`. A missing step is an error: no version is skipped.
+    pub(super) fn run_steps(&self, value: &mut Value, kind: FileKind, target: u32) -> Result<(), String> {
+        let mut version = version_of(value)?;
+        while version < target {
+            let step = self
+                .steps
+                .iter()
+                .find(|s| s.from == version)
+                .ok_or(format!("no migration from format version {version}"))?;
+            (step.run)(value, kind)?;
+            version += 1;
+            value["formatVersion"] = Value::from(version);
+        }
+        Ok(())
+    }
+
     /// Returns the text of the file in the current version, or `None` if it
     /// already is.
     fn upgrade_text(&self, text: &str, kind: FileKind) -> Result<Option<String>, String> {
         let mut value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
-        let mut version = version_of(&value)?;
+        let version = version_of(&value)?;
         if version == FORMAT_VERSION {
             return Ok(None);
         }
@@ -56,16 +73,7 @@ impl Migrator {
                 "saved with a newer Sprixel (format version {version}); update the app"
             ));
         }
-        while version < FORMAT_VERSION {
-            let step = self
-                .steps
-                .iter()
-                .find(|s| s.from == version)
-                .ok_or(format!("no migration from format version {version}"))?;
-            (step.run)(&mut value, kind)?;
-            version += 1;
-            value["formatVersion"] = Value::from(version);
-        }
+        self.run_steps(&mut value, kind, FORMAT_VERSION)?;
         canonical_text(kind, value).map(Some)
     }
 }

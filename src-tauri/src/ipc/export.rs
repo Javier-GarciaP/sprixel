@@ -6,7 +6,7 @@ use super::browser::CoreError;
 use super::project::{self, ProjectState};
 use crate::document::SpriteRef;
 use crate::export::{
-    self, DEFAULT_NAMING, ExportError, ExportFile, Format, Options, Scope, Summary, Written,
+    self, DEFAULT_NAMING, ExportError, ExportFile, Format, JsonFormat, Options, Scope, Summary, Written,
 };
 use crate::storage::DiskWriter;
 use serde::{Deserialize, Serialize};
@@ -34,11 +34,23 @@ pub enum FormatArg {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OptionsArg {
     pub scale: u32,
     pub spacing: u32,
     /// `None` is the default pattern.
     pub naming: Option<String>,
+    /// Missing means `sprixel`.
+    #[serde(default)]
+    pub json_format: JsonFormatArg,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JsonFormatArg {
+    #[default]
+    Sprixel,
+    Aseprite,
 }
 
 impl ScopeArg {
@@ -71,6 +83,10 @@ impl OptionsArg {
             scale: self.scale,
             spacing: self.spacing,
             naming: self.naming.clone().unwrap_or_else(|| DEFAULT_NAMING.to_string()),
+            json_format: match self.json_format {
+                JsonFormatArg::Sprixel => JsonFormat::Sprixel,
+                JsonFormatArg::Aseprite => JsonFormat::Aseprite,
+            },
         }
     }
 }

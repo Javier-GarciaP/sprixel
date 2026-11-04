@@ -116,6 +116,8 @@ For a game engine, a sprite can carry more than pixels:
 
 - `set_frame_duration`: how long one frame lasts, in milliseconds (10 to 10000), or `null` to follow the animation speed. `get_sprite` lists them in `frame_durations` (`null` = follows the animation speed).
 - `set_anchor` and `remove_anchor`: named points such as feet or hand (`x`, `y`, and an optional `frame`). `get_sprite` lists the `anchors`. The `export` JSON gives them to the game.
+- `resize_sprite`: changes the canvas size (1 to 512 per side; `anchor` says where the drawing stays, `center` by default). Anchors move with the drawing; the ones that end outside are removed and listed in the answer.
+- `export` can write the Aseprite sprite sheet JSON for the Godot and Unity importers (argument json_format set to aseprite). The default JSON also has a pivot per frame, taken from the feet anchor.
 - `check_tile`: for a tile, tells if the opposite edges match and lists the pixels that do not. `render_tiled` shows the tile repeated 3x3 so you can see the seams.
 
 ## Rules

@@ -650,3 +650,34 @@ fn the_root_and_missing_folders_cannot_be_deleted() {
     assert_eq!(delete_folder(&state, &[]).unwrap_err().code, "bad_path");
     assert_eq!(delete_folder(&state, &["Nope".to_string()]).unwrap_err().code, "not_found");
 }
+
+// Checks the "Change canvas" dialog's core call: the goblin (4x4) grows to
+// 6x8 with the anchor `bottom-right`, one history entry (a single undo brings
+// back 4x4), the event says the sprite was touched, and a bad anchor name or
+// size is an error that changes nothing.
+#[test]
+fn resizing_a_sprite_is_one_undoable_change() {
+    let (_dir, state) = sample();
+    let folder = vec!["Personajes".to_string()];
+    let before = edit(&state, |s| s.project.revision).unwrap();
+
+    let ((), event) = resize_sprite(&state, &folder, "goblin", 6, 8, "bottom-right").unwrap();
+
+    assert_eq!(event.touched.len(), 1);
+    let size = |state: &ProjectState| {
+        crate::ipc::project::read(state, |s| {
+            let sprite = s.project.find_sprite(&SpriteRef::new(&["Personajes"], "goblin")).unwrap();
+            (sprite.width, sprite.height)
+        })
+        .unwrap()
+    };
+    assert_eq!(size(&state), (6, 8));
+    edit(&state, |s| s.undo()).unwrap().unwrap();
+    assert_eq!(size(&state), (4, 4));
+
+    for (w, h, anchor) in [(0, 4, "center"), (600, 4, "center"), (8, 8, "middle"), (4, 4, "center")] {
+        assert!(resize_sprite(&state, &folder, "goblin", w, h, anchor).is_err(), "{w}x{h} {anchor}");
+    }
+    assert_eq!(size(&state), (4, 4));
+    assert!(edit(&state, |s| s.project.revision).unwrap() > before);
+}
