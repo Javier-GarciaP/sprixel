@@ -2,13 +2,28 @@
 
 Thank you for your interest in Sprixel.
 
-> **Read this first.** Sprixel is a proprietary project (see [LICENSE](LICENSE)).
-> Contributions are accepted **by invitation only**. If you were not invited by
-> the copyright holder, please do not open pull requests. You can ask for
-> permission through [GitHub](https://github.com/Javier-GarciaP).
+> **Contributions are welcome.** Sprixel is open source under the
+> [MIT License](LICENSE). You can open an issue, suggest an idea or send a pull
+> request. By sending a contribution you agree that it is released under the
+> same MIT License.
 
 This guide explains how we work: branches, specs, commits, pull requests,
 versions and releases.
+
+## How to contribute
+
+- **Found a bug or have an idea?** Open an issue. Say what you did, what you
+  expected and what happened. For an idea, say the problem it solves.
+- **Want to send code?** For something small (a bug fix, a typo, a test), open a
+  pull request. For a new feature, or a change that touches several files,
+  **open an issue first**: the project works spec by spec, and a feature needs an
+  approved spec before code (see [Specs first](#specs-first)).
+- **How:** fork the repository, create a branch from `dev`, and open the pull
+  request into `dev`. Follow the rules below for commits, tests and the pull
+  request description.
+- The maintainer reviews every pull request and may ask for changes. A pull
+  request that does not follow these rules can be closed with an explanation.
+- Be kind and patient. Everyone here is learning.
 
 ## Table of contents
 
@@ -21,12 +36,14 @@ versions and releases.
 - [Releasing a version](#releasing-a-version)
 - [Changelog](#changelog)
 - [Tests](#tests)
+- [Prerequisites](#prerequisites)
 - [Code style and structure](#code-style-and-structure)
 
 ## The golden rules
 
 1. **Work only in `dev`.** Every change enters `dev` through a pull request.
-   Never commit or push directly to `dev` or `main`.
+   Never commit or push directly to `dev` or `main`. If you work from a fork,
+   branch from `dev` and open the pull request into `dev`.
 2. **`main` only holds stable releases.** It changes only when a release pull
    request from `dev` is merged.
 3. **Specs first.** A new feature, or any change that touches several files,
@@ -145,7 +162,9 @@ openspec/changes/<change>/ (task number)
 
 - Keep it small and focused. Squash or merge as you prefer, but keep the
   history readable.
-- All checks must pass before merging.
+- All checks must pass before merging. They run on Linux, Windows and macOS.
+- If you used an AI tool to write the code, you are still the author: read it,
+  run the tests and be ready to explain it.
 
 ## Versioning
 
@@ -166,11 +185,19 @@ Sprixel follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
 - Projects saved on disk have their own `formatVersion`. Opening an older
   project must keep working through a migration.
 
-The version lives in several files. The release task bumps all of them in
-the same commit (the list is kept in the
+The version lives in several files. One script bumps all of them in the same
+commit (the list is kept in the
 [`install-and-release` spec](openspec/changes/install-and-release/)):
-`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and the Go
-build settings of the CLI.
+
+```sh
+node scripts/bump-version.mjs 0.2.0    # set the version everywhere and check it
+node scripts/bump-version.mjs --check  # fail if the files disagree
+```
+
+`package.json` is the source. The script also writes `package-lock.json`,
+`src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and the default version of the Go
+command. `src-tauri/tauri.conf.json` reads `package.json` by itself, and the
+build puts the version in the `sprixel` command.
 
 ## Releasing a version
 
@@ -178,9 +205,10 @@ Only the maintainer releases. A release moves `dev` into `main`.
 
 1. **Check `dev`.** It builds, all tests pass and finished specs are archived.
 2. **Prepare the release.** Create `feature/release-vX.Y.Z` from `dev`. In one
-   commit (`chore(release): vX.Y.Z`) bump the version in every file and move
-   the "Unreleased" notes of [CHANGELOG.md](CHANGELOG.md) under the new
-   version. Open a pull request into `dev` and merge it.
+   commit (`chore(release): vX.Y.Z`) run `node scripts/bump-version.mjs X.Y.Z`
+   and move the "Unreleased" notes of [CHANGELOG.md](CHANGELOG.md) under a
+   `## [X.Y.Z] - date` heading. Those notes become the text of the GitHub
+   Release. Open a pull request into `dev` and merge it.
 3. **Open the release pull request** from `dev` into `main`, titled
    `release: vX.Y.Z`. Use a **merge commit** (no squash) so both branches keep
    the same history.
@@ -193,11 +221,32 @@ Only the maintainer releases. A release moves `dev` into `main`.
    git push origin vX.Y.Z
    ```
 
-   The tag starts the release pipeline: it builds the installers for Linux,
-   Windows and macOS, the `sprixel` command and the install scripts, and
-   publishes them in a GitHub Release with the changelog notes.
+   The tag starts the release pipeline
+   ([`release.yml`](.github/workflows/release.yml)). It runs these jobs in order,
+   and stops at the first one that fails:
+
+   1. **Check the tag:** the commit is on `main`, the tag is `v` plus the
+      version in the code, and `CHANGELOG.md` has notes for it. A tag that is
+      not on `main` is refused: releases come from `main` only.
+   2. **Build:** on Linux, macOS (Apple silicon and Intel) and Windows it runs
+      the tests, builds the app and builds the `sprixel` command.
+   3. **Smoke test:** on a clean runner of each system it installs the release
+      with `install.sh` or `install.ps1` and runs `sprixel version` and
+      `sprixel doctor`.
+   4. **Release:** it creates the GitHub Release with the app and the command
+      for every system, `install.sh`, `install.ps1`, `LICENSE`,
+      `THIRD-PARTY.md`, `VERSION`, `checksums.txt` (SHA-256) and the changelog
+      notes. Only this job can write to the repository.
+
+   A tag with a suffix (`v0.3.0-alpha.1`, `-beta.N`, `-rc.N`) is published as a
+   **pre-release**. Version 1 is not code signed (see
+   [Usage](docs/usage.md#warnings-the-first-time)).
 5. **Check the release.** Run the install script on a clean machine and run
    `sprixel doctor`.
+
+If the pipeline fails, nothing is published. Fix the problem with a normal pull
+request and release a new `PATCH` version; do not move or delete a tag that was
+pushed.
 
 Fixing a released version: create `fix/<name>` from `dev`, merge it into `dev`,
 and release a new `PATCH` version in the same way.
@@ -216,6 +265,59 @@ and release a new `PATCH` version in the same way.
   `#[cfg(test)]` modules).
 - A bug fix starts with a test that fails.
 - Each test should check one thing and have a clear name.
+
+## Prerequisites
+
+To build and run Sprixel on your machine you need, on every operating
+system:
+
+- **Node and npm** (for the UI: Vite, React, TypeScript, Tailwind).
+- **Go** (for the `sprixel` command).
+- **Git**.
+- **Rust** (`rustc` and `cargo`), for the Tauri core.
+
+Then install the system pieces for your platform.
+
+### Fedora Linux
+
+These commands were run on Fedora and work:
+
+```sh
+sudo dnf install -y webkit2gtk4.1-devel openssl-devel curl wget file \
+  libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+sudo dnf group install -y c-development
+sudo dnf install -y rust cargo
+```
+
+On other distros the package names are different. They are listed in the
+Tauri 2 prerequisites page:
+[https://v2.tauri.app/start/prerequisites/](https://v2.tauri.app/start/prerequisites/).
+
+### Windows
+
+- Install **Microsoft C++ Build Tools** with the "Desktop development with C++"
+  workload.
+- **WebView2** is already included in Windows 10 and Windows 11.
+- Install **Rust** with rustup: [https://rustup.rs](https://rustup.rs).
+
+### macOS
+
+- Install the **Xcode Command Line Tools**:
+
+  ```sh
+  xcode-select --install
+  ```
+
+- Install **Rust** with rustup: [https://rustup.rs](https://rustup.rs).
+
+### Verify
+
+After installing, check that Rust is ready:
+
+```sh
+rustc --version
+cargo --version
+```
 
 ## Code style and structure
 

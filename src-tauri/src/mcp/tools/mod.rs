@@ -1,0 +1,141 @@
+//! The tools an AI can call. Each file has the tools of one group.
+
+/// The sentence every write tool ends with. A macro, so `concat!` can use it
+/// in a description.
+macro_rules! write_note {
+    () => {
+        " Returns the new `revision`. Pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. The whole call is applied or nothing is, and the person can undo it."
+    };
+}
+
+mod analysis;
+mod animation;
+mod args;
+mod create;
+mod docs;
+mod draw;
+mod edit;
+mod export;
+pub(crate) mod gamedata;
+pub(crate) mod palettes;
+mod parts;
+mod resize;
+mod projects;
+mod read;
+mod reference;
+pub(crate) mod region;
+mod shapes;
+mod structure;
+mod undo;
+mod views;
+pub(super) mod write;
+
+use super::Tool;
+
+pub use docs::INSTRUCTIONS;
+pub use projects::PROJECT_OPENED_EVENT;
+pub use read::OPEN_SPRITE_EVENT;
+
+/// Every tool of the server, in the order a client sees them.
+pub fn all() -> Vec<Tool> {
+    let mut tools = Vec::new();
+    tools.extend(read::tools());
+    tools.extend(views::tools());
+    tools.extend(docs::tools());
+    tools.extend(projects::tools());
+    tools.extend(create::tools());
+    tools.extend(draw::tools());
+    tools.extend(analysis::tools());
+    tools.extend(region::tools());
+    tools.extend(reference::tools());
+    tools.extend(structure::tools());
+    tools.extend(animation::tools());
+    tools.extend(parts::tools());
+    tools.extend(palettes::tools());
+    tools.extend(export::tools());
+    tools.extend(gamedata::tools());
+    tools.extend(resize::tools());
+    tools.extend(undo::tools());
+    tools
+}
+
+#[cfg(test)]
+mod read_tests;
+
+#[cfg(test)]
+mod projects_tests;
+
+#[cfg(test)]
+mod create_tests;
+
+#[cfg(test)]
+mod draw_tests;
+
+#[cfg(test)]
+mod structure_tests;
+
+#[cfg(test)]
+mod animation_tests;
+
+#[cfg(test)]
+mod part_tests;
+
+#[cfg(test)]
+mod edit_tests;
+
+#[cfg(test)]
+mod region_tests;
+
+#[cfg(test)]
+mod reference_tests;
+
+#[cfg(test)]
+mod palettes_tests;
+
+#[cfg(test)]
+mod export_tests;
+
+#[cfg(test)]
+mod revision_tests;
+
+#[cfg(test)]
+mod docs_tests;
+
+#[cfg(test)]
+mod undo_tests;
+
+#[cfg(test)]
+mod live_tests;
+
+#[cfg(test)]
+mod guide_tests;
+
+#[cfg(test)]
+mod preview_tests;
+
+#[cfg(test)]
+mod gamedata_tests;
+
+#[cfg(test)]
+mod resize_tests;
+
+#[cfg(test)]
+mod engines_docs_tests;
+
+#[cfg(test)]
+mod analysis_tests;
+
+#[cfg(test)]
+mod dryrun_tests;
+
+#[cfg(test)]
+mod erase_tests;
+
+#[cfg(test)]
+mod background_tests;
+
+#[cfg(test)]
+mod frames_tests;
+
+#[cfg(test)]
+mod guide_examples_tests;

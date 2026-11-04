@@ -1,0 +1,93 @@
+import type { ToolId } from "../tools/tools";
+
+// Icons of the editor, on a 24x24 grid with a thin stroke. They use
+// currentColor, so the text color sets the icon color.
+const paths: Record<string, string> = {
+  pencil: "M4 20l1-4L16 5l3 3L8 19zM14 7l3 3",
+  eraser: "M20 20H9L4 15a2 2 0 010-3l8-8a2 2 0 013 0l5 5a2 2 0 010 3z",
+  bucket: "M6 12l6-6 7 7-6 6zM19 15c1 2 2 3 2 4a2 2 0 01-4 0c0-1 1-2 2-4z",
+  eyedropper:
+    "M20 4a2 2 0 00-3 0l-3 3-1-1-2 2 8 8 2-2-1-1 3-3a2 2 0 000-3zM11 10l-7 7v3h3l7-7",
+  line: "M5 19L19 5",
+  rectangle: "M5 6h14v12H5z",
+  ellipse: "M12 5a8 7 0 100 14 8 7 0 000-14z",
+  select: "M5 5h14v14H5z",
+  move: "M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3",
+  undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
+  redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
+  swap: "M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7",
+  anchor:
+    "M12 4a2 2 0 100 4 2 2 0 000-4zM12 8v12M7 14c0 3 2.5 6 5 6s5-3 5-6M4 14h3M17 14h3",
+  flipHorizontal: "M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z",
+  flipVertical: "M3 12h18M7 8l5-5 5 5zM7 16l5 5 5-5z",
+  rotateRight: "M20 12a8 8 0 11-3-6.2M20 4v5h-5",
+  rotateLeft: "M4 12a8 8 0 103-6.2M4 4v5h5",
+  rotate180: "M4 12a8 8 0 0114-5M18 3v4h-4M20 12a8 8 0 01-14 5M6 21v-4h4",
+  mirrorLeftToRight: "M12 3v18M3 12h6M6 9l3 3-3 3",
+  mirrorRightToLeft: "M12 3v18M21 12h-6M18 9l-3 3 3 3",
+  mirrorTopToBottom: "M3 12h18M12 3v6M9 6l3 3 3-3",
+  mirrorBottomToTop: "M3 12h18M12 21v-6M9 18l3-3 3 3",
+  symmetryOff: "M5 5h14v14H5zM4 20L20 4",
+  symmetryHorizontal: "M12 3v18M4 8v8l5-4zM20 8v8l-5-4z",
+  symmetryVertical: "M3 12h18M8 4h8l-4 5zM8 20h8l-4-5z",
+  symmetryBoth:
+    "M12 3v18M3 12h18M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z",
+  outline: "M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z",
+  shade: "M12 4a8 8 0 100 16 8 8 0 000-16zM12 4a8 8 0 010 16z",
+  review:
+    "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",
+  wrap: "M17 3l4 4-4 4M21 7H8a4 4 0 00-4 4M7 21l-4-4 4-4M3 17h13a4 4 0 004-4",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  copy: "M9 9h11v11H9zM5 15V4h11",
+  paste: "M9 4h6v3H9zM7 5H5v15h14V5h-2M9 12h6M9 16h6",
+};
+
+export type EditorIconName =
+  | ToolId
+  | "undo"
+  | "redo"
+  | "swap"
+  | "flipHorizontal"
+  | "flipVertical"
+  | "rotateRight"
+  | "rotateLeft"
+  | "rotate180"
+  | "mirrorLeftToRight"
+  | "mirrorRightToLeft"
+  | "mirrorTopToBottom"
+  | "mirrorBottomToTop"
+  | "symmetryOff"
+  | "symmetryHorizontal"
+  | "symmetryVertical"
+  | "symmetryBoth"
+  | "outline"
+  | "shade"
+  | "review"
+  | "wrap"
+  | "more"
+  | "copy"
+  | "paste";
+
+export function EditorIcon({
+  name,
+  className = "h-5 w-5",
+}: {
+  name: EditorIconName;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeDasharray={name === "select" ? "3 3" : undefined}
+      aria-hidden="true"
+      className={className}
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}

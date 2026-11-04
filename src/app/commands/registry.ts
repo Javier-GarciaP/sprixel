@@ -1,0 +1,327 @@
+import type { TranslationKey } from "@/shared/lib/i18n";
+
+export type Group = "project" | "tools" | "editor";
+
+export type Command = {
+  id: string;
+  labelKey: TranslationKey;
+  // The area of the shortcuts page.
+  group: Group;
+  // "Mod+N": Mod is Control, or Command on macOS. See shortcut.ts.
+  shortcut?: string;
+  // The commands of the project menu.
+  inProjectMenu?: boolean;
+  // Also done with Control (Command on macOS) and the mouse wheel. The wheel
+  // is only shown on the shortcuts page; the real zoom belongs to the canvas
+  // spec.
+  withWheel?: boolean;
+  // Draws a separator line above this item in the project menu.
+  separator?: boolean;
+  // A Control key that text fields use for themselves (copy, paste): it
+  // does nothing while the person types in a field.
+  notWhileTyping?: boolean;
+};
+
+// The single list of commands. The project menu, the shortcuts and the shortcuts page all read from it. There is no "Save"
+// command on purpose: the project saves by itself.
+export const commands: Command[] = [
+  {
+    group: "project",
+    id: "project.new",
+    labelKey: "command.project.new",
+    shortcut: "Mod+N",
+    inProjectMenu: true,
+  },
+  {
+    group: "project",
+    id: "project.open",
+    labelKey: "command.project.open",
+    shortcut: "Mod+O",
+    inProjectMenu: true,
+  },
+  {
+    group: "project",
+    id: "project.openRecent",
+    labelKey: "command.project.openRecent",
+    inProjectMenu: true,
+  },
+  {
+    group: "project",
+    id: "project.rename",
+    labelKey: "command.project.rename",
+    inProjectMenu: true,
+    separator: true,
+  },
+  {
+    group: "project",
+    id: "project.saveCopy",
+    labelKey: "command.project.saveCopy",
+    inProjectMenu: true,
+  },
+  {
+    group: "project",
+    id: "project.showInFolder",
+    labelKey: "command.project.showInFolder",
+    inProjectMenu: true,
+  },
+  {
+    group: "project",
+    id: "project.export",
+    labelKey: "command.project.export",
+    shortcut: "Mod+E",
+    inProjectMenu: true,
+    separator: true,
+  },
+  {
+    group: "project",
+    id: "project.close",
+    labelKey: "command.project.close",
+    inProjectMenu: true,
+    separator: true,
+  },
+];
+
+const tool = (id: string, key: string): Command => ({
+  id: `tool.${id}`,
+  labelKey: `command.tool.${id}` as TranslationKey,
+  group: "tools",
+  shortcut: key,
+});
+
+commands.push(
+  {
+    id: "sprite.open",
+    labelKey: "command.sprite.open",
+    group: "project",
+    shortcut: "Enter",
+  },
+  {
+    id: "sprite.rename",
+    labelKey: "command.sprite.rename",
+    group: "project",
+    shortcut: "F2",
+  },
+  {
+    id: "sprite.duplicate",
+    labelKey: "command.sprite.duplicate",
+    group: "project",
+    shortcut: "Mod+D",
+  },
+  {
+    id: "sprite.delete",
+    labelKey: "command.sprite.delete",
+    group: "project",
+    shortcut: "Delete",
+  },
+  tool("pencil", "B"),
+  tool("eraser", "E"),
+  tool("bucket", "G"),
+  tool("eyedropper", "I"),
+  tool("line", "L"),
+  tool("rectangle", "R"),
+  tool("ellipse", "C"),
+  tool("select", "M"),
+  tool("move", "V"),
+  tool("anchor", "A"),
+  {
+    id: "colors.swap",
+    labelKey: "command.colors.swap",
+    group: "editor",
+    shortcut: "X",
+  },
+  {
+    id: "edit.undo",
+    labelKey: "command.edit.undo",
+    group: "editor",
+    shortcut: "Mod+Z",
+  },
+  {
+    id: "edit.redo",
+    labelKey: "command.edit.redo",
+    group: "editor",
+    shortcut: "Mod+Shift+Z",
+  },
+  {
+    id: "frame.previous",
+    labelKey: "command.frame.previous",
+    group: "editor",
+    shortcut: ",",
+  },
+  {
+    id: "frame.next",
+    labelKey: "command.frame.next",
+    group: "editor",
+    shortcut: ".",
+  },
+  {
+    id: "view.zoomIn",
+    labelKey: "command.view.zoomIn",
+    group: "editor",
+    shortcut: "+",
+    withWheel: true,
+  },
+  {
+    id: "view.zoomOut",
+    labelKey: "command.view.zoomOut",
+    group: "editor",
+    shortcut: "-",
+  },
+  {
+    id: "view.fit",
+    labelKey: "command.view.fit",
+    group: "editor",
+    shortcut: "Mod+0",
+  },
+  {
+    id: "view.pan",
+    labelKey: "command.view.pan",
+    group: "editor",
+    shortcut: "Space",
+  },
+  {
+    id: "view.onionSkin",
+    labelKey: "command.view.onionSkin",
+    group: "editor",
+    shortcut: "O",
+  },
+  {
+    id: "selection.flipHorizontal",
+    labelKey: "command.selection.flipHorizontal",
+    group: "editor",
+    shortcut: "H",
+  },
+  {
+    id: "selection.flipVertical",
+    labelKey: "command.selection.flipVertical",
+    group: "editor",
+    shortcut: "Shift+H",
+  },
+  {
+    id: "selection.rotate90",
+    labelKey: "command.selection.rotate90",
+    group: "editor",
+    shortcut: "Shift+R",
+  },
+  {
+    id: "selection.rotate180",
+    labelKey: "command.selection.rotate180",
+    group: "editor",
+    shortcut: "Shift+U",
+  },
+  {
+    id: "selection.rotate270",
+    labelKey: "command.selection.rotate270",
+    group: "editor",
+    shortcut: "Shift+L",
+  },
+  {
+    id: "selection.mirrorLeftToRight",
+    labelKey: "command.selection.mirrorLeftToRight",
+    group: "editor",
+    shortcut: "Shift+M",
+  },
+  {
+    id: "selection.mirrorRightToLeft",
+    labelKey: "command.selection.mirrorRightToLeft",
+    group: "editor",
+  },
+  {
+    id: "selection.mirrorTopToBottom",
+    labelKey: "command.selection.mirrorTopToBottom",
+    group: "editor",
+    shortcut: "Shift+N",
+  },
+  {
+    id: "selection.mirrorBottomToTop",
+    labelKey: "command.selection.mirrorBottomToTop",
+    group: "editor",
+  },
+  {
+    id: "selection.moveLeft",
+    labelKey: "command.selection.moveLeft",
+    group: "editor",
+    shortcut: "ArrowLeft",
+  },
+  {
+    id: "selection.moveRight",
+    labelKey: "command.selection.moveRight",
+    group: "editor",
+    shortcut: "ArrowRight",
+  },
+  {
+    id: "selection.moveUp",
+    labelKey: "command.selection.moveUp",
+    group: "editor",
+    shortcut: "ArrowUp",
+  },
+  {
+    id: "selection.moveDown",
+    labelKey: "command.selection.moveDown",
+    group: "editor",
+    shortcut: "ArrowDown",
+  },
+  {
+    id: "selection.wrap",
+    labelKey: "command.selection.wrap",
+    group: "editor",
+    shortcut: "W",
+  },
+  {
+    id: "edit.copy",
+    labelKey: "command.edit.copy",
+    group: "editor",
+    shortcut: "Mod+C",
+    notWhileTyping: true,
+  },
+  {
+    id: "edit.paste",
+    labelKey: "command.edit.paste",
+    group: "editor",
+    shortcut: "Mod+V",
+    notWhileTyping: true,
+  },
+  {
+    id: "draw.symmetry",
+    labelKey: "command.draw.symmetry",
+    group: "editor",
+    shortcut: "S",
+  },
+  {
+    id: "edit.outline",
+    labelKey: "command.edit.outline",
+    group: "editor",
+    shortcut: "Shift+O",
+  },
+  {
+    id: "edit.shade",
+    labelKey: "command.edit.shade",
+    group: "editor",
+    shortcut: "Shift+S",
+  },
+  {
+    id: "view.review",
+    labelKey: "command.view.review",
+    group: "editor",
+    shortcut: "Shift+A",
+  },
+  {
+    id: "view.background",
+    labelKey: "command.view.background",
+    group: "editor",
+    shortcut: "Shift+B",
+  },
+  {
+    id: "view.tilePreview",
+    labelKey: "command.view.tilePreview",
+    group: "editor",
+    shortcut: "T",
+  },
+  {
+    id: "view.onionFrames",
+    labelKey: "command.view.onionFrames",
+    group: "editor",
+    shortcut: "Shift+F",
+  },
+);
+
+export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);

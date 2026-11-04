@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "app": "Sprixel",
+    "version": 1,
+    "image": "kit.png",
+    "size": {
+      "w": 11,
+      "h": 2
+    },
+    "scale": 1
+  },
+  "frames": [
+    {
+      "name": "blob_1",
+      "sprite": "blob",
+      "index": 0,
+      "frame_number": 1,
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "duration": 100,
+      "pivot": {
+        "x": 0,
+        "y": 0
+      },
+      "anchors": []
+    },
+    {
+      "name": "hero_walk_1",
+      "sprite": "hero",
+      "index": 1,
+      "frame_number": 1,
+      "frame": {
+        "x": 3,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "duration": 83,
+      "pivot": {
+        "x": 0,
+        "y": 1
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        }
+      ]
+    },
+    {
+      "name": "hero_walk_2",
+      "sprite": "hero",
+      "index": 2,
+      "frame_number": 2,
+      "frame": {
+        "x": 6,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "duration": 83,
+      "pivot": {
+        "x": 0,
+        "y": 1
+      },
+      "anchors": [
+        {
+          "name": "feet",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "name": "hand",
+          "x": 1,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "name": "hero_3",
+      "sprite": "hero",
+      "index": 3,
+      "frame_number": 3,
+      "frame": {
+        "x": 9,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "duration": 250,
+      "pivot": {
+        "x": 1,
+        "y": 1
+      },
+      "anchors": [
+        {
+          "name": "Feet",
+          "x": 1,
+          "y": 1
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "name": "walk",
+      "sprite": "hero",
+      "from": 1,
+      "to": 2,
+      "mode": "loop",
+      "fps": 12
+    }
+  ]
+}

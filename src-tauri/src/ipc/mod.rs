@@ -1,0 +1,299 @@
+//! Tauri commands the UI calls.
+
+pub mod browser;
+pub mod preferences;
+pub mod project;
+pub mod editor;
+pub mod frames;
+pub mod animations;
+pub mod export;
+pub mod mcp;
+pub mod grid;
+pub mod palettes;
+pub mod power;
+
+use export::{FormatArg, OptionsArg, ScopeArg, SummaryInfo, WrittenInfo};
+use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};
+use preferences::{Data, RecentProject, Settings};
+use project::{ProjectError, ProjectInfo, ProjectState, StatusInfo};
+use std::path::PathBuf;
+use tauri::Manager;
+
+/// The preferences file, in the app config folder (for example
+/// `~/.config/com.sprixel.app/preferences.json` on Linux).
+fn preferences_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let folder = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(folder.join("preferences.json"))
+}
+
+/// The recent projects, newest first. Empty when the file cannot be read.
+pub(crate) fn recent_projects(app: &tauri::AppHandle) -> Vec<RecentProject> {
+    preferences_file(app).map(|file| preferences::load(&file).recent_projects).unwrap_or_default()
+}
+
+pub(crate) fn change(app: &tauri::AppHandle, edit: impl FnOnce(&mut Data)) -> Result<Data, String> {
+    let file = preferences_file(app)?;
+    let mut data = preferences::load(&file);
+    edit(&mut data);
+    preferences::save(&file, &data).map_err(|e| e.to_string())?;
+    Ok(data)
+}
+
+#[tauri::command]
+pub fn load_preferences(app: tauri::AppHandle) -> Result<Data, String> {
+    Ok(preferences::load(&preferences_file(&app)?))
+}
+
+#[tauri::command]
+pub fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
+    change(&app, |data| data.settings = settings).map(|_| ())
+}
+
+#[tauri::command]
+pub fn add_recent_project(
+    app: tauri::AppHandle,
+    path: String,
+    name: String,
+) -> Result<Vec<RecentProject>, String> {
+    change(&app, |data| preferences::add_recent(data, RecentProject { path, name }))
+        .map(|data| data.recent_projects)
+}
+
+#[tauri::command]
+pub fn remove_recent_project(
+    app: tauri::AppHandle,
+    path: String,
+) -> Result<Vec<RecentProject>, String> {
+    change(&app, |data| preferences::remove_recent(data, &path)).map(|data| data.recent_projects)
+}
+
+/// Used to tell the user that a recent project folder was moved or deleted.
+/// It only checks that the folder exists; it never reads project files.
+#[tauri::command]
+pub fn folder_exists(path: String) -> bool {
+    std::path::Path::new(&path).is_dir()
+}
+
+/// The folder suggested in the New project dialog: `~/Proyectos`.
+#[tauri::command]
+pub fn default_project_location(app: tauri::AppHandle) -> Result<String, String> {
+    let home = app.path().home_dir().map_err(|e| e.to_string())?;
+    Ok(home.join("Proyectos").to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn create_project(
+    state: tauri::State<ProjectState>,
+    parent: String,
+    name: String,
+) -> Result<ProjectInfo, ProjectError> {
+    project::create_project(&state, std::path::Path::new(&parent), &name)
+}
+
+#[tauri::command]
+pub fn open_project(
+    state: tauri::State<ProjectState>,
+    path: String,
+) -> Result<ProjectInfo, ProjectError> {
+    project::open_project(&state, std::path::Path::new(&path))
+}
+
+#[tauri::command]
+pub fn close_project(state: tauri::State<ProjectState>) {
+    project::close_project(&state);
+}
+
+#[tauri::command]
+pub fn project_status(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
+    project::project_status(&state)
+}
+
+#[tauri::command]
+pub fn retry_save(state: tauri::State<ProjectState>) -> Option<StatusInfo> {
+    project::retry_save(&state)
+}
+
+/// Sends `project://changed` after a change, then gives the value to the UI.
+/// A failed change sends nothing.
+fn finish<T>(
+    app: &tauri::AppHandle,
+    result: Result<(T, browser::ChangedEvent), CoreError>,
+) -> Result<T, CoreError> {
+    let (value, event) = result?;
+    let _ = tauri::Emitter::emit(app, CHANGED_EVENT, event);
+    Ok(value)
+}
+
+#[tauri::command]
+pub fn project_tree(state: tauri::State<ProjectState>) -> Result<TreeInfo, CoreError> {
+    browser::project_tree(&state)
+}
+
+#[tauri::command]
+pub fn sprite_frame(
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    frame: u32,
+) -> Result<FrameInfo, CoreError> {
+    browser::sprite_frame(&state, &folder, &name, frame)
+}
+
+#[tauri::command]
+pub fn check_name(
+    state: tauri::State<ProjectState>,
+    parent: Vec<String>,
+    name: String,
+    current: Option<String>,
+) -> Result<Option<&'static str>, CoreError> {
+    browser::check_name(&state, &parent, &name, current.as_deref())
+}
+
+#[tauri::command]
+pub fn create_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    width: u32,
+    height: u32,
+    palette: Option<String>,
+) -> Result<SpriteTarget, CoreError> {
+    finish(
+        &app,
+        browser::create_sprite(&state, &folder, &name, width, height, palette.as_deref()),
+    )
+}
+
+#[tauri::command]
+pub fn resize_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    width: u32,
+    height: u32,
+    anchor: String,
+) -> Result<(), CoreError> {
+    finish(&app, browser::resize_sprite(&state, &folder, &name, width, height, &anchor))
+}
+
+#[tauri::command]
+pub fn create_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    parent: Vec<String>,
+    name: String,
+) -> Result<Vec<String>, CoreError> {
+    finish(&app, browser::create_folder(&state, &parent, &name))
+}
+
+#[tauri::command]
+pub fn rename_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+    new_name: String,
+) -> Result<SpriteTarget, CoreError> {
+    finish(&app, browser::rename_sprite(&state, &folder, &name, &new_name))
+}
+
+#[tauri::command]
+pub fn rename_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    path: Vec<String>,
+    new_name: String,
+) -> Result<Vec<String>, CoreError> {
+    finish(&app, browser::rename_folder(&state, &path, &new_name))
+}
+
+#[tauri::command]
+pub fn duplicate_sprite(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    folder: Vec<String>,
+    name: String,
+) -> Result<SpriteTarget, CoreError> {
+    finish(&app, browser::duplicate_sprite(&state, &folder, &name))
+}
+
+#[tauri::command]
+pub fn delete_sprites(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprites: Vec<SpriteTarget>,
+) -> Result<u64, CoreError> {
+    finish(&app, browser::delete_sprites(&state, &sprites))
+}
+
+#[tauri::command]
+pub fn project_undo(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::undo(&state))
+}
+
+#[tauri::command]
+pub fn project_redo(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::redo(&state))
+}
+
+#[tauri::command]
+pub fn move_sprites(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprites: Vec<SpriteTarget>,
+    to: Vec<String>,
+) -> Result<(), CoreError> {
+    finish(&app, browser::move_sprites(&state, &sprites, &to))
+}
+
+#[tauri::command]
+pub fn delete_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    path: Vec<String>,
+) -> Result<u64, CoreError> {
+    finish(&app, browser::delete_folder(&state, &path))
+}
+
+#[tauri::command]
+pub fn export_summary(
+    state: tauri::State<ProjectState>,
+    scope: ScopeArg,
+    format: FormatArg,
+    options: OptionsArg,
+) -> Result<SummaryInfo, CoreError> {
+    export::summary(&state, &scope, &format, &options)
+}
+
+#[tauri::command]
+pub fn export_preview(
+    state: tauri::State<ProjectState>,
+    scope: ScopeArg,
+    options: OptionsArg,
+) -> Result<tauri::ipc::Response, CoreError> {
+    export::preview(&state, &scope, &options).map(tauri::ipc::Response::new)
+}
+
+#[tauri::command]
+pub fn export_run(
+    state: tauri::State<ProjectState>,
+    scope: ScopeArg,
+    format: FormatArg,
+    options: OptionsArg,
+    output: String,
+) -> Result<WrittenInfo, CoreError> {
+    export::run(&state, &scope, &format, &options, &output)
+}
+
+#[tauri::command]
+pub fn export_reveal(state: tauri::State<ProjectState>, output: String) -> Result<(), CoreError> {
+    export::reveal(&state, &output)
+}

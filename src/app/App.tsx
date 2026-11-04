@@ -1,0 +1,352 @@
+import { useCallback, useEffect, useState } from "react";
+import {
+  AgentsIndicator,
+  AgentsScreen,
+  ApprovalDialog,
+  coreAgentsApi,
+  notifyApproval,
+  useAgents,
+} from "@/features/agents";
+import { EditorScreen } from "@/features/canvas-editor";
+import { ExportScreen } from "@/features/export";
+import {
+  NewPaletteDialog,
+  PaletteEditorDialog,
+  corePaletteApi,
+  type Preset,
+} from "@/features/palette-editor";
+import { ProjectBrowser, type SpriteTarget } from "@/features/project-browser";
+import { SettingsScreen } from "@/features/settings";
+import { Toast } from "@/shared/components";
+import { useT } from "@/shared/lib/i18n";
+import { defaultPreferences } from "@/shared/lib/preferences";
+import {
+  addRecentProject,
+  folderExists,
+  loadPreferences,
+  mergePreferences,
+  removeRecentProject,
+  saveSettings,
+  type RecentProject,
+  type StoredPreferences,
+} from "./api/preferences";
+import {
+  asProjectFailure,
+  closeProject,
+  createProject,
+  defaultProjectLocation,
+  openProject,
+  pickFolder,
+  type ProjectInfo,
+} from "./api/project";
+import { formatShortcut, detectPlatform } from "./commands/shortcut";
+import { commands } from "./commands/registry";
+import { shortcutGroups } from "./commands/shortcutGroups";
+import { useShortcuts } from "./commands/useShortcuts";
+import { AppProviders } from "./AppProviders";
+import { ProjectMenu } from "./shell/ProjectMenu";
+import { SaveStatus } from "./shell/SaveStatus";
+import { Shell } from "./shell/Shell";
+import type { Tab } from "./shell/TopBar";
+import { useSaveStatus } from "./shell/useSaveStatus";
+import { useWindowTitle } from "./shell/windowTitle";
+import { NewProjectDialog } from "./welcome/NewProjectDialog";
+import { WelcomeScreen } from "./welcome/WelcomeScreen";
+
+type OpenedProject = { name: string; path: string };
+
+// The Project tab listens to the shortcuts of the list of commands, with the
+// same rules as the rest of the app (see useShortcuts).
+const useBrowserShortcuts = (handlers: Record<string, () => void>) =>
+  useShortcuts(handlers, detectPlatform());
+
+function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
+  const t = useT();
+  const platform = detectPlatform();
+  const [tab, setTab] = useState<Tab>("project");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [recents, setRecents] = useState(initialRecents);
+  // The core owns the project; this is only what the UI shows about it.
+  const [project, setProject] = useState<OpenedProject | null>(null);
+  const [newProjectFrom, setNewProjectFrom] = useState<string | null>(null);
+  // The sprite open in the Editor tab.
+  const [activeSprite, setActiveSprite] = useState<SpriteTarget | null>(null);
+  // The frame an agent was drawing when the editor followed it to a sprite.
+  const [startFrame, setStartFrame] = useState(1);
+  // What the Project tab shows (open folder and selection), for the Export tab.
+  const [browserView, setBrowserView] = useState<{
+    folder: string[];
+    selection: SpriteTarget[];
+  }>({ folder: [], selection: [] });
+  const [notice, setNotice] = useState<string | null>(null);
+  // The palette editor opened from the palette list of the Project tab, and
+  // the dialog to make a palette (with the presets it offers).
+  const [editingPalette, setEditingPalette] = useState<string | null>(null);
+  const [newPalette, setNewPalette] = useState<Preset[] | null>(null);
+  // What the editor commands do, given by the editor while it is open.
+  const [editorHandlers, setEditorHandlers] = useState<
+    Record<string, () => void>
+  >({});
+  const registerEditorCommands = useCallback(
+    (next: Record<string, () => void> | null) => setEditorHandlers(next ?? {}),
+    [],
+  );
+  // What the core says about the agents, for the Agents tab.
+  // A new agent that waits while the window is in the background is also
+  // told with a system notification. An agent that asks to open a sprite
+  // (`open_sprite`) makes the Editor show it, so the person sees its work.
+  const agents = useAgents(coreAgentsApi, (event) => {
+    if (event.type === "open-sprite") {
+      setActiveSprite(event.sprite);
+      setStartFrame(1);
+      setTab("editor");
+      setSettingsOpen(false);
+    } else if (event.type === "project-opened") {
+      // An agent opened a project: show it as if the person had.
+      afterOpen({ ...event.project, damagedFiles: 0 });
+    } else if (event.type === "pending") {
+      notifyApproval(
+        t("agents.notify.title", { agent: event.name }),
+        t("agents.notify.body"),
+      );
+    }
+  });
+  const save = useSaveStatus(project !== null);
+  useWindowTitle(project?.name ?? null);
+
+  // A message at the bottom that goes away by itself.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const afterOpen = (info: ProjectInfo) => {
+    setProject({ name: info.name, path: info.path });
+    setActiveSprite(null);
+    setBrowserView({ folder: [], selection: [] });
+    setTab("project");
+    setSettingsOpen(false);
+    addRecentProject(info.path, info.name).then(setRecents);
+  };
+
+  const openAt = async (path: string) => {
+    try {
+      afterOpen(await openProject(path));
+    } catch (error) {
+      const failure = asProjectFailure(error);
+      setNotice(
+        failure.code === "not_a_project"
+          ? t("open.notAProject")
+          : t("error.io", {
+              message: "message" in failure ? failure.message : "",
+            }),
+      );
+    }
+  };
+
+  const chooseAndOpen = async () => {
+    const path = await pickFolder();
+    if (path) await openAt(path);
+  };
+
+  // From the menu, a recent project may have been moved.
+  const openRecentFromMenu = async (path: string) => {
+    if (await folderExists(path)) await openAt(path);
+    else setNotice(t("welcome.folderMissing", { path }));
+  };
+
+  const showNewProject = async () => {
+    setNewProjectFrom(await defaultProjectLocation().catch(() => ""));
+  };
+
+  const close = async () => {
+    await closeProject();
+    setProject(null);
+    setActiveSprite(null);
+    setBrowserView({ folder: [], selection: [] });
+    setTab("project");
+  };
+
+  // What each command does. The other project menu commands belong to other
+  // specs, so they have no action yet and stay disabled.
+  const handlers: Record<string, () => void> = {
+    "project.new": showNewProject,
+    "project.open": chooseAndOpen,
+    ...(project ? { "project.close": close } : {}),
+  };
+  useShortcuts({ ...handlers, ...editorHandlers }, platform);
+
+  const groups = shortcutGroups(platform, t).map((group) => ({
+    title: t(group.titleKey),
+    rows: group.rows.map((row) => ({
+      id: row.id,
+      label: t(row.labelKey),
+      keys: row.keys,
+      alternative: row.alternative,
+    })),
+  }));
+
+  let body;
+  if (settingsOpen) {
+    body = <SettingsScreen shortcutGroups={groups} />;
+  } else if (tab === "project" && project) {
+    // Keyed by the project: another project starts with a clean view.
+    body = (
+      <ProjectBrowser
+        key={project.path}
+        shortcuts={{
+          useHandlers: useBrowserShortcuts,
+          hint: (id) => {
+            const shortcut = commands.find((c) => c.id === id)?.shortcut;
+            return shortcut && formatShortcut(shortcut, platform, t);
+          },
+        }}
+        onViewChange={setBrowserView}
+        onOpenSprite={(sprite) => {
+          setActiveSprite(sprite);
+          setStartFrame(1);
+          setTab("editor");
+        }}
+        onOpenPalette={setEditingPalette}
+        onNewPalette={() =>
+          corePaletteApi
+            .listPresets()
+            .then(setNewPalette, () => setNewPalette([]))
+        }
+      />
+    );
+  } else if (tab === "project") {
+    body = (
+      <WelcomeScreen
+        recents={recents}
+        onNew={showNewProject}
+        onOpen={chooseAndOpen}
+        onOpenRecent={openAt}
+        onRemoveRecent={(path) => removeRecentProject(path).then(setRecents)}
+        folderExists={folderExists}
+      />
+    );
+  } else if (tab === "editor") {
+    body = (
+      <EditorScreen
+        key={project?.path}
+        sprite={activeSprite}
+        startFrame={startFrame}
+        onFollow={(sprite, frame) => {
+          setActiveSprite(sprite);
+          setStartFrame(frame);
+        }}
+        onCommands={registerEditorCommands}
+        hint={(id) => {
+          const shortcut = commands.find((c) => c.id === id)?.shortcut;
+          return shortcut && formatShortcut(shortcut, platform, t);
+        }}
+        onGoToProject={() => setTab("project")}
+      />
+    );
+  } else if (tab === "export" && project) {
+    body = (
+      <ExportScreen
+        key={project.path}
+        folder={browserView.folder}
+        selection={browserView.selection}
+        onGoToProject={() => setTab("project")}
+      />
+    );
+  } else if (tab === "agents" && project) {
+    body = <AgentsScreen api={coreAgentsApi} state={agents} />;
+  } else {
+    body = <p className="p-6 text-text-muted">{t("body.soon")}</p>;
+  }
+
+  return (
+    <Shell
+      topBar={{
+        project: project ? (
+          <ProjectMenu
+            projectName={project.name}
+            platform={platform}
+            handlers={handlers}
+            recents={recents}
+            onOpenRecent={openRecentFromMenu}
+          />
+        ) : (
+          <span className="text-sm text-text-muted">{t("project.none")}</span>
+        ),
+        status: project ? (
+          <SaveStatus state={save.state} onRetry={save.retry} />
+        ) : null,
+        hasProject: project !== null,
+        agents: <AgentsIndicator clients={agents.clients} />,
+        activeTab: settingsOpen ? null : tab,
+        onTab: (next) => {
+          setSettingsOpen(false);
+          setTab(next);
+        },
+      }}
+      settingsOpen={settingsOpen}
+      onSettings={() => setSettingsOpen(true)}
+    >
+      {body}
+      {editingPalette !== null && (
+        <PaletteEditorDialog
+          api={corePaletteApi}
+          name={editingPalette}
+          onClose={() => setEditingPalette(null)}
+          onApplied={() => {}}
+        />
+      )}
+      {newPalette !== null && (
+        <NewPaletteDialog
+          api={corePaletteApi}
+          presets={newPalette}
+          onClose={() => setNewPalette(null)}
+        />
+      )}
+      {newProjectFrom !== null && (
+        <NewProjectDialog
+          defaultLocation={newProjectFrom}
+          pickFolder={pickFolder}
+          onCreate={(parent, name) =>
+            createProject(parent, name).then((info) => {
+              afterOpen(info);
+              return null;
+            }, asProjectFailure)
+          }
+          onClose={() => setNewProjectFrom(null)}
+        />
+      )}
+      <ApprovalDialog
+        api={coreAgentsApi}
+        clients={agents.clients}
+        permissions={agents.permissions}
+        refresh={agents.refreshClients}
+      />
+      {notice && <Toast tone="error" message={notice} />}
+    </Shell>
+  );
+}
+
+export default function App() {
+  const [stored, setStored] = useState<StoredPreferences | null>(null);
+
+  // The saved preferences are read once at start.
+  useEffect(() => {
+    loadPreferences().then(setStored);
+  }, []);
+
+  if (!stored) return null;
+
+  return (
+    <AppProviders
+      initial={mergePreferences(
+        defaultPreferences(navigator.language),
+        stored.settings,
+      )}
+      onChange={saveSettings}
+    >
+      <Main initialRecents={stored.recentProjects} />
+    </AppProviders>
+  );
+}

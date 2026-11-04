@@ -26,11 +26,15 @@ The server SHALL provide `create_folder`, `create_sprite` (name, folder, width, 
 - **THEN** the sprite exists in that folder and appears in the app
 
 ### Requirement: Drawing tools
-The server SHALL provide `apply_grid` (a text grid, with a frame, an optional position and an option to keep existing pixels), `set_pixels` (a list of x, y and key) and `draw_shape` (line, rectangle, ellipse or fill with a key), each applied as one atomic action.
+The server SHALL provide `apply_grid` (a text grid, with a frame, an optional position and an option to keep existing pixels; a `legend` line with a hex value adds a color that is not in the palette, in the same atomic action), `set_pixels` (a list of x, y and key) and `draw_shape` (line, rectangle, ellipse or fill with a key), each applied as one atomic action.
 
 #### Scenario: Apply a grid
 - **WHEN** an agent calls `apply_grid` with a valid 8x8 grid
 - **THEN** the frame changes and the call returns the new revision
+
+#### Scenario: Apply a grid with a new color
+- **WHEN** an agent calls `apply_grid` with a grid that uses the key "Q" and a legend line `Q teal #1FB5A8`, and the palette has no "Q"
+- **THEN** the frame changes, the palette gets the color `Q` and the call returns the new revision
 
 #### Scenario: Invalid grid
 - **WHEN** the grid has a row of the wrong length

@@ -36,7 +36,7 @@ unsigned.
 - [Unsigned apps show warnings (Gatekeeper, SmartScreen)] → document the steps
   in the README and plan signing after version 1.0.0.
 - [`curl | sh` is a risk] → scripts are short, readable and verify checksums;
-  show the license and the source URL before installing.
+  show the MIT license and the source URL before installing.
 - [The pipeline is slow on three systems] → cache dependencies and run jobs in
   parallel.
 - [A broken release] → releases can be marked as pre-release and a fixed

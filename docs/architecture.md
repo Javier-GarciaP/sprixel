@@ -1,8 +1,13 @@
 # Architecture
 
-> **Status: planned.** Nothing is built yet. This document describes the design
-> that the version 1 specs in [`openspec/`](../openspec/) follow. If a spec and
-> this document disagree, the spec wins.
+> **Status: foundation, storage and app shell built.** The app skeleton (Tauri 2
+> + Vite + React + TypeScript + Tailwind), the Go CLI, the tooling, CI, the
+> drawing benchmark, the document model and project storage in the Rust core,
+> the app shell with settings, the editor features, the export and the MCP
+> server with its tools exist. The `sprixel` command bridge and the Agents tab
+> are still planned and follow the version 1 specs in
+> [`openspec/`](../openspec/). If a spec and this document disagree, the spec
+> wins.
 
 ## Overview
 
@@ -67,48 +72,162 @@ A project is a folder. Example:
 
 ```
 Dungeon Kit/
-├── sprixel.json                  project manifest (name, formatVersion, active palette)
+├── sprixel.json                  project manifest (name, formatVersion)
 ├── palettes/
 │   └── dungeon16.palette.json    colors with name, one-letter key and hex
 ├── sprites/
-│   ├── Personajes/
-│   │   ├── goblin.sprite.json
-│   │   └── heroe.sprite.json
-│   └── Enemigos/
-│       └── slime.sprite.json
+│   └── Personajes/               one folder here for each project folder
+│       └── goblin.sprite.json
 ├── assets/sprites/               default export folder
-└── .sprixel/
-    └── trash/                    deleted items (kept so Undo can bring them back)
+└── .sprixel/                     internal data, not project content
+    ├── trash/                    deleted items (kept so Undo can bring them back)
+    └── backups/                  copies of the files made before a migration
 ```
 
-A sprite file (shortened):
+The name of a sprite or a palette is the name of its file, without
+`.sprite.json` or `.palette.json`. The folders in `sprites/` are the folders
+you see in the app, and they can be empty. Names are unique in their folder
+ignoring case, and they must be valid file names on Linux, Windows and macOS.
+
+### The files
+
+All files are JSON text, written with two spaces of indentation, a final new
+line and always the same field order. Every file has a `formatVersion`.
+
+`sprixel.json` is the manifest. `activePalette` is optional and is written
+only when it is set.
 
 ```json
 {
   "formatVersion": 1,
-  "width": 8,
-  "height": 8,
+  "name": "Dungeon Kit"
+}
+```
+
+A palette file lists the colors. A `key` is one printable ASCII character that
+is not a space and not `.` (case sensitive), `hex` is `#RRGGBB`, and a palette
+has up to 93 colors. `.` is always transparent.
+
+```json
+{
+  "formatVersion": 1,
+  "colors": [
+    {
+      "key": "N",
+      "name": "black",
+      "hex": "#000000"
+    },
+    {
+      "key": "P",
+      "name": "skin",
+      "hex": "#FFCC99"
+    },
+    {
+      "key": "A",
+      "name": "blue",
+      "hex": "#2F6BFF"
+    },
+    {
+      "key": "R",
+      "name": "red",
+      "hex": "#F04545"
+    }
+  ]
+}
+```
+
+A sprite file stores the size, the palette name, one duration (in
+milliseconds) for each frame, the layers and the animation tags. Each frame is
+an array of row strings of palette keys, and each row is written on its own
+line, so changing one pixel changes exactly one line in Git. Frames and tag
+ranges are numbered from 1. Version 1 of the app shows one layer, but the file
+stores layers.
+
+```json
+{
+  "formatVersion": 1,
+  "width": 4,
+  "height": 4,
   "palette": "dungeon16",
-  "frameDurations": [83, 83, 83, 83],
+  "frameDurations": [
+    100,
+    120
+  ],
   "layers": [
     {
       "name": "Layer 1",
       "frames": [
-        ["....RRRR", "...RRRRR", "...NNNN.", "..NPNPPN", "..NPPPPN", "..NNNNNN", ".NAAAAN.", ".NA..AN."]
+        [
+          "..RR",
+          ".RRR",
+          "NPNP",
+          "NPPN"
+        ],
+        [
+          "RR..",
+          "RRR.",
+          "PNPN",
+          "NPPN"
+        ]
       ]
     }
   ],
-  "tags": [{ "name": "walk", "from": 1, "to": 4, "fps": 12, "mode": "loop" }]
+  "tags": [
+    {
+      "name": "walk",
+      "from": 1,
+      "to": 2,
+      "fps": 12,
+      "mode": "loop"
+    }
+  ]
 }
 ```
 
-- Folders in `sprites/` are the folders you see in the app.
-- Files are saved automatically and **atomically** (write a temporary file,
-  then rename it), so a crash never leaves a broken file.
+A sprite can also have an optional `anchors` list: named points for a game
+engine, each with `name`, `x`, `y` (a pixel inside the sprite) and an optional
+`frame` (from 1). Without `frame` the anchor is for the whole sprite. The
+field is written only when the sprite has anchors, and files without it open
+normally, so the format version stays `1`.
+
+```json
+"anchors": [
+  { "name": "feet", "x": 1, "y": 3 },
+  { "name": "hand", "x": 2, "y": 1, "frame": 2 }
+]
+```
+
+The examples above are checked by a test: it saves this project with the real
+code and compares the files with these blocks.
+
+### Saving and safety
+
+- Changes are saved automatically about 500 ms after the last change, and once
+  more when the app closes. The interface shows Saved, Saving or Error saving.
+- A file is saved **atomically**: the new content goes to `name.tmp` in the same
+  folder, then the temporary file replaces the old one. A crash leaves the old
+  file or the new file, never half of a file. Temporary files are ignored when a
+  project opens.
+- If a save fails (no space, no permission), the changes stay in memory, the
+  reason is shown, and Retry saves again.
+- Deleted sprites, folders and palettes are moved to `.sprixel/trash/`. Undo
+  moves them back to their place.
 - If a file changes on disk while the app is open (for example after
-  `git pull`), the app reloads it.
-- Each file has a `formatVersion`. Opening an older project runs a migration.
-- Deleted items go to `.sprixel/trash/` first.
+  `git pull`), a sprite or palette with no unsaved changes is reloaded. If the
+  app has unsaved changes for it, the user chooses between reloading and keeping
+  the app version. The app ignores the changes caused by its own writes.
+- If a file cannot be loaded (invalid JSON, a row of the wrong length, a key
+  that is not in the palette), the project still opens. The file is listed as
+  damaged with its path and the reason, and saving other changes does not touch it.
+
+### Format versions
+
+Each file carries a `formatVersion` (now `1`).
+
+- A project with an **older** version is copied to `.sprixel/backups/`, then
+  every file is migrated and the project opens normally.
+- A project with a **newer** version is not touched. The app asks the user to
+  update Sprixel.
 
 The full format is defined in the `project-format-and-storage` spec.
 
@@ -118,7 +237,7 @@ Written in Go, as one small program for Linux, Windows and macOS.
 
 | Command | What it does |
 | --- | --- |
-| `sprixel start [path]` | Starts the app, optionally opening a project |
+| `sprixel start` | Starts the app (a project path is checked but not opened yet) |
 | `sprixel status` | Shows whether the app is running |
 | `sprixel mcp` | MCP server over stdio, used by AI tools. Starts the app if needed |
 | `sprixel mcp add <client>` | Registers Sprixel in Claude Code or OpenCode |
@@ -183,38 +302,64 @@ More detail in [AI and MCP](ai-and-mcp.md).
 Tauri uses the system web view (WebKitGTK on Linux). Pixel canvas performance
 on large sprites (512x512) is checked early in the `project-foundation` spec.
 
-## Planned repository layout
+## Drawing performance
 
-Following the project structure rules (organize by feature, not by file type):
+The benchmark (`npm run benchmark`) checks that drawing stays fast.
+
+- **Method.** One 512x512 sprite held as a `Uint8Array` of palette indexes and
+  one canvas. Only the changed area is repainted with `putImageData`. A stroke
+  of 300 points with a round brush of radius 4, each point arriving at a random
+  moment of the frame. Latency is measured until just after the next frame is
+  painted.
+- **Budget.** Median of 16 ms or less. The command exits with code 1 above it.
+
+| Platform | Median | Result |
+| --- | --- | --- |
+| Linux (Fedora 44, WebKitGTK, 60 Hz) | 9.5 to 10.0 ms in 3 runs (p95 16 ms) | Meets the budget |
+| Windows | not measured | Skipped by decision of the maintainer |
+| macOS | not measured | Skipped by decision of the maintainer |
+
+Windows and macOS were not measured. If you run `npm run benchmark` there, add the numbers to this table.
+
+## Repository layout
+
+Following the project structure rules (organize by feature, not by file type).
+Folders marked *(empty)* exist with only a `.gitkeep` file; their content
+arrives with the specs that build them.
 
 ```
 sprixel/
-├── src/                        React UI
-│   ├── app/                    main.tsx, App.tsx, providers, i18n setup
-│   ├── features/
-│   │   ├── project-browser/    components/, hooks/, api/, types.ts, index.ts
-│   │   ├── canvas-editor/
-│   │   ├── frames-animations/
-│   │   ├── palette-editor/
-│   │   ├── text-view/
-│   │   ├── export/
-│   │   ├── agents/
-│   │   └── settings/
-│   ├── shared/                 components/, hooks/, lib/, types/
-│   └── assets/
-├── src-tauri/                  Rust core
-│   └── src/
-│       ├── document/           model and operations
+├── src/                        React UI (exists)
+│   ├── app/                    main.tsx, App.tsx, index.css, shell/ (layout),
+│   │                           welcome/, commands/ (registry and shortcuts),
+│   │                           api/ (calls to the Rust core), benchmark/
+│   ├── features/               8 feature folders; only settings has code
+│   │   ├── project-browser/    later: components/, hooks/, api/, types.ts,
+│   │   ├── canvas-editor/      index.ts per feature (empty)
+│   │   ├── frames-animations/  (empty)
+│   │   ├── palette-editor/     (empty)
+│   │   ├── text-view/          (empty)
+│   │   ├── export/             (empty)
+│   │   ├── agents/             (empty)
+│   │   └── settings/           Settings screen: appearance, language, shortcuts
+│   ├── shared/                 components/ (base components and icons),
+│   │                           lib/ (i18n and preferences); hooks/ and types/ (empty)
+│   └── assets/                 app icon and ghost image
+├── src-tauri/                  Rust core (exists)
+│   └── src/                    lib.rs, main.rs, plus the module folders:
+│       ├── document/           model, names and operations
 │       ├── history/            undo and redo
 │       ├── storage/            project files, autosave, trash, file watching
-│       ├── render/             PNG and GIF rendering
-│       ├── export/             sprite sheet and JSON
-│       ├── mcp/                server, tools, auth, permissions, activity
-│       └── ipc/                Tauri commands and events
-├── cli/                        Go module for the `sprixel` command
-│   ├── cmd/sprixel/main.go
-│   └── internal/               runtime, bridge, clients, doctor, update
-├── scripts/                    install.sh, install.ps1, version bump
+│       ├── render/             PNG and GIF rendering (empty)
+│       ├── export/             sprite sheet and JSON (empty)
+│       ├── mcp/                server, tools, auth, permissions, activity (empty)
+│       └── ipc/                preferences, recent projects and the open project
+├── cli/                        Go module github.com/Javier-GarciaP/sprixel/cli
+│   ├── cmd/sprixel/main.go     sprixel version (more commands come later)
+│   └── internal/               command/, version/ (runtime, bridge, clients,
+│                               doctor and update come with later specs)
+├── scripts/                    build-cli.mjs, benchmark.mjs, version.test.js
+│                               (install.sh and install.ps1 come with later specs)
 ├── docs/
 ├── openspec/
 └── README.md  LICENSE  CONTRIBUTING.md  CHANGELOG.md  AGENTS.md
@@ -222,8 +367,15 @@ sprixel/
 
 Rules:
 
+- The alias `@/x` means `src/x` (TypeScript paths and the Vite alias).
 - A feature never imports from another feature. It uses `shared/` or the other
-  feature's `index.ts`.
+  feature's `index.ts`, so a cross-feature import must be `@/features/<name>`.
+  The ESLint rule `no-restricted-imports` enforces this.
 - `shared/` never imports from `features/`.
 - `cmd/sprixel/main.go` has almost no logic.
-- Tests live next to the code they test.
+- Tests live next to the code they test (`*.test.ts` and `*.test.tsx`), plus
+  `eslint.config.test.js` in the root and `scripts/version.test.js`.
+
+CI (`.github/workflows/ci.yml`) runs `format:check`, `lint`, `test` and
+`build:release` on Linux, Windows and macOS for pull requests into `dev` and
+`main`. The package manager is npm.

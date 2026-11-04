@@ -1,0 +1,11 @@
+{
+  "width": 2,
+  "height": 2,
+  "palette": "main",
+  "layers": [
+    { "name": "Layer 1", "frames": [ [ "R.", ".R" ], [ ".R", "R." ] ] }
+  ],
+  "tags": [
+    { "name": "walk", "from": 1, "to": 2, "fps": 8, "mode": "loop" }
+  ]
+}

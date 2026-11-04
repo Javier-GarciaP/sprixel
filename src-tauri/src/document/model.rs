@@ -1,0 +1,440 @@
+use super::error::DocError;
+
+pub const MAX_SIZE: u32 = 512;
+pub const MAX_COLORS: usize = 93;
+/// The pixel key of a transparent pixel. It is never a palette color.
+pub const TRANSPARENT: char = '.';
+/// The duration a new frame gets. A frame that still has it is a frame with
+/// no duration of its own: the speed of the animation decides.
+pub const DEFAULT_FRAME_MS: u32 = 100;
+
+/// A whole project. `revision` grows by one with every applied operation or
+/// group of operations.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Project {
+    pub name: String,
+    pub active_palette: Option<String>,
+    pub palettes: Vec<Palette>,
+    /// The project root. Its own name is not used.
+    pub root: Folder,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Folder {
+    pub name: String,
+    pub folders: Vec<Folder>,
+    pub sprites: Vec<Sprite>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Palette {
+    pub name: String,
+    pub colors: Vec<Color>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Color {
+    /// One printable ASCII character, not a space and not `.`. Case sensitive.
+    pub key: char,
+    pub name: String,
+    /// `#RRGGBB`
+    pub hex: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sprite {
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub palette: String,
+    /// One duration in milliseconds per frame.
+    pub frame_durations: Vec<u32>,
+    pub layers: Vec<Layer>,
+    pub tags: Vec<Tag>,
+    /// Named points (`feet`, `hand`...) for a game engine.
+    pub anchors: Vec<Anchor>,
+    /// Named rectangles (`head`, `tail`...) that the region tools can use by
+    /// name. Optional in the file: old projects have none.
+    pub parts: Vec<Part>,
+}
+
+/// The most parts a sprite may have.
+pub const MAX_PARTS: usize = 64;
+
+/// A named rectangle of a sprite, the same on every frame. A name is unique
+/// in the sprite (ignoring case).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Part {
+    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Part {
+    /// The rules that do not depend on the size of the sprite. A part is NOT
+    /// checked against the size when a file is read: a canvas change may leave
+    /// it outside, and the region tools say so (`region_out`) when it is used.
+    pub fn check_shape(&self) -> Result<(), DocError> {
+        if self.name.trim().is_empty() || self.name.chars().count() > 64 || self.name.chars().any(char::is_control) {
+            return Err(DocError::new("bad_part", "a part name has 1 to 64 characters and no control characters"));
+        }
+        if self.width == 0 || self.height == 0 {
+            return Err(DocError::new("bad_part", format!("part {:?} must be at least 1 pixel wide and high", self.name)));
+        }
+        Ok(())
+    }
+
+    /// Checks the part against a sprite with this size (used when it is set).
+    pub fn validate(&self, width: u32, height: u32) -> Result<(), DocError> {
+        self.check_shape()?;
+        if u64::from(self.x) + u64::from(self.width) > u64::from(width) || u64::from(self.y) + u64::from(self.height) > u64::from(height) {
+            return Err(DocError::new(
+                "region_out",
+                format!(
+                    "part {:?} ({}x{} at {}, {}) does not fit in the {width}x{height} sprite",
+                    self.name, self.width, self.height, self.x, self.y
+                ),
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// A named point inside a sprite. With `frame` it belongs to that frame
+/// (numbered from 1); without it, to the whole sprite. A name is unique per
+/// frame (ignoring case). The anchor of a frame wins over the one of the
+/// same name for the whole sprite.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Anchor {
+    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub frame: Option<u32>,
+}
+
+impl Anchor {
+    /// Checks the anchor against a sprite with this size and `frame_count`.
+    pub fn validate(&self, width: u32, height: u32, frame_count: usize) -> Result<(), DocError> {
+        if self.name.trim().is_empty() || self.name.chars().count() > 64 || self.name.chars().any(char::is_control) {
+            return Err(DocError::new(
+                "bad_anchor",
+                "an anchor name has 1 to 64 characters and no control characters",
+            ));
+        }
+        if self.x >= width || self.y >= height {
+            return Err(DocError::new(
+                "bad_anchor",
+                format!("anchor {:?} at {},{} is outside the sprite ({width}x{height})", self.name, self.x, self.y),
+            ));
+        }
+        if let Some(frame) = self.frame {
+            if frame < 1 || frame as usize > frame_count {
+                return Err(DocError::new(
+                    "bad_frame",
+                    format!("anchor {:?} is on frame {frame}, the sprite has {frame_count} frames", self.name),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// True when `name` and `frame` name this anchor (the name ignores case).
+    pub fn is(&self, name: &str, frame: Option<u32>) -> bool {
+        self.frame == frame && self.name.to_lowercase() == name.to_lowercase()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Layer {
+    pub name: String,
+    pub frames: Vec<Frame>,
+}
+
+/// The pixels of one frame: `width * height` palette keys, row by row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Frame {
+    pub pixels: Vec<u8>,
+}
+
+/// A named range of frames. Frames are numbered from 1, both ends included.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tag {
+    pub name: String,
+    pub from: u32,
+    pub to: u32,
+    pub fps: u32,
+    pub mode: TagMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagMode {
+    Loop,
+    Once,
+    PingPong,
+}
+
+impl TagMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TagMode::Loop => "loop",
+            TagMode::Once => "once",
+            TagMode::PingPong => "pingpong",
+        }
+    }
+
+    pub fn parse(text: &str) -> Option<TagMode> {
+        match text {
+            "loop" => Some(TagMode::Loop),
+            "once" => Some(TagMode::Once),
+            "pingpong" => Some(TagMode::PingPong),
+            _ => None,
+        }
+    }
+}
+
+/// How long a frame lasts when it is played in an animation of `fps` frames
+/// per second: its own duration, or `1000 / fps` when it has none.
+pub fn frame_duration_ms(duration_ms: u32, fps: u32) -> u32 {
+    if duration_ms == DEFAULT_FRAME_MS {
+        (1000.0 / fps.max(1) as f64).round() as u32
+    } else {
+        duration_ms
+    }
+}
+
+impl Project {
+    pub fn new(name: &str) -> Project {
+        Project {
+            name: name.to_string(),
+            active_palette: None,
+            palettes: Vec::new(),
+            root: Folder::default(),
+            revision: 0,
+        }
+    }
+
+    /// Finds a palette by name, ignoring upper and lower case.
+    pub fn palette(&self, name: &str) -> Option<&Palette> {
+        self.palettes
+            .iter()
+            .find(|p| p.name.to_lowercase() == name.to_lowercase())
+    }
+}
+
+impl Palette {
+    pub fn validate(&self) -> Result<(), DocError> {
+        if self.colors.len() > MAX_COLORS {
+            return Err(DocError::new(
+                "bad_palette",
+                format!("a palette has at most {MAX_COLORS} colors"),
+            ));
+        }
+        for (i, color) in self.colors.iter().enumerate() {
+            let printable = color.key.is_ascii_graphic();
+            if !printable || color.key == TRANSPARENT {
+                return Err(DocError::new(
+                    "bad_palette",
+                    format!("key {:?} must be a printable ASCII character, not a space and not \".\"", color.key),
+                ));
+            }
+            if !is_hex_color(&color.hex) {
+                return Err(DocError::new(
+                    "bad_palette",
+                    format!("color {:?} has the invalid hex {:?}, expected #RRGGBB", color.key, color.hex),
+                ));
+            }
+            if self.colors[..i].iter().any(|c| c.key == color.key) {
+                return Err(DocError::new(
+                    "bad_palette",
+                    format!("key {:?} is used twice", color.key),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// True for `.` and for every key of the palette.
+    pub fn accepts(&self, key: char) -> bool {
+        key == TRANSPARENT || self.colors.iter().any(|c| c.key == key)
+    }
+
+    /// The key of the color with this `#RRGGBB` value, ignoring letter case.
+    pub fn key_of_hex(&self, hex: &str) -> Option<char> {
+        self.colors
+            .iter()
+            .find(|c| c.hex.eq_ignore_ascii_case(hex))
+            .map(|c| c.key)
+    }
+
+    /// The key a new color gets: the first one of `A` to `Z`, `a` to `z`,
+    /// `0` to `9` and then the other printable ASCII characters (not the
+    /// space and not the dot) that no color uses. `None` when the palette
+    /// has all of them.
+    pub fn next_free_key(&self) -> Option<char> {
+        let letters = ('A'..='Z').chain('a'..='z').chain('0'..='9');
+        let others = ('!'..='~').filter(|c| !c.is_ascii_alphanumeric() && *c != TRANSPARENT);
+        letters
+            .chain(others)
+            .find(|key| !self.colors.iter().any(|c| c.key == *key))
+    }
+}
+
+fn is_hex_color(hex: &str) -> bool {
+    hex.len() == 7 && hex.starts_with('#') && hex[1..].bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+impl Folder {
+    pub fn new(name: &str) -> Folder {
+        Folder {
+            name: name.to_string(),
+            ..Folder::default()
+        }
+    }
+}
+
+impl Tag {
+    /// Checks the tag against a sprite with `frame_count` frames.
+    pub fn validate(&self, frame_count: usize) -> Result<(), DocError> {
+        if self.from < 1 || self.from > self.to || self.to as usize > frame_count {
+            return Err(DocError::new(
+                "bad_range",
+                format!(
+                    "tag {:?} has frames {} to {}, the sprite has {frame_count} frames",
+                    self.name, self.from, self.to
+                ),
+            ));
+        }
+        if !(1..=60).contains(&self.fps) {
+            return Err(DocError::new(
+                "bad_fps",
+                format!("tag {:?} has {} fps, expected 1 to 60", self.name, self.fps),
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl Sprite {
+    /// A sprite with one layer and one frame, fully transparent.
+    pub fn new(name: &str, width: u32, height: u32, palette: &str) -> Result<Sprite, DocError> {
+        check_size(width, height)?;
+        Ok(Sprite {
+            name: name.to_string(),
+            width,
+            height,
+            palette: palette.to_string(),
+            frame_durations: vec![100],
+            layers: vec![Layer {
+                name: "Layer 1".to_string(),
+                frames: vec![Frame::blank(width, height)],
+            }],
+            tags: Vec::new(),
+            anchors: Vec::new(),
+            parts: Vec::new(),
+        })
+    }
+
+    pub fn frame_count(&self) -> usize {
+        self.frame_durations.len()
+    }
+
+    /// Checks every rule of a sprite against its palette.
+    pub fn validate(&self, palette: &Palette) -> Result<(), DocError> {
+        check_size(self.width, self.height)?;
+        let bad = |message: String| DocError::new("bad_sprite", message);
+        if self.layers.is_empty() {
+            return Err(bad(format!("sprite {:?} has no layers", self.name)));
+        }
+        if self.frame_durations.is_empty() {
+            return Err(bad(format!("sprite {:?} has no frames", self.name)));
+        }
+        let pixel_count = self.width as usize * self.height as usize;
+        for layer in &self.layers {
+            if layer.frames.len() != self.frame_count() {
+                return Err(bad(format!(
+                    "layer {:?} has {} frames, expected {}",
+                    layer.name,
+                    layer.frames.len(),
+                    self.frame_count()
+                )));
+            }
+            for (i, frame) in layer.frames.iter().enumerate() {
+                if frame.pixels.len() != pixel_count {
+                    return Err(bad(format!(
+                        "frame {} of layer {:?} has {} pixels, expected {pixel_count}",
+                        i + 1,
+                        layer.name,
+                        frame.pixels.len()
+                    )));
+                }
+                if let Some(key) = frame.pixels.iter().find(|k| !palette.accepts(**k as char)) {
+                    return Err(DocError::new(
+                        "unknown_key",
+                        format!(
+                            "key {:?} is not in palette {:?}",
+                            *key as char, palette.name
+                        ),
+                    ));
+                }
+            }
+        }
+        for (i, anchor) in self.anchors.iter().enumerate() {
+            anchor.validate(self.width, self.height, self.frame_count())?;
+            if self.anchors[..i].iter().any(|a| a.is(&anchor.name, anchor.frame)) {
+                return Err(DocError::new(
+                    "bad_anchor",
+                    format!("anchor {:?} is used twice", anchor.name),
+                ));
+            }
+        }
+        if self.parts.len() > MAX_PARTS {
+            return Err(DocError::new("too_many_parts", format!("a sprite has at most {MAX_PARTS} parts")));
+        }
+        for (i, part) in self.parts.iter().enumerate() {
+            part.check_shape()?;
+            if self.parts[..i].iter().any(|p| p.name.to_lowercase() == part.name.to_lowercase()) {
+                return Err(DocError::new("bad_part", format!("part {:?} is used twice", part.name)));
+            }
+        }
+        for (i, tag) in self.tags.iter().enumerate() {
+            tag.validate(self.frame_count())?;
+            if self.tags[..i]
+                .iter()
+                .any(|t| t.name.to_lowercase() == tag.name.to_lowercase())
+            {
+                return Err(DocError::new(
+                    "tag_exists",
+                    format!("tag {:?} is used twice", tag.name),
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Frame {
+    pub fn blank(width: u32, height: u32) -> Frame {
+        Frame {
+            pixels: vec![TRANSPARENT as u8; width as usize * height as usize],
+        }
+    }
+}
+
+pub(super) fn check_size(width: u32, height: u32) -> Result<(), DocError> {
+    if width > MAX_SIZE || height > MAX_SIZE {
+        return Err(DocError::new(
+            "too_big",
+            format!("{width}x{height} is too big, the maximum is {MAX_SIZE}x{MAX_SIZE}"),
+        ));
+    }
+    if width == 0 || height == 0 {
+        return Err(DocError::new(
+            "bad_size",
+            format!("{width}x{height} is not valid, each side must be at least 1"),
+        ));
+    }
+    Ok(())
+}

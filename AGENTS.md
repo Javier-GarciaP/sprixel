@@ -10,23 +10,64 @@ use. It has three parts: the **app** (Tauri 2: Rust core + React, TypeScript,
 Vite and Tailwind UI), the **`sprixel` command** (Go) and **project folders**
 (plain text files).
 
-The project is proprietary (see `LICENSE`). Everything is written in English
+The project is open source under the MIT License (see `LICENSE`) and accepts
+contributions (see `CONTRIBUTING.md`). Everything is written in English
 (code, comments, commits, docs). The product UI is in Spanish and English.
 
 ## Status and commands
 
-The project is in the **planning stage**: the design (`docs/design/`), the docs
-(`docs/`) and the version 1 specs (`openspec/changes/`) exist, and there is no
-code yet. The first spec to build is `project-foundation`.
+The project is building its first public **demo** (see `docs/roadmap.md`).
+Specs 1 to 3 are built and archived: `project-foundation` (the app skeleton,
+the Go CLI in `cli/`, the tooling, CI and the drawing benchmark),
+`project-format-and-storage` (the document model, operations, undo and redo,
+the project files, autosave and trash, in the Rust core) and
+`app-shell-and-settings` (the window layout, themes, languages, shortcuts,
+settings, and creating and opening projects). Only the `settings` feature
+folder has code; the other feature folders are still empty placeholders. The
+next specs follow `docs/roadmap.md`.
 
-Commands do not exist yet. `project-foundation` creates them, and its last task
-updates this section with the real commands to run, test and build.
+Commands run from the repository root. The package manager is **npm**; run
+`npm ci` once first to install the JS dependencies.
 
-Available now:
+```sh
+npm run tauri dev      # the full app (opens the window; the first run
+                       # compiles Rust and takes minutes)
+npm run dev            # UI only in a browser at http://localhost:1420
+                       # (no Rust core)
+npm test               # Vitest (UI and scripts) + cargo test (Rust core)
+                       # + go test (CLI); the exit code reflects the result
+npm run lint           # ESLint, includes the import-boundary rules
+npm run format         # Prettier write
+npm run format:check   # Prettier check
+npm run build          # type-check and build the UI only
+npm run build:cli      # builds the sprixel command to bin/sprixel
+                       # (bin/sprixel.exe on Windows), version from package.json
+npm run build:release  # Tauri bundle for the current system (Linux: .deb,
+                       # .rpm and .AppImage in src-tauri/target/release/bundle/)
+                       # plus bin/sprixel
+npm run benchmark      # 512x512 drawing benchmark in the real app window;
+                       # prints the median latency; exit code 1 if above 16 ms
+```
+
+Single tests:
+
+```sh
+npx vitest run <path>                            # one UI or scripts test
+cargo test --manifest-path src-tauri/Cargo.toml  # Rust core
+go test -C cli ./...                             # CLI
+```
+
+**Version:** the single source is the `version` field of `package.json`.
+`tauri.conf.json` reads it (`"../package.json"`), the Go command gets it at
+build time with `-ldflags` (`scripts/build-cli.mjs`) and `Cargo.toml` must
+have the same value (a test checks it).
+
+Other commands:
 
 ```sh
 openspec list                 # specs in progress
 openspec validate --all --strict
+node scripts/bump-version.mjs --check   # every version file matches package.json
 op start --file docs/design/sprixel.op   # open the design in OpenPencil
 ```
 
@@ -44,6 +85,34 @@ op start --file docs/design/sprixel.op   # open the design in OpenPencil
   at the moment its task starts.
 - If code and a spec disagree, stop and ask. The specs win over `docs/`, and
   `docs/` wins over the design images.
+
+## Working with agents
+
+For the demo, one phase at a time, an orchestrator gives each agent a written
+brief and audits the result. These rules came from real problems:
+
+- **One commit per task**, tests first, Conventional Commits, no `Co-Authored-By`
+  lines, `git add` with explicit paths, and no push by the agent.
+- **UI tests must not be flaky** (two CI runs failed before). Never read the DOM
+  right after a click, a render or an `await`: use `findBy...` or `vi.waitFor`.
+  Key listeners are attached in effects, so send the key inside `vi.waitFor`.
+  No fixed sleeps. Run the test files you touched 15 times, and once with the
+  CPU loaded.
+- **Rust tests must work on Linux, Windows and macOS**: `tempfile`, no hard-coded
+  path separators, no fixed sleeps. Case-insensitive file names behave
+  differently on each system.
+- **Color model**: any color can be used, the palette grows by itself, and a
+  sprite always has a palette (`main`). Preset names are generic, with no
+  trademarks. See `docs/roadmap.md`.
+- **Dependencies**: only the approved ones. An agent that needs another stops
+  and asks (`DEPENDENCY REQUEST:`); it is accepted only if a task needs it,
+  there is no standard option, the license is permissive and it is small.
+- **Audit checklist**: commits and trailers; files inside the ownership list;
+  only approved dependencies; format, lint, tests and build; a stress run of the
+  UI tests; every spec scenario has a test; read the risky code (security,
+  writes, paths); `openspec validate --all --strict`; then a pull request with
+  the three CI jobs green.
+- The report of the agent is in Spanish and says what it could not verify.
 
 ## Architecture (what is not obvious from the code)
 
@@ -72,7 +141,8 @@ op start --file docs/design/sprixel.op   # open the design in OpenPencil
 - **Text grid keywords are English** (`palette`, `legend`, `frame`), even in the
   Spanish UI. The format is in `docs/text-grid-format.md`.
 - **Sprite size** is chosen when the sprite is created (1 to 512 per side) and
-  never changed in the editor.
+  changed only by the explicit action "Change canvas" (operation
+  `ResizeSprite`, tool `resize_sprite`). Drawing never resizes a sprite.
 - **All user-facing text goes through the translation files** (Spanish and
   English). Never hard-code UI text.
 - **Names** of sprites and folders are unique per folder, ignoring case.

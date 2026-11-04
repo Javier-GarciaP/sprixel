@@ -9,6 +9,7 @@
 
 - [Install](#install)
 - [Create a project](#create-a-project)
+- [The Project tab](#the-project-tab)
 - [Create a sprite](#create-a-sprite)
 - [Draw](#draw)
 - [Frames and animations](#frames-and-animations)
@@ -16,14 +17,17 @@
 - [Text view](#text-view)
 - [Work with an AI](#work-with-an-ai)
 - [Export](#export)
+- [Power tools](#power-tools)
 - [Settings](#settings)
+- [Keyboard shortcuts](#keyboard-shortcuts)
 - [The `sprixel` command](#the-sprixel-command)
 - [Where your files are](#where-your-files-are)
 - [Troubleshooting](#troubleshooting)
 
 ## Install
 
-See the [README](../README.md#install). After installing, check everything with:
+See the [README](../README.md#install) for the install commands. After
+installing, check everything with:
 
 ```sh
 sprixel doctor
@@ -31,37 +35,230 @@ sprixel doctor
 
 Start the app from your applications menu, or with `sprixel start`.
 
+### Where the installer puts things
+
+| System | App | `sprixel` command | License and notices |
+| --- | --- | --- | --- |
+| Linux | `~/.local/bin/sprixel-app` (an AppImage) | `~/.local/bin/sprixel` | `~/.local/share/sprixel/` |
+| macOS | `~/Applications/Sprixel.app` | `~/.local/bin/sprixel` | `~/.local/share/sprixel/` |
+| Windows | `%LOCALAPPDATA%\Sprixel\Sprixel.exe` | `%LOCALAPPDATA%\Sprixel\bin\sprixel.exe` | `%LOCALAPPDATA%\Sprixel\` |
+
+If the command folder is not in your PATH, the installer adds it: on Windows to
+your user PATH, on Linux and macOS with one line (marked `# Added by the Sprixel
+installer`) in `~/.profile` (`~/.zprofile` for zsh, `~/.bash_profile` for bash
+on macOS). Open a new terminal after that.
+
+Running the installer again upgrades or repairs the installation. It never
+touches your projects, `~/.sprixel` (the token, the approved AI clients) or your
+settings.
+
+### Update
+
+```sh
+sprixel update           # install the latest version
+sprixel update --check   # only say if a new version exists
+```
+
+`sprixel update` downloads the latest release, **checks the SHA-256 of every
+file** and only then replaces the app and the command. It says which version it
+moved from and to, or that you are already up to date. If the app is open, close
+it and open it again to use the new version. It only updates a `sprixel` that
+the installer put in place; a command you built from the source code is left
+alone.
+
+### Uninstall
+
+```sh
+sprixel uninstall
+```
+
+It shows what it will remove and asks before doing it: the app, the command, the
+PATH entry and the Sprixel registration in Claude Code and OpenCode. **Your
+projects are never removed.** It asks a second, separate question about the
+local data folder `~/.sprixel` (the port, the access token and the approved AI
+clients); the default answer is no. For scripts: `--yes` confirms the uninstall
+and `--remove-data` also removes the local data folder.
+
+### Warnings the first time
+
+Version 1 is not signed or notarized, so the system may warn you:
+
+- **macOS:** "Sprixel cannot be opened". Right-click the app, choose **Open** and
+  confirm once. The install script itself does not trigger this warning, because
+  `curl` does not mark files as downloaded from the internet.
+- **Windows:** the SmartScreen window "Windows protected your PC". Choose **More
+  info** and then **Run anyway**.
+- **Linux:** the app is an AppImage. If it does not start, install FUSE 2
+  (`libfuse2` on Debian and Ubuntu, `fuse-libs` on Fedora).
+
+You can check the downloads yourself: every release has a `checksums.txt` file
+with the SHA-256 of each file.
+
+### For tests
+
+`SPRIXEL_BASE_URL` replaces the folder the files are downloaded from (for
+example a local folder served for a test). The install scripts accept an
+`http(s)` or `file://` address, `sprixel update` an `http(s)` one. It is meant for
+tests; do not set it otherwise. `install.sh` also reads `SPRIXEL_OS` and
+`SPRIXEL_ARCH`, and `install.ps1` reads `SPRIXEL_ARCH` and `SPRIXEL_SKIP_PATH`.
+
 ## Create a project
 
 A project is a folder on your computer. It holds all your sprites.
 
-1. On the Welcome screen, press **New project**.
-2. Type a name, choose where to save it and pick a starting palette.
-3. Press **Create project**.
+1. On the Welcome screen, press **New project** (or `Ctrl+N`).
+2. Type a name. **Save in** starts at `~/Proyectos`; press **Choose...** to
+   pick another folder. A line under the fields shows the folder that will be
+   created, for example `~/Proyectos/Dungeon Kit/`.
+3. Press **Create project**. The folder is created only now.
 
-Open a project you already have with **Open project**. Recent projects appear
-on the Welcome screen.
+The project opens in the **Project** tab. The project name (with a menu arrow),
+the save status and the tabs appear in the top bar, and the window title reads
+`Dungeon Kit - Sprixel`.
 
-The project saves by itself. The top bar shows **Saved** or **Saving...**.
+If a folder with that name already exists, the dialog says so and creates
+nothing. A name that cannot be a folder name (for example with `/`) is refused
+too.
+
+**Starting palette:** the list only offers **No palette (empty)**. The project
+is created with no palette. To start from a ready-made palette, press **+** in
+the palettes list of the Project tab (see [Palette](#palette)).
+
+Open a project you already have with **Open project** (or `Ctrl+O`) and pick
+its folder. If the folder has no `sprixel.json`, a message says "This folder is
+not a Sprixel project" and nothing is opened. Recent projects appear on the
+Welcome screen and in **Open recent** in the project menu; click one to open it.
+**Close project** in the project menu returns to the Welcome screen.
+
+If the folder of a recent project was moved or deleted, a message says the
+folder was not found and you can remove it from the list.
+
+The project saves by itself. The top bar shows **Saved** or **Saving...**. If
+saving fails it shows **Error saving** and a message with the reason and
+**Retry**.
+
+## The Project tab
+
+The **Project** tab is where you see and organize everything in the project.
+It has three parts:
+
+- **Left:** a search field, the **folders** tree and the **palettes** of the
+  project. Each folder shows how many items it holds, and each sprite shows its
+  number of frames. Press the arrow of a folder to open or close it.
+- **Middle:** the sprites of the selected folder as cards, with a thumbnail of
+  the first frame, the name, the size and the frames (for example
+  `8x8 - 4 frames`), and a **New sprite** card at the end. The buttons **New
+  folder** and **New sprite** are above the cards.
+- **Right:** the details of the selected sprite: a large preview, its size,
+  frames and palette, its animations (name, frames, speed and how it repeats)
+  and who edited it last, for example "Edited by claude-code". The buttons are
+  **Open in editor**, **Duplicate**, **Delete**, **Rename** and **Move to
+  folder**.
+
+The project root lists the sprites of every folder; a folder lists only its own
+sprites.
+
+A new project has no sprites yet. The middle area shows the gray ghost, says
+"Your project is empty" and offers **New sprite**; **New folder** is at the top
+right, and the tree says "No folders yet".
+
+**Open a sprite** with a double-click on its card, with **Open in editor**, or
+with `Enter`. The **Editor** tab shows it.
+
+**Search:** type in the search field to find sprites and folders of the whole
+project by name, ignoring upper and lower case and accents ("arbol" finds
+"Árbol"). The cards show what matches. Press `Esc` or the **x** button to clear
+the search.
+
+### Folders
+
+Press **New folder** and choose where to put it: the project root or another
+folder. If a sprite or folder with that name already exists there, the field
+turns red, says so and **Create folder** stays disabled. Each folder is a real
+folder inside `sprites/` in your project.
+
+### Rename and duplicate
+
+- **Rename** a sprite or folder with the menu, with `F2`, or by double-clicking
+  its name (in the details panel, in the tree or above the cards). The same name
+  rules as when creating apply. Renaming keeps the content of the sprite.
+- **Duplicate** (`Ctrl+D`) makes a copy in the same folder with all its frames
+  and animations, called `goblin copy`, then `goblin copy 2` and so on.
+
+### Move
+
+Use **Move to folder** in a sprite menu, or the **Move** button when several
+sprites are selected. The list offers the project root and every folder, and
+**New folder...** to make one on the way. You can also drag a card onto a folder
+of the tree. If the destination already has something with the same name, a
+message says so and nothing moves.
+
+### Delete and undo
+
+- Deleting **one sprite** does not ask. It goes to the trash (the folder
+  `.sprixel/trash/` of the project) and a message says "goblin moved to the
+  trash" with **Undo** for 8 seconds. `Ctrl+Z` also brings it back, and
+  `Ctrl+Shift+Z` does it again.
+- Deleting a **folder** or **several sprites** asks first. The dialog lists what
+  will go to the trash and the focus starts on **Cancel**. Undo works for them
+  too.
+
+Undo and redo work on the last change of the project, whoever made it.
+
+### Select several sprites
+
+Check the box of a card, or hold `Ctrl` (`Cmd` on macOS) and click to add or
+remove cards, or hold `Shift` and click to select a range. A bar shows how many
+are selected with **Move**, **Delete** and **Cancel selection**, and the details
+panel lists their names and their total frames.
+
+### Menus and keys
+
+Every action can be started from the **...** button of a card, with a right
+click on a card or a folder, from the buttons of the details panel and with the
+keyboard. They all do the same thing: Open in editor (`Enter`), Rename (`F2`),
+Duplicate (`Ctrl+D`), Move to folder and Delete (`Delete`). With a folder
+selected and no sprite, `F2` renames the folder and `Delete` asks to delete it.
 
 ## Create a sprite
 
 1. In the **Project** tab, press **New sprite**.
-2. Type a name and choose a folder.
-3. Choose the canvas size: a preset (8x8, 16x16, 32x32, 64x64) or any width and
-   height up to 512x512, for example 120x30.
-4. Press **Create sprite**. The editor opens.
+2. Type a name and choose a folder. The dialog starts on the folder you have
+   open.
+3. Choose the canvas size: a preset (8x8, 16x16, 32x32, 64x64) or any width
+   and height from 1 to 512, for example 120x30. Typing a size clears the
+   preset. From 128 pixels on, a warning says that drawing with an AI is less
+   accurate and the editor can be slower, but you can still create it.
+4. Choose a palette, or keep **No palette**. Without a palette the sprite uses
+   the palette `main` of the project, which Sprixel creates empty the first
+   time. It grows with the colors you use.
+5. Press **Create sprite**. The editor opens with the new sprite.
 
-Use folders to keep things in order (characters, enemies, items). Create them
-with **New folder**. Right-click a sprite or folder for more actions: open,
-rename, duplicate, move and delete. Deleted items go to the trash and a message
-lets you **Undo**.
+The name must not be empty, must be valid as a file name and must not be used
+by another sprite or folder in that folder (ignoring case). If it is not, the
+field turns red with the reason and **Create sprite** stays disabled.
 
-You can select several sprites with the checkboxes to move or delete them.
+The size can be changed later only on purpose: select the sprite and press
+**Change canvas…** in the details panel (see [Change the canvas](#change-the-canvas)).
+
+Use folders to keep things in order (characters, enemies, items). See [The
+Project tab](#the-project-tab) to rename, duplicate, move and delete.
+
+### Change the canvas
+
+Select a sprite in the Project tab and press **Change canvas…**. Type the new
+width and height (1 to 512) and choose where the drawing stays with the nine
+squares (for example **Center** adds the same space on every side, **Top
+left** adds it to the right and bottom). Every frame and layer is cropped or
+extended with transparent pixels. Anchors such as `feet` move with the drawing;
+those that end outside the new canvas are removed. It is one step: **Undo**
+(Ctrl+Z) brings the old size, the pixels and the anchors back. An AI can do the
+same with the tool `resize_sprite`.
 
 ## Draw
 
-The tools are on the left of the editor:
+The tools are on the left of the editor. Rest the pointer on a tool to see its
+name and key.
 
 | Tool | Key |
 | --- | --- |
@@ -74,36 +271,158 @@ The tools are on the left of the editor:
 | Ellipse | `C` |
 | Select | `M` |
 | Move | `V` |
+| Anchor | `A` |
 
-- Pick colors from the palette on the right. The two color boxes under the
-  tools are your main and secondary colors.
-- Zoom with `+`, `-` or `Ctrl` + mouse wheel. Move the view by holding `Space`.
-- Undo with `Ctrl+Z` and redo with `Ctrl+Shift+Z`.
+- **Pencil** and **Eraser** paint or clear the pixels you touch, with no gaps,
+  even if you move the mouse fast.
+- **Bucket** fills the connected area of one color. It does not cross other
+  colors.
+- **Eyedropper** takes the color of the pixel you click (the main color with
+  the left button, the secondary color with the right button). A transparent
+  pixel changes nothing.
+- **Line**, **Rectangle** and **Ellipse** show a preview while you drag and
+  draw when you let go. Hold `Shift` for a line in 45-degree steps, a square or
+  a circle. Rectangle and Ellipse can be **Outline** or **Filled** (the switch
+  appears above the canvas).
+- **Anchor** puts a named point on the sprite (see [Power tools](#power-tools)).
+- **Select** chooses a rectangle (click without dragging to clear it).
+  **Move** drags the selected pixels, or the whole frame when nothing is
+  selected. What leaves the canvas is cut off.
+
+Every stroke, fill, shape or move is one step: one undo takes it all back.
+Undo with `Ctrl+Z` and redo with `Ctrl+Shift+Z`, or use the buttons above the
+canvas.
+
+### Colors
+
+- The two color boxes under the tools are your **main** color (left mouse
+  button) and your **secondary** color (right mouse button). Press `X` or the
+  swap button to exchange them.
+- Click a color of the palette (right panel) for the main color, or right-click
+  for the secondary color. Click a color box to use the system color picker, or
+  type a hex value such as `#1F2A44` in the field of the palette box.
+- You can use **any color**. A color that is not in the palette yet is added to
+  it with the next free key, in the same undo step as the stroke. A palette has
+  up to 93 colors; after that a new color shows "The palette is full" and
+  nothing is drawn with it.
+
+### Zoom and move
+
+- Zoom with `+`, `-`, the buttons under the canvas, or `Ctrl` + mouse wheel,
+  from 100% to 3200%. The pixel under the pointer stays where it is. **Fit**
+  (`Ctrl+0`) uses the largest whole zoom that fits the area.
+- Move the view by holding `Space` and dragging, or with the middle mouse
+  button.
+- The pixel grid shows from 600% zoom if it is on in **Settings**. The bar under
+  the canvas shows the pixel under the pointer, for example `x: 3 y: 4`.
+
+Pixels are always sharp squares: there is no smoothing at any zoom. Transparent
+pixels show over a gray checkerboard, the same in the light and the dark theme.
+
+### When an AI is drawing
+
+While an agent writes to the sprite, the canvas has an amber border and a label
+such as "Claude Code is drawing frame 2" with a **Stop** button. That frame is
+busy: if you draw on it, your stroke is kept and applied when the agent
+finishes.
 
 ## Frames and animations
 
-- The column next to the tools lists the **frames**. Press **+** to add one.
+### Frames
+
+- The column next to the tools lists the **frames**, each with a picture and its
+  number. Click one to draw on it. The current frame has an amber border.
+- **+** adds an empty frame right after the current one, and the copy button
+  next to it adds a copy of the current frame. The new frame becomes the
+  current one.
+- The **...** button on a frame (or a right-click) opens its menu: **Duplicate**
+  and **Delete**. The last frame of a sprite cannot be deleted.
+- Drag a frame onto another one to move it there. The pixels of every frame stay
+  as they are.
+- `,` and `.` go to the previous and the next frame.
+- Add, delete and move are normal changes: `Ctrl+Z` takes them back.
 - **Onion skin** shows the previous frame in blue under your drawing, so you
-  can see how the movement flows. Turn it on and set its strength in the
-  right panel (`O` toggles it).
-- The **preview** plays the animation. Choose the speed in FPS.
-- An **animation** is a name plus a range of frames. In the Project tab,
-  select a sprite and press **+** in the **Animations** box. For example
-  `walk`: frames 1 to 4, 12 fps, repeating.
-- The animation menu above the frames filters the frames you see.
+  can see how the movement flows. Turn it on and set its opacity (10% to 80%,
+  40% at the start) in the right panel; `O` toggles it. There is no onion skin
+  on frame 1. The previous frame is only a guide: you cannot edit it and it is
+  never exported.
+
+### Animations
+
+An **animation** is a name plus a range of frames, a speed and what happens at
+the end. A frame can be part of several animations.
+
+- In the Project tab, select a sprite and press **+** in the **Animations**
+  box. Choose a name, the first and the last frame, the speed (1 to 60 fps) and
+  **Repeat**, **Once** or **Ping-pong**. Mistakes show next to the field and the
+  button stays off. For example `walk`: frames 1 to 4, 12 fps, repeating shows
+  as "frames 1-4 · 12 fps · repeats".
+- **Edit** and **Delete** are next to each animation. Undo brings a deleted
+  animation back.
+- When you add, delete or move frames, the ranges follow the frames they hold.
+  If a move splits an animation, its range grows to hold all its frames.
+- The list **Animation** above the frames has **All** and your animations.
+  Choosing one shows only its frames in the column and in the preview.
+
+### Preview
+
+The **preview** in the right panel plays the chosen animation, or all the
+frames. **Play** and **Pause** start and stop it, and the slider sets the speed
+from 1 to 60 fps. **Repeat** loops, **Once** stops on the last frame, and
+**Ping-pong** goes forward and then backward. A frame lasts `1000 / fps`
+milliseconds (83 ms at 12 fps) unless it has a duration of its own.
+
+The preview follows your drawing: draw while it plays and the new pixels show
+the next time it reaches that frame.
 
 ## Palette
 
 The palette lists your colors. Each color has a **name** and a **one-letter
-key** (the key is what the text view and the AI use).
+key** (the key is what the text view and the AI use). The key is one printable
+ASCII character that is not a space and not `.` (`.` always means transparent).
+Keys are case sensitive (`G` and `g` are different), and names are unique in a
+palette ignoring case. A palette has up to 93 colors.
 
-- Press **Edit** on the palette box to open the palette editor.
-- Change a color, its name or its key, or **add a color**. Changes apply to
-  every sprite that uses the palette.
-- Turn **Show keys** on to see the letters on the colors.
+### The palette panel
 
-Careful: changing a key breaks text grids that still use the old one. The editor
-warns you.
+- Click a color for the main color, right-click for the secondary color.
+- Turn **Show keys** on to see the letter on each color.
+- Press **Edit** to open the palette editor.
+
+### Edit a palette
+
+You can also open the editor from the palettes list of the Project tab by
+clicking a palette. The editor works on a copy, so nothing changes until you
+press **Done**.
+
+- Pick a color in the list and change its **name**, **key** or **color** (hex or
+  the R, G and B sliders). A key that is not allowed (`.`, a space or a key that
+  another color uses) shows the reason, and the change is not applied.
+- **Add color** gives the new color the next free key (`A` to `Z`, `a` to `z`,
+  `0` to `9`, then the symbols).
+- **Remove color** takes a color out. If sprites use it, you choose a
+  replacement (another color or transparent) for their pixels.
+- **Done** applies everything as one undo step (`Ctrl+Z` takes it all back).
+  **Cancel** (or `Esc`) throws all the changes away.
+- A new color value changes every sprite that uses the key at once.
+
+Careful: changing a key rewrites the pixels of every sprite that uses the
+palette, so they look the same, but **text grids that still use the old key stop
+being valid**. The editor warns you. While an AI agent is writing to a sprite
+that uses the palette, key changes and removals of used colors wait: finish or
+stop the agent first. Color values can still change.
+
+### New palettes and import
+
+Press **+** in the palettes list of the Project tab. Choose a name and start
+with:
+
+- an **empty palette**,
+- a ready-made preset: **Pocket RPG 16** (16 colors) or **Farm 32** (32 colors),
+- a file: **Import a .gpl or .hex file** (a GIMP palette, or one hex color such
+  as `1a1c2c` per line). Every color gets the next free key and a name (the
+  name in the file, or its hex value), and you can edit them afterwards. A file
+  with more than 93 colors is refused.
 
 ## Text view
 
@@ -135,6 +454,15 @@ The format is explained in [Text grid format](text-grid-format.md).
 In the **Agents** tab you can see everything the AI did and choose what it may
 do (create, edit, delete, export).
 
+- **Connect** opens a dialog with the command to copy (`sprixel mcp add claude`
+  or `sprixel mcp add opencode`). It waits and shows **Connected** when the
+  agent arrives. After 60 seconds it suggests running `sprixel doctor`.
+- The first time an agent connects, a prompt asks you to **Allow** or
+  **Reject** it. The top bar shows **Waiting for approval** until you answer.
+  If you close the prompt, you can answer from the agent card.
+- The activity list shows what each agent did. The action in progress has
+  **Stop**; only the latest finished action has **Undo**.
+
 ## Export
 
 Open the **Export** tab and follow the three steps:
@@ -144,38 +472,191 @@ Open the **Export** tab and follow the three steps:
    - **Sheet + JSON:** one PNG with all frames, plus a JSON file with the
      frames, durations and animations.
    - **Single PNG files:** one image per frame.
-   - **GIF:** an animated GIF per animation.
-3. **Options:** scale (1x to 8x), spacing between frames, and the folder to
-   save in (inside the project, `assets/sprites` by default).
+   - **GIF:** an animated GIF per animation (planned: it comes after the
+     first demo).
+3. **Options:** scale (1x to 8x), spacing between frames, the **JSON format**
+   (**Sprixel**, or **Aseprite** for the importers of Godot and Unity), and the
+   folder to save in (inside the project, `assets/sprites` by default). To use
+   the files in an engine, read [Game engines](game-engines.md).
 
-Press **Export**. When it finishes, press **Open folder**.
+Press **Export**. When it finishes, press **Open folder**. The files are
+described in the [export format](export-format.md).
+
+## Power tools
+
+These are the tools an AI agent has, for you. Every action is one step of
+Undo. All the keys are in [Keyboard shortcuts](#keyboard-shortcuts).
+
+### Selection
+
+Choose a rectangle with **Select**. A bar shows its size and these buttons: flip
+horizontally or vertically, rotate 90 degrees left or right or 180, mirror a
+half onto the other half, **Copy** and **Paste**. A rotation of 90 degrees needs
+a square selection. The arrow keys move the pixels inside the selection one
+pixel; with **Wrap** on, what leaves one side comes back on the other. With
+nothing selected, the actions work on the whole frame.
+
+Copy a region and paste it in any frame, or in another sprite that uses the
+same palette. If the palette is different, a message says so and nothing
+changes. The pasted piece becomes the selection, so you can move it.
+
+### Symmetry
+
+The **Symmetry** switch above the canvas draws everything mirrored: horizontal
+(left to right), vertical (top to bottom) or both. A dashed line shows the axis,
+which is the center of the sprite. It works with the Pencil, Eraser, Line,
+Rectangle, Ellipse and Bucket. A mirrored stroke is one step of Undo.
+
+### Outline, Shade and Review
+
+- **Outline...** draws a one pixel outline with a color you choose (4 or 8
+  neighbors, skip the holes, or draw inside the shape).
+- **Shade...** shades the pixels of a base color with a ramp of tones for a
+  direction of light. It can work only inside the selection.
+- Both panels show a **preview** on the canvas. Nothing is saved until you press
+  **Apply**; **Cancel** and `Escape` change nothing.
+- **Review sprite** lists loose pixels, gaps in the outline (choose the outline
+  color), colors that nothing uses and how each frame differs from the next.
+  Click a pixel in the list and the canvas marks it.
+
+### Palette tools
+
+In the palette editor: **Generate ramp** makes tones of one color (3 to 9 steps
+and a hue shift) with a preview, and **Remove unused colors** lists the colors
+no sprite uses and asks before it removes them. Both work on the saved palette,
+so press Done first if you edited a color.
+
+### Frame duration and anchors
+
+Under each frame you can type how long it lasts, in milliseconds (10 to 10000).
+An empty box means the speed of its animation decides; the box then shows that
+time. The **Anchor** tool puts named points (for example `feet` or `hand`) on
+the sprite or on one frame: click an empty pixel to make one, drag one to move
+it, and rename or delete it in the panel. A game reads them from the sprite
+sheet JSON.
+
+### Preview tools
+
+Under the preview: the background (checker, light or dark), a **Tile preview**
+that repeats the frame 3 times on each side and warns if the edges do not match,
+and in the onion skin panel the number of previous frames (1 to 3), older ones
+fainter.
 
 ## Settings
 
-Open **Settings** from the bottom left corner of the window.
+Open **Settings** from the bottom left corner of the window. It has two pages.
 
-- **Theme:** light, dark or follow the system.
-- **Language:** Spanish or English.
-- **Pixel grid:** show a grid when zoomed in.
-- **Keyboard shortcuts:** see the full list.
+**Appearance and language**
+
+- **Theme:** Light, Dark or Follow the system. With "Follow the system" the
+  app changes when your operating system changes. The choice applies at once.
+- **Language:** Spanish or English. On the first start Sprixel uses your system
+  language if it is Spanish or English, and English otherwise. Text changes at
+  once, with no restart.
+- **Canvas:** show a pixel grid when you zoom in (on by default).
+
+**Keyboard shortcuts:** the full list, grouped by area (see below).
 
 Theme and language also have quick buttons in the bottom bar.
+
+Your preferences and your recent projects are saved on your computer, in the
+Sprixel config folder (for example `~/.config/com.sprixel.app/preferences.json`
+on Linux). They are never saved inside a project, so a project copied to
+another computer does not carry them.
+
+## Keyboard shortcuts
+
+On macOS use `Cmd` instead of `Ctrl`. The same list is in
+**Settings > Keyboard shortcuts**.
+
+**Project**
+
+| Command | Shortcut |
+| --- | --- |
+| New project | `Ctrl+N` |
+| Open... | `Ctrl+O` |
+| Export... | `Ctrl+E` |
+| Open in editor | `Enter` |
+| Rename | `F2` |
+| Duplicate | `Ctrl+D` |
+| Delete | `Delete` |
+
+**Tools**
+
+| Command | Shortcut |
+| --- | --- |
+| Pencil | `B` |
+| Eraser | `E` |
+| Bucket | `G` |
+| Eyedropper | `I` |
+| Line | `L` |
+| Rectangle | `R` |
+| Ellipse | `C` |
+| Select | `M` |
+| Move | `V` |
+| Anchor | `A` |
+
+**Editor and view**
+
+| Command | Shortcut |
+| --- | --- |
+| Swap colors | `X` |
+| Undo | `Ctrl+Z` |
+| Redo | `Ctrl+Shift+Z` |
+| Previous frame | `,` |
+| Next frame | `.` |
+| Zoom in | `+` |
+| Zoom out | `-` |
+| Fit to window | `Ctrl+0` |
+| Move the view | `Space` |
+| Onion skin | `O` |
+| Flip horizontally | `H` |
+| Flip vertically | `Shift+H` |
+| Rotate 90° right | `Shift+R` |
+| Rotate 180° | `Shift+U` |
+| Rotate 90° left | `Shift+L` |
+| Mirror the left half onto the right | `Shift+M` |
+| Mirror the top half onto the bottom | `Shift+N` |
+| Move the selection left | `←` |
+| Move the selection right | `→` |
+| Move the selection up | `↑` |
+| Move the selection down | `↓` |
+| Wrap around when moving | `W` |
+| Copy | `Ctrl+C` |
+| Paste | `Ctrl+V` |
+| Symmetry mode | `S` |
+| Outline... | `Shift+O` |
+| Shade... | `Shift+S` |
+| Review sprite | `Shift+A` |
+| Preview background | `Shift+B` |
+| Tile preview | `T` |
+| Onion skin frames | `Shift+F` |
+
+The project menu (click the project name) has these commands: New project, Open, Open recent, Rename project, Save a copy as, Show
+in folder, Export and Close project. There is no Save command because the
+project saves by itself. Some commands work only when the feature that owns
+them is built.
 
 ## The `sprixel` command
 
 | Command | What it does |
 | --- | --- |
-| `sprixel start [path]` | Start the app, optionally opening a project |
+| `sprixel start` | Start the app (it does not open a project from the command line yet) |
 | `sprixel status` | Say if the app is running |
 | `sprixel mcp add claude` | Connect Claude Code |
 | `sprixel mcp add opencode` | Connect OpenCode |
 | `sprixel mcp remove <client>` | Disconnect an AI tool |
+| `sprixel mcp list` | Show where Sprixel is connected |
 | `sprixel tools` | List the tools an AI can use |
 | `sprixel tool <name> key=value ...` | Run one tool from the terminal |
 | `sprixel doctor` | Check the install and the connections |
-| `sprixel update` | Update to the latest version |
-| `sprixel uninstall` | Remove Sprixel |
+| `sprixel update [--check]` | Update to the latest version |
+| `sprixel uninstall [--yes] [--remove-data]` | Remove Sprixel (your projects stay) |
 | `sprixel version` | Show the version |
+
+Every command accepts `--json` (machine-readable output) and `--help`. Exit
+codes: `0` ok, `1` failure, `2` wrong usage, `3` the app is not running, `4` a
+tool answered with an error. More in [AI and MCP](ai-and-mcp.md#the-sprixel-command).
 
 ## Where your files are
 
