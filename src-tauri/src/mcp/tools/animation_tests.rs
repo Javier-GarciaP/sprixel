@@ -181,3 +181,107 @@ fn move_frame_moves_a_frame_and_the_tags_follow() {
     assert_eq!(rows(&host, &["Characters"], "goblin", 1), first);
     assert!(animations(&core, &session).contains(&json!({ "name": "walk", "from": 1, "to": 2, "fps": 12, "mode": "loop" })));
 }
+
+// ---- `frames` in the region tools ----
+
+/// `slime` (8x8) with `count` frames; every frame has a red pixel at (0, 0).
+fn slime_with_frames(core: &crate::mcp::Core, session: &str, count: usize) {
+    for _ in 1..count {
+        call(core, session, "add_frame", json!({ "name": "slime" })).unwrap();
+    }
+    for frame in 1..=count {
+        call(core, session, "set_pixels", json!({ "name": "slime", "frame": frame, "pixels": [{ "x": 0, "y": 0, "key": "R" }] })).unwrap();
+    }
+}
+
+fn first_cell(host: &crate::mcp::testing::TestHost, frame: usize) -> String {
+    rows(host, &[], "slime", frame).split('/').next().unwrap().to_string()
+}
+
+// Checks the "One call, six frames" scenario: `move` on frames "2-7" moves the
+// pixel on all six frames, frames 1 and 8 stay, it is ONE history entry and
+// one undo restores all six.
+#[test]
+fn transform_region_changes_a_range_of_frames_atomically() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    slime_with_frames(&core, &session, 8);
+    let before = entries(&host);
+
+    let done = call(&core, &session, "transform_region", json!({ "name": "slime", "frames": "2-7", "operation": "move", "dx": 2, "dy": 0 })).unwrap();
+
+    assert_eq!(done["pixels_changed"], 12, "two pixels per frame");
+    assert_eq!(done["frames_changed"], json!([2, 3, 4, 5, 6, 7]));
+    for frame in [1, 8] {
+        assert_eq!(first_cell(&host, frame), "R.......");
+    }
+    for frame in 2..=7 {
+        assert_eq!(first_cell(&host, frame), "..R.....", "frame {frame}");
+    }
+    assert_eq!(entries(&host), before + 1);
+    crate::ipc::browser::undo(&host.project).unwrap();
+    assert_eq!(first_cell(&host, 4), "R.......");
+}
+
+// Checks that `frames` can be a list (any order, repeated numbers count once),
+// that a single number as text works, and that it cannot be mixed with `frame`.
+#[test]
+fn frames_can_be_a_list_or_a_text() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    slime_with_frames(&core, &session, 4);
+
+    call(&core, &session, "transform_region", json!({ "name": "slime", "frames": [4, 2, 4], "operation": "flip_horizontal" })).unwrap();
+    assert_eq!((first_cell(&host, 1), first_cell(&host, 2), first_cell(&host, 3), first_cell(&host, 4)), ("R.......".into(), ".......R".into(), "R.......".into(), ".......R".into()));
+    call(&core, &session, "transform_region", json!({ "name": "slime", "frames": "3", "operation": "flip_horizontal" })).unwrap();
+    assert_eq!(first_cell(&host, 3), ".......R");
+    let mixed = call(&core, &session, "transform_region", json!({ "name": "slime", "frame": 1, "frames": [2], "operation": "flip_horizontal" })).unwrap_err();
+    assert_eq!(mixed["code"], "bad_argument");
+}
+
+// Checks the errors of `frames`: a frame that does not exist, a bad text, an
+// empty list and a backwards range. Nothing changes, not even the frames
+// before the bad one.
+#[test]
+fn bad_frames_change_nothing() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    slime_with_frames(&core, &session, 3);
+    let before = revision(&host);
+    let code = |frames: serde_json::Value| {
+        call(&core, &session, "transform_region", json!({ "name": "slime", "frames": frames, "operation": "flip_horizontal" })).unwrap_err()["code"].as_str().unwrap().to_string()
+    };
+
+    assert_eq!(code(json!([1, 2, 9])), "bad_frame");
+    assert_eq!(code(json!("2-9")), "bad_frame");
+    assert_eq!(code(json!("0-2")), "bad_frame");
+    assert_eq!(code(json!("3-1")), "bad_argument");
+    assert_eq!(code(json!("a-b")), "bad_argument");
+    assert_eq!(code(json!([])), "bad_argument");
+    assert_eq!(code(json!(true)), "bad_argument");
+    assert_eq!(revision(&host), before);
+    assert_eq!(first_cell(&host, 1), "R.......");
+}
+
+// Checks `copy_region` with `frames`: the region of the source frame is
+// pasted on every destination frame, as one history entry; `to_frame` cannot
+// be used together with it.
+#[test]
+fn copy_region_pastes_on_a_range_of_frames() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    slime_with_frames(&core, &session, 5);
+    call(&core, &session, "set_pixels", json!({ "name": "slime", "frame": 1, "pixels": [{ "x": 5, "y": 5, "key": "G" }] })).unwrap();
+    let before = entries(&host);
+
+    let done = call(&core, &session, "copy_region", json!({ "name": "slime", "frame": 1, "region": { "x": 5, "y": 5, "width": 1, "height": 1 }, "frames": "3-5" })).unwrap();
+
+    assert_eq!(done["frames_changed"], json!([3, 4, 5]));
+    for frame in 3..=5 {
+        assert_eq!(rows(&host, &[], "slime", frame).split('/').nth(5).unwrap(), ".....G..", "frame {frame}");
+    }
+    assert!(!rows(&host, &[], "slime", 2).contains('G'));
+    assert_eq!(entries(&host), before + 1);
+    let both = call(&core, &session, "copy_region", json!({ "name": "slime", "frames": [2], "to_frame": 3 })).unwrap_err();
+    assert_eq!(both["code"], "bad_argument");
+}

@@ -18,13 +18,14 @@ pub fn tools() -> Vec<Tool> {
     vec![Tool {
         name: "transform_region",
         description: concat!(
-            "Changes a rectangle of one frame in one step, without rewriting pixels. `region` is {x, y, width, height} (default: the whole frame). `operation`: `flip_horizontal` (left and right swap), `flip_vertical`, `mirror` (needs `direction`: `left_to_right` copies the mirrored left half over the right half; also `right_to_left`, `top_to_bottom`, `bottom_to_top`), `move` (needs `dx` and `dy`; pixels that leave the region are lost unless `wrap` is true) and `rotate` (needs `degrees`: 90 clockwise, 180 or 270; 90 and 270 need a square region).",
+            "Changes a rectangle of one frame, or of many frames with `frames` (a list or a range like \"8-13\"), in one step, without rewriting pixels. `region` is {x, y, width, height} (default: the whole frame). `operation`: `flip_horizontal` (left and right swap), `flip_vertical`, `mirror` (needs `direction`: `left_to_right` copies the mirrored left half over the right half; also `right_to_left`, `top_to_bottom`, `bottom_to_top`), `move` (needs `dx` and `dy`; pixels that leave the region are lost unless `wrap` is true) and `rotate` (needs `degrees`: 90 clockwise, 180 or 270; 90 and 270 need a square region).",
             write_note!()
         ),
         schema: json!({ "type": "object", "required": ["name", "operation"], "properties": {
             "name": { "type": "string" },
             "folder": { "type": "string" },
-            "frame": { "type": "integer", "minimum": 1, "description": "Default 1." },
+            "frame": { "type": "integer", "minimum": 1, "description": "Default 1. Not with `frames`." },
+            "frames": frames_schema("The frames to change, all with the same region and operation, as ONE step (one undo). Not with `frame`."),
             "region": region_schema("The rectangle to change. Default: the whole frame."),
             "operation": { "type": "string", "enum": ["flip_horizontal", "flip_vertical", "mirror", "move", "rotate"] },
             "direction": { "type": "string", "enum": ["left_to_right", "right_to_left", "top_to_bottom", "bottom_to_top"], "description": "For `mirror`." },
@@ -42,7 +43,7 @@ pub fn tools() -> Vec<Tool> {
     Tool {
         name: "copy_region",
         description: concat!(
-            "Copies a rectangle of a frame to a place in the same frame, another frame or another sprite (it must use the same palette). `region` is the source {x, y, width, height} (default: the whole frame) of frame `frame` of sprite `name`. The copy goes to `to_sprite` (default: the same sprite), `to_frame` (default: `frame`), with its top left pixel at `to_x`, `to_y` (default: the same place as the source). With `skip_transparent` the `.` pixels of the source keep what is in the destination.",
+            "Copies a rectangle of a frame to a place in the same frame, another frame, many frames of the destination with `frames` (a list or a range like \"8-13\") or another sprite (it must use the same palette). `region` is the source {x, y, width, height} (default: the whole frame) of frame `frame` of sprite `name`. The copy goes to `to_sprite` (default: the same sprite), `to_frame` (default: `frame`), with its top left pixel at `to_x`, `to_y` (default: the same place as the source). With `skip_transparent` the `.` pixels of the source keep what is in the destination.",
             write_note!()
         ),
         schema: json!({ "type": "object", "required": ["name"], "properties": {
@@ -52,7 +53,8 @@ pub fn tools() -> Vec<Tool> {
             "region": region_schema("The source rectangle. Default: the whole frame."),
             "to_sprite": { "type": "string", "description": "The destination sprite. Default: the source sprite." },
             "to_folder": { "type": "string" },
-            "to_frame": { "type": "integer", "minimum": 1, "description": "Default: the source frame." },
+            "to_frame": { "type": "integer", "minimum": 1, "description": "Default: the source frame. Not with `frames`." },
+            "frames": frames_schema("Paste on all these frames of the destination sprite (the source stays `frame`), as ONE step. Not with `to_frame`."),
             "to_x": { "type": "integer", "minimum": 0 },
             "to_y": { "type": "integer", "minimum": 0 },
             "skip_transparent": { "type": "boolean", "description": "A `.` of the source keeps the destination pixel. Default false." },
@@ -63,6 +65,11 @@ pub fn tools() -> Vec<Tool> {
         need: Need::Edit,
         run: copy_region,
     }]
+}
+
+/// The schema of a `frames` argument: a list or a range as text.
+fn frames_schema(description: &str) -> Value {
+    json!({ "type": ["array", "string"], "items": { "type": "integer", "minimum": 1 }, "description": format!("{description} A list like [8, 9] or a range as text like \"8-13\".") })
 }
 
 /// The schema of a `region` argument.
@@ -110,66 +117,89 @@ fn signed(input: &Value, key: &str) -> Result<i64, ToolError> {
 }
 
 fn transform_region(ctx: &Ctx, input: &Value) -> ToolResult {
-    let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
+    let frame = args::optional_u32(input, "frame")?;
     let operation = args::required_str(input, "operation")?.to_string();
     let wrap = args::optional_bool(input, "wrap")?.unwrap_or(false);
+    if frame.is_some() && !input["frames"].is_null() {
+        return Err(ToolError::new("bad_argument", "use `frame` or `frames`, not both").with("argument", "frames"));
+    }
     write(ctx, input, |session| {
         let project = &session.project;
         let target = args::sprite(project, input)?;
         let sprite = project.find_sprite(&target).expect("just found");
-        check_frame(sprite, frame)?;
+        let frames = match args::frame_list(input, "frames", sprite.frame_count())? {
+            Some(frames) => frames,
+            None => {
+                let frame = frame.unwrap_or(1);
+                check_frame(sprite, frame)?;
+                vec![frame]
+            }
+        };
         let (sw, sh) = (sprite.width, sprite.height);
         let rect = args::region(input, "region", sw, sh)?.unwrap_or((0, 0, sw, sh));
-        let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
         let (w, h) = (rect.2 as usize, rect.3 as usize);
-        let old = cut(current, sw, rect);
-        let new = match operation.as_str() {
-            "flip_horizontal" => flip_horizontal(&old, w, h),
-            "flip_vertical" => flip_vertical(&old, w, h),
-            "mirror" => {
-                let text = args::required_str(input, "direction")?;
-                let direction = Direction::parse(text).ok_or_else(|| {
-                    ToolError::new(
+        // Every frame is worked out before anything is written, so one error
+        // changes nothing.
+        let mut ops = Vec::new();
+        let (mut count, mut changed) = (0, Vec::new());
+        for &frame in &frames {
+            let current = &sprite.layers[0].frames[frame as usize - 1].pixels;
+            let old = cut(current, sw, rect);
+            let new = match operation.as_str() {
+                "flip_horizontal" => flip_horizontal(&old, w, h),
+                "flip_vertical" => flip_vertical(&old, w, h),
+                "mirror" => {
+                    let text = args::required_str(input, "direction")?;
+                    let direction = Direction::parse(text).ok_or_else(|| {
+                        ToolError::new(
+                            "bad_argument",
+                            format!("`direction` is {text:?}; it must be left_to_right, right_to_left, top_to_bottom or bottom_to_top"),
+                        )
+                        .with("argument", "direction")
+                    })?;
+                    mirror(&old, w, h, direction)
+                }
+                "move" => shift(&old, w, h, signed(input, "dx")?, signed(input, "dy")?, wrap),
+                "rotate" => {
+                    let degrees = args::required_u32(input, "degrees")?;
+                    rotate(&old, w, h, degrees).ok_or_else(|| {
+                        ToolError::new(
+                            "bad_argument",
+                            format!("cannot rotate a {w}x{h} region by {degrees}: use 90, 180 or 270, and a square region for 90 and 270"),
+                        )
+                        .with("argument", "degrees")
+                    })?
+                }
+                other => {
+                    return Err(ToolError::new(
                         "bad_argument",
-                        format!("`direction` is {text:?}; it must be left_to_right, right_to_left, top_to_bottom or bottom_to_top"),
+                        format!("`operation` is {other:?}; it must be flip_horizontal, flip_vertical, mirror, move or rotate"),
                     )
-                    .with("argument", "direction")
-                })?;
-                mirror(&old, w, h, direction)
+                    .with("argument", "operation"));
+                }
+            };
+            let pixels = changes(current, sw, rect, &new);
+            if !pixels.is_empty() {
+                count += pixels.len();
+                changed.push(frame);
+                ops.push(Operation::SetPixels { sprite: target.clone(), layer: 0, frame, pixels });
             }
-            "move" => shift(&old, w, h, signed(input, "dx")?, signed(input, "dy")?, wrap),
-            "rotate" => {
-                let degrees = args::required_u32(input, "degrees")?;
-                rotate(&old, w, h, degrees).ok_or_else(|| {
-                    ToolError::new(
-                        "bad_argument",
-                        format!("cannot rotate a {w}x{h} region by {degrees}: use 90, 180 or 270, and a square region for 90 and 270"),
-                    )
-                    .with("argument", "degrees")
-                })?
-            }
-            other => {
-                return Err(ToolError::new(
-                    "bad_argument",
-                    format!("`operation` is {other:?}; it must be flip_horizontal, flip_vertical, mirror, move or rotate"),
-                )
-                .with("argument", "operation"));
-            }
-        };
-        let pixels = changes(current, sw, rect, &new);
-        let count = pixels.len();
-        let ops = if pixels.is_empty() {
-            Vec::new()
-        } else {
-            vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame, pixels }]
-        };
-        Ok(Plan::new(ops, json!({ "pixels_changed": count })).preview().busy(&target, frame))
+        }
+        let shown = changed.first().copied().unwrap_or(frames[0]);
+        let mut extra = json!({ "pixels_changed": count });
+        if frames.len() > 1 {
+            extra["frames_changed"] = json!(changed);
+        }
+        Ok(Plan::new(ops, extra).preview().busy(&target, shown))
     })
 }
 
 fn copy_region(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::optional_u32(input, "frame")?.unwrap_or(1);
-    let to_frame = args::optional_u32(input, "to_frame")?.unwrap_or(frame);
+    let to_frame_arg = args::optional_u32(input, "to_frame")?;
+    if to_frame_arg.is_some() && !input["frames"].is_null() {
+        return Err(ToolError::new("bad_argument", "use `to_frame` or `frames`, not both").with("argument", "frames"));
+    }
     let (to_x, to_y) = (args::optional_u32(input, "to_x")?, args::optional_u32(input, "to_y")?);
     let skip = args::optional_bool(input, "skip_transparent")?.unwrap_or(false);
     let to_sprite = args::optional_str(input, "to_sprite")?;
@@ -183,7 +213,14 @@ fn copy_region(ctx: &Ctx, input: &Value) -> ToolResult {
             None => source.clone(),
         };
         let to = project.find_sprite(&target).expect("just found");
-        check_frame(to, to_frame)?;
+        let to_frames = match args::frame_list(input, "frames", to.frame_count())? {
+            Some(frames) => frames,
+            None => {
+                let to_frame = to_frame_arg.unwrap_or(frame);
+                check_frame(to, to_frame)?;
+                vec![to_frame]
+            }
+        };
         if !crate::document::same_name(&from.palette, &to.palette) {
             return Err(ToolError::new(
                 "palette_mismatch",
@@ -203,16 +240,23 @@ fn copy_region(ctx: &Ctx, input: &Value) -> ToolResult {
             .with("height", to.height));
         }
         let copy = cut(&from.layers[0].frames[frame as usize - 1].pixels, from.width, (x, y, w, h));
-        let current = &to.layers[0].frames[to_frame as usize - 1].pixels;
-        let old = cut(current, to.width, (dx, dy, w, h));
-        let pixels = changes(current, to.width, (dx, dy, w, h), &paste(&old, &copy, skip));
-        let count = pixels.len();
-        let ops = if pixels.is_empty() {
-            Vec::new()
-        } else {
-            vec![Operation::SetPixels { sprite: target.clone(), layer: 0, frame: to_frame, pixels }]
-        };
-        Ok(Plan::new(ops, json!({ "pixels_changed": count })).preview().busy(&target, to_frame))
+        let (mut ops, mut count, mut changed) = (Vec::new(), 0, Vec::new());
+        for &to_frame in &to_frames {
+            let current = &to.layers[0].frames[to_frame as usize - 1].pixels;
+            let old = cut(current, to.width, (dx, dy, w, h));
+            let pixels = changes(current, to.width, (dx, dy, w, h), &paste(&old, &copy, skip));
+            if !pixels.is_empty() {
+                count += pixels.len();
+                changed.push(to_frame);
+                ops.push(Operation::SetPixels { sprite: target.clone(), layer: 0, frame: to_frame, pixels });
+            }
+        }
+        let shown = changed.first().copied().unwrap_or(to_frames[0]);
+        let mut extra = json!({ "pixels_changed": count });
+        if to_frames.len() > 1 {
+            extra["frames_changed"] = json!(changed);
+        }
+        Ok(Plan::new(ops, extra).preview().busy(&target, shown))
     })
 }
 

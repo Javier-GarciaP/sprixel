@@ -88,6 +88,58 @@ pub fn region(args: &Value, key: &str, max_width: u32, max_height: u32) -> Resul
     Ok(Some((x, y, width, height)))
 }
 
+/// Frames written as a list (`[8, 9]`), a range (`"8-13"`), one number as text
+/// (`"5"`) or a mix of them in text (`"1-3,8"`). The answer is sorted, with
+/// every frame once. `bad_argument` if it is not well written, `bad_frame` if a
+/// frame is not in `1..=count`. `None` when the argument is missing.
+pub fn frame_list(args: &Value, key: &str, count: usize) -> Result<Option<Vec<u32>>, ToolError> {
+    let Some(value) = object(args)?.get(key).filter(|v| !v.is_null()) else { return Ok(None) };
+    let shape = "a list like [8, 9] or a range like \"8-13\"";
+    let out_of = |frame: u64| {
+        ToolError::new("bad_frame", format!("frame {frame} does not exist; frames go from 1 to {count}"))
+            .with("frame", frame)
+            .with("frames", count)
+    };
+    let mut ranges: Vec<(u64, u64)> = Vec::new();
+    match value {
+        Value::Array(items) => {
+            for item in items {
+                let n = item.as_u64().ok_or_else(|| bad(key, shape))?;
+                ranges.push((n, n));
+            }
+        }
+        Value::String(text) => {
+            for part in text.split(',') {
+                let number = |t: &str| t.trim().parse::<u64>().map_err(|_| bad(key, shape));
+                let range = match part.split_once('-') {
+                    Some((a, b)) => (number(a)?, number(b)?),
+                    None => (number(part)?, number(part)?),
+                };
+                if range.0 > range.1 {
+                    return Err(bad(key, "a range that goes up, like \"8-13\""));
+                }
+                ranges.push(range);
+            }
+        }
+        _ => return Err(bad(key, shape)),
+    }
+    if ranges.is_empty() {
+        return Err(bad(key, "at least one frame"));
+    }
+    let mut frames = Vec::new();
+    for (from, to) in ranges {
+        for end in [from, to] {
+            if end < 1 || end > count as u64 {
+                return Err(out_of(end));
+            }
+        }
+        frames.extend(from as u32..=to as u32);
+    }
+    frames.sort_unstable();
+    frames.dedup();
+    Ok(Some(frames))
+}
+
 /// A folder path written as `Characters/Humans` (or a list of names). An
 /// empty text or a missing value is the project root. Names cannot be `.` or
 /// `..`, and a path cannot start with a slash: a path always starts at the
