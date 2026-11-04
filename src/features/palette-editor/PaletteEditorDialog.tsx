@@ -18,6 +18,7 @@ import {
   type Removed,
 } from "./draft";
 import { RampTool } from "./RampTool";
+import { UnusedTool } from "./UnusedTool";
 import type { PaletteApi } from "./types";
 
 type Props = {
@@ -118,14 +119,14 @@ export function PaletteEditorDialog({
 
   // The draft as it was loaded: the tools that write at once (the ramp) only
   // work when nothing was edited, or the edits would be lost.
-  const [loaded, setLoaded] = useState("");
+  const [loaded, setLoaded] = useState<DraftColor[]>([]);
   const load = () =>
     api
       .loadPalette(name)
       .then((info) => {
         const next = draftOf(info.colors);
         setDraft(next);
-        setLoaded(JSON.stringify(next));
+        setLoaded(next);
         setRemoved([]);
       })
       .catch(() => setLoadFailed(true));
@@ -191,7 +192,8 @@ export function PaletteEditorDialog({
   };
 
   const keys = changedKeys(draft);
-  const dirty = JSON.stringify(draft) !== loaded || removed.length > 0;
+  const dirty =
+    JSON.stringify(draft) !== JSON.stringify(loaded) || removed.length > 0;
   const rgb = current ? toRgb(current.hex) : [0, 0, 0];
   // The colors that stay (and already existed) can take the pixels of a
   // removed color.
@@ -367,6 +369,16 @@ export function PaletteEditorDialog({
             startHex={current?.hex ?? "#808080"}
             disabled={dirty}
             onAdded={() => {
+              void load();
+              onApplied();
+            }}
+          />
+          <UnusedTool
+            api={api}
+            name={name}
+            unused={loaded.filter((c) => c.from !== null && !c.used)}
+            disabled={dirty}
+            onRemoved={() => {
               void load();
               onApplied();
             }}

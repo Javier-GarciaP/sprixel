@@ -110,3 +110,72 @@ describe("Generate ramp", () => {
     ).toBe(true);
   });
 });
+
+describe("Remove unused colors", () => {
+  const ask = () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove unused colors..." }),
+    );
+
+  // Checks the "Remove unused" scenario: the dialog lists the unused color
+  // (green in the sample) first and removes nothing until it is confirmed.
+  it("lists the unused colors and removes nothing yet", async () => {
+    const { api } = await open();
+    ask();
+    expect(await screen.findByText(/They will be removed/)).toBeTruthy();
+    const list = screen.getByRole("region", {
+      name: "Remove unused colors...",
+    });
+    expect(list.querySelectorAll("li")).toHaveLength(1);
+    expect(list.textContent).toContain("green");
+    expect(api.removeCalls).toHaveLength(0);
+  });
+
+  // Checks Cancel: the list closes and nothing was removed.
+  it("removes nothing on Cancel", async () => {
+    const { api } = await open();
+    ask();
+    const region = screen.getByRole("region", {
+      name: "Remove unused colors...",
+    });
+    fireEvent.click(
+      Array.from(region.querySelectorAll("button")).find(
+        (b) => b.textContent === "Cancel",
+      )!,
+    );
+    expect(screen.queryByText(/They will be removed/)).toBeNull();
+    expect(api.removeCalls).toHaveLength(0);
+  });
+
+  // Checks Confirm: the core is called once, the list is read again (green is
+  // gone) and the sprite is told to read itself again.
+  it("removes them after the confirmation", async () => {
+    const { api, onApplied } = await open();
+    ask();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove 1 colors" }),
+    );
+    await waitFor(() => expect(api.removeCalls).toEqual(["dungeon16"]));
+    await waitFor(() => expect(onApplied).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /^green / })).toBeNull(),
+    );
+  });
+
+  // Checks that an unsaved edit turns the button off.
+  it("waits for Done after an unsaved edit", async () => {
+    const { api } = await open();
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "ink" },
+    });
+    await screen.findByText(/Press Done first/);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Remove unused colors...",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(api.removeCalls).toHaveLength(0);
+  });
+});

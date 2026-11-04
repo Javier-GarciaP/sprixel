@@ -34,7 +34,7 @@
 ## 7. Palette editor
 
 - [x] 7.1 Add Generate ramp to the palette editor and verify the new tones and the reuse of an existing tone
-- [ ] 7.2 Add Remove unused colors with the list and confirmation and verify the list, cancel and confirm
+- [x] 7.2 Add Remove unused colors with the list and confirmation and verify the list, cancel and confirm
 
 ## 8. Frames and anchors
 
