@@ -24,7 +24,7 @@ Press **M** (Select) and drag a rectangle around the shape.
 
 | # | Do this | Expected |
 | --- | --- | --- |
-| 1.1 | Look under the top bar | A bar "Selection actions" shows the size, for example "Selection 6 × 6" |
+| 1.1 | Look at the top bar before and after you select | The bar keeps the same height and the same icons. The flip, rotate and mirror icons are grey (disabled) before, and turn on after. Hover a grey icon: the tip says "Select an area first". In a narrow window they sit in the **More** (⋯) menu |
 | 1.2 | Click **Flip horizontally** (or press **H**) | The selected pixels are mirrored left to right. Pixels outside the rectangle do not change. The selection stays |
 | 1.3 | Click **Flip vertically** (or **Shift+H**) | Mirrored top to bottom |
 | 1.4 | Click **Rotate 90° right** on a square selection (or **Shift+R**) | The shape turns clockwise |
@@ -32,7 +32,7 @@ Press **M** (Select) and drag a rectangle around the shape.
 | 1.6 | Select a rectangle that is not square and click **Rotate 90° right** | A message says it cannot turn 90°. Nothing changes |
 | 1.7 | Click **Mirror the left half onto the right** (**Shift+M**) | The right half becomes the mirror of the left half. Try the three other mirror buttons too (top/bottom has **Shift+N**) |
 | 1.8 | Press the **arrow keys** | The pixels inside the selection move 1 pixel. What leaves the rectangle is lost |
-| 1.9 | Turn on **Wrap** (check box, or press **W**) and press an arrow key | What leaves one side comes back on the other side |
+| 1.9 | Turn on **Wrap around when moving** (the loop icon, or press **W**) and press an arrow key | What leaves one side comes back on the other side |
 | 1.10 | Click once on the canvas with Select to clear the selection, then press an arrow key | The whole frame moves |
 
 ## 2. Copy and paste
@@ -50,7 +50,7 @@ Press **M** (Select) and drag a rectangle around the shape.
 
 | # | Do this | Expected |
 | --- | --- | --- |
-| 3.1 | In the top bar choose **Symmetry: Horizontal** (or press **S**) | A dashed pink vertical line shows in the middle of the canvas |
+| 3.1 | In the top bar click the **Symmetry: horizontal** icon (or press **S**) | A dashed pink vertical line shows in the middle of the canvas |
 | 3.2 | Draw with the Pencil on the left side | The same stroke appears mirrored on the right side |
 | 3.3 | Press **Ctrl+Z** once | Both sides are undone together |
 | 3.4 | Try **Vertical** and **Both** | A horizontal line, and both lines. Strokes mirror in 2 and 4 places |
@@ -61,11 +61,11 @@ Press **M** (Select) and drag a rectangle around the shape.
 
 | # | Do this | Expected |
 | --- | --- | --- |
-| 4.1 | Click **Outline...** (or **Shift+O**) | A panel opens on the right. The canvas shows a see-through preview of the outline. The sprite is not changed yet |
+| 4.1 | Click the **Outline** icon (or **Shift+O**) | A panel opens on the right. The canvas shows a see-through preview of the outline. The sprite is not changed yet |
 | 4.2 | Change the color, 4 or 8 neighbors, "Skip holes", "Draw inside the shape" | The preview changes each time. The text says how many pixels will change |
 | 4.3 | Press **Cancel** or **Escape** | The panel closes, the preview goes away, the sprite did not change |
 | 4.4 | Open it again and press **Apply** | The outline is drawn. The panel closes. One Undo removes it |
-| 4.5 | Click **Shade...** (**Shift+S**). Pick a base color and 2 to 4 colors for the ramp, and a light direction | The preview shows lighter pixels toward the light and darker pixels away. Apply is off until the base and a ramp are chosen |
+| 4.5 | Click the **Shade** icon (**Shift+S**). Pick a base color and 2 to 4 colors for the ramp, and a light direction | The preview shows lighter pixels toward the light and darker pixels away. Apply is off until the base and a ramp are chosen |
 | 4.6 | Select a rectangle first, open Shade and check "Only inside the selection" | Only that rectangle is shaded |
 | 4.7 | Apply, then Undo | The sprite is as before |
 
@@ -73,7 +73,7 @@ Press **M** (Select) and drag a rectangle around the shape.
 
 | # | Do this | Expected |
 | --- | --- | --- |
-| 5.1 | Click **Review sprite** (**Shift+A**) | The panel lists "Loose pixels" (the single pixel you drew apart), "Unused colors" and, with 2+ frames, how each frame differs from the next |
+| 5.1 | Click the **Review sprite** icon (**Shift+A**) | The panel lists "Loose pixels" (the single pixel you drew apart), "Unused colors" and, with 2+ frames, how each frame differs from the next |
 | 5.2 | Click the loose pixel in the list | The editor goes to its frame and a black and white box marks the pixel on the canvas |
 | 5.3 | Pick an outline color in the panel | "Outline gaps" lists shape pixels open to the outside, if any |
 | 5.4 | Fix the sprite | The panel updates by itself. When all is fine it says "Nothing wrong found." |

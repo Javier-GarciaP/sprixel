@@ -4,6 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
 import { drag, mockLayout, renderEditor } from "../testing/renderEditor";
 
+// The selection actions are enabled once something is selected.
+const selected = () =>
+  waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Flip horizontally" })
+        .hasAttribute("disabled"),
+    ).toBe(false),
+  );
+
 beforeEach(() => mockLayout(500, 300));
 afterEach(() => {
   cleanup();
@@ -22,7 +32,7 @@ async function open() {
   api.preview = { pixels: [[1, 1, "L"]] };
   renderEditor(api);
   await screen.findByText("1500%");
-  fireEvent.click(screen.getByRole("button", { name: "Shade..." }));
+  fireEvent.click(screen.getByRole("button", { name: "Shade" }));
   await screen.findByRole("dialog", { name: "Shade" });
   return api;
 }
@@ -129,8 +139,8 @@ describe("Shade panel", () => {
         [5, 2],
       ],
     );
-    await screen.findByText("Selection 4 × 3");
-    fireEvent.click(screen.getByRole("button", { name: "Shade..." }));
+    await selected();
+    fireEvent.click(screen.getByRole("button", { name: "Shade" }));
     await screen.findByRole("dialog", { name: "Shade" });
     pick("D", "#000033", RAMP);
     pick("B", "#3366CC", BASE);

@@ -75,7 +75,12 @@ describe("Canvas and Text switch", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Text" }));
     await screen.findByRole("textbox", { name: "Text grid" });
     text.clipboard = "frame 1\nR.\n.R\n";
-    fireEvent.click(screen.getByRole("button", { name: "Paste" }));
+    // The top bar has a Paste button too: take the one of the Text view.
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "Paste" })
+        .find((b) => !b.closest('[role="toolbar"]'))!,
+    );
     const apply = screen.getByRole("button", { name: "Apply" });
     await waitFor(() =>
       expect((apply as HTMLButtonElement).disabled).toBe(false),

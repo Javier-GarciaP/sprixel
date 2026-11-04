@@ -1,8 +1,12 @@
-import { useT } from "@/shared/lib/i18n";
+import { useEffect, useRef, useState } from "react";
+import { useT, type TranslationKey } from "@/shared/lib/i18n";
+import type { RegionAction } from "../api/types";
 import { symmetryModes, type Symmetry } from "../tools/symmetry";
 import type { ToolId } from "../tools/tools";
 import { tools } from "../tools/tools";
-import { EditorIcon } from "./icons";
+import type { Rect } from "../types";
+import { mirrorItems, turnItems } from "./toolbarItems";
+import { ToolbarButton } from "./ToolbarButton";
 
 type Props = {
   name: string;
@@ -27,23 +31,51 @@ type Props = {
   // The Canvas and Text switch: the same place in both views.
   mode: "canvas" | "text";
   onMode: (mode: "canvas" | "text") => void;
+  // The selected rectangle, or null. The actions on it stay in the bar and
+  // are disabled without one, so the bar never changes its height.
+  selection: Rect | null;
+  onAction: (action: RegionAction) => void;
+  onCopy: () => void;
+  // Paste needs something copied.
+  onPaste: (() => void) | null;
+  // Moving with the arrow keys: pixels that leave come back on the other side.
+  wrap: boolean;
+  onWrap: (wrap: boolean) => void;
+  // The shortcut of a command, ready to show ("Ctrl+Z"), if it has one.
+  hint?: (command: string) => string | undefined;
 };
 
 const symmetryLabels = {
-  off: "editor.symmetryOff",
-  horizontal: "editor.symmetryHorizontal",
-  vertical: "editor.symmetryVertical",
-  both: "editor.symmetryBoth",
+  off: "toolbar.symmetryOff",
+  horizontal: "toolbar.symmetryHorizontal",
+  vertical: "toolbar.symmetryVertical",
+  both: "toolbar.symmetryBoth",
+} as const satisfies Record<Symmetry, TranslationKey>;
+
+const symmetryIcons = {
+  off: "symmetryOff",
+  horizontal: "symmetryHorizontal",
+  vertical: "symmetryVertical",
+  both: "symmetryBoth",
 } as const;
 
-const panelLabels = {
-  outline: "command.edit.outline",
-  shade: "command.edit.shade",
-  review: "command.view.review",
-} as const;
+const panels = [
+  {
+    id: "outline",
+    icon: "outline",
+    label: "toolbar.outline",
+    command: "edit.outline",
+  },
+  { id: "shade", icon: "shade", label: "toolbar.shade", command: "edit.shade" },
+  {
+    id: "review",
+    icon: "review",
+    label: "toolbar.review",
+    command: "view.review",
+  },
+] as const;
 
-const iconButton =
-  "flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text disabled:cursor-not-allowed disabled:opacity-40";
+const divider = <span className="h-5 w-px shrink-0 bg-border" aria-hidden />;
 
 // The bar above the canvas: the name, the size (shown, never a menu, because
 // the size is fixed when the sprite is created), undo and redo, the active
@@ -66,119 +98,237 @@ export function CanvasBar({
   agent,
   mode,
   onMode,
+  selection,
+  onAction,
+  onCopy,
+  onPaste,
+  wrap,
+  onWrap,
+  hint,
 }: Props) {
   const t = useT();
+  const [more, setMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  // The More popover closes with Escape or a click outside it.
+  useEffect(() => {
+    if (!more) return;
+    const close = (event: Event) => {
+      if (
+        event instanceof KeyboardEvent
+          ? event.key === "Escape"
+          : !moreRef.current?.contains(event.target as Node)
+      )
+        setMore(false);
+    };
+    window.addEventListener("keydown", close);
+    window.addEventListener("mousedown", close);
+    return () => {
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("mousedown", close);
+    };
+  }, [more]);
+  const needSelection = selection ? undefined : t("toolbar.selectFirst");
+  const finishing = panels.map(({ id, icon, label, command }) => (
+    <ToolbarButton
+      key={id}
+      icon={icon}
+      label={t(label)}
+      shortcut={hint?.(command)}
+      pressed={panel === id}
+      onClick={() => onPanel(panel === id ? null : id)}
+    />
+  ));
+  const selectionTools = (
+    <>
+      {turnItems.map(({ command, icon, label, action }) => (
+        <ToolbarButton
+          key={command}
+          icon={icon}
+          label={t(label)}
+          shortcut={hint?.(command)}
+          disabled={!selection}
+          reason={needSelection}
+          onClick={() => onAction(action)}
+        />
+      ))}
+      {divider}
+      {mirrorItems.map(({ command, icon, label, action }) => (
+        <ToolbarButton
+          key={command}
+          icon={icon}
+          label={t(label)}
+          shortcut={hint?.(command)}
+          disabled={!selection}
+          reason={needSelection}
+          onClick={() => onAction(action)}
+        />
+      ))}
+      {divider}
+      <ToolbarButton
+        icon="copy"
+        label={t("command.edit.copy")}
+        shortcut={hint?.("edit.copy")}
+        onClick={onCopy}
+      />
+      <ToolbarButton
+        icon="paste"
+        label={t("command.edit.paste")}
+        shortcut={hint?.("edit.paste")}
+        disabled={!onPaste}
+        reason={t("toolbar.copyFirst")}
+        onClick={() => onPaste?.()}
+      />
+      <ToolbarButton
+        icon="wrap"
+        label={t("toolbar.wrap")}
+        shortcut={hint?.("selection.wrap")}
+        pressed={wrap}
+        onClick={() => onWrap(!wrap)}
+      />
+    </>
+  );
   const active = tools.find((entry) => entry.id === tool)!;
   return (
-    <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-bg px-4">
-      <span className="font-title text-sm font-bold">{name}</span>
-      <span className="font-mono text-xs text-text-muted">
-        {t("editor.size", { width, height })}
-      </span>
-      <button
-        type="button"
-        className={iconButton}
-        aria-label={t("command.edit.undo")}
-        title={t("command.edit.undo")}
-        disabled={!canUndo}
-        onClick={onUndo}
+    <div className="@container h-12 shrink-0 border-b border-border bg-bg">
+      <div
+        role="toolbar"
+        aria-label={t("toolbar.label")}
+        className="flex h-full items-center gap-2 px-4"
       >
-        <EditorIcon name="undo" className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        className={iconButton}
-        aria-label={t("command.edit.redo")}
-        title={t("command.edit.redo")}
-        disabled={!canRedo}
-        onClick={onRedo}
-      >
-        <EditorIcon name="redo" className="h-4 w-4" />
-      </button>
-      <span className="text-xs text-text-muted" data-testid="active-tool">
-        {t("editor.activeTool", { name: t(active.labelKey) })}
-      </span>
-      {(tool === "rectangle" || tool === "ellipse") && (
+        <span className="max-w-32 min-w-0 truncate font-title text-sm font-bold">
+          {name}
+        </span>
+        <span className="shrink-0 font-mono text-xs text-text-muted">
+          {t("editor.size", { width, height })}
+        </span>
+        {divider}
+        <ToolbarButton
+          icon="undo"
+          label={t("command.edit.undo")}
+          shortcut={hint?.("edit.undo")}
+          disabled={!canUndo}
+          reason={t("toolbar.nothingToUndo")}
+          onClick={onUndo}
+        />
+        <ToolbarButton
+          icon="redo"
+          label={t("command.edit.redo")}
+          shortcut={hint?.("edit.redo")}
+          disabled={!canRedo}
+          reason={t("toolbar.nothingToRedo")}
+          onClick={onRedo}
+        />
+        {divider}
         <div
           role="group"
-          aria-label={t("editor.shapeStyle")}
-          className="flex rounded-md border border-border bg-surface p-0.5 text-xs"
+          aria-label={t("editor.symmetry")}
+          className="flex shrink-0 rounded-md border border-border bg-surface p-0.5"
         >
-          {[false, true].map((value) => (
-            <button
-              key={String(value)}
-              type="button"
-              aria-pressed={filled === value}
-              onClick={() => onFilled(value)}
-              className={`rounded px-2 py-1 ${filled === value ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
+          {symmetryModes.map((value) => (
+            <ToolbarButton
+              key={value}
+              icon={symmetryIcons[value]}
+              label={t(symmetryLabels[value])}
+              pressed={symmetry === value}
+              onClick={() => onSymmetry(value)}
+            />
+          ))}
+        </div>
+        <div
+          role="group"
+          aria-label={t("editor.finish")}
+          className="hidden shrink-0 items-center gap-1 @min-[700px]:flex"
+        >
+          {divider}
+          {finishing}
+        </div>
+        <div
+          role="group"
+          aria-label={t("selection.bar")}
+          className="hidden shrink-0 items-center gap-1 @min-[1100px]:flex"
+        >
+          {divider}
+          {selectionTools}
+        </div>
+        <div ref={moreRef} className="relative shrink-0 @min-[1100px]:hidden">
+          <ToolbarButton
+            icon="more"
+            label={t("toolbar.more")}
+            pressed={more}
+            onClick={() => setMore(!more)}
+          />
+          {more && (
+            <div
+              role="group"
+              aria-label={t("toolbar.more")}
+              className="absolute top-full left-0 z-20 mt-1.5 flex max-w-80 flex-wrap items-center gap-1 rounded-lg border border-border-strong bg-surface p-1.5 shadow-lg"
             >
-              {t(value ? "editor.filled" : "editor.outline")}
+              <div className="flex items-center gap-1 @min-[700px]:hidden">
+                {finishing}
+                {divider}
+              </div>
+              {selectionTools}
+            </div>
+          )}
+        </div>
+        <span
+          className="hidden text-xs text-text-muted @min-[900px]:inline"
+          data-testid="active-tool"
+        >
+          {t("editor.activeTool", { name: t(active.labelKey) })}
+        </span>
+        {(tool === "rectangle" || tool === "ellipse") && (
+          <div
+            role="group"
+            aria-label={t("editor.shapeStyle")}
+            className="flex shrink-0 rounded-md border border-border bg-surface p-0.5 text-xs"
+          >
+            {[false, true].map((value) => (
+              <button
+                key={String(value)}
+                type="button"
+                aria-pressed={filled === value}
+                onClick={() => onFilled(value)}
+                className={`rounded px-2 py-1 ${filled === value ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
+              >
+                {t(value ? "editor.filled" : "editor.outline")}
+              </button>
+            ))}
+          </div>
+        )}
+        {agent && (
+          <div
+            role="status"
+            className="flex shrink-0 items-center gap-2 rounded-full border border-amber bg-surface px-3 py-1 text-xs"
+          >
+            <span className="h-2 w-2 rounded-full bg-amber" aria-hidden />
+            <span className="text-amber">{agent.text}</span>
+            <button
+              type="button"
+              onClick={agent.onStop}
+              className="border-l border-amber pl-2 font-semibold text-text"
+            >
+              {t("marker.stop")}
+            </button>
+          </div>
+        )}
+        <div
+          role="group"
+          aria-label={t("editor.viewMode")}
+          className="ml-auto flex shrink-0 rounded-md border border-border bg-surface p-0.5 text-xs"
+        >
+          {(["canvas", "text"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={mode === value}
+              onClick={() => onMode(value)}
+              className={`rounded px-3 py-1 ${mode === value ? "font-semibold text-text" : "text-text-muted"}`}
+            >
+              {t(value === "canvas" ? "editor.canvasMode" : "editor.textMode")}
             </button>
           ))}
         </div>
-      )}
-      <div
-        role="group"
-        aria-label={t("editor.symmetry")}
-        className="flex rounded-md border border-border bg-surface p-0.5 text-xs"
-      >
-        {symmetryModes.map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            aria-pressed={symmetry === mode}
-            onClick={() => onSymmetry(mode)}
-            className={`rounded px-2 py-1 ${symmetry === mode ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
-          >
-            {t(symmetryLabels[mode])}
-          </button>
-        ))}
-      </div>
-      <div role="group" aria-label={t("editor.finish")} className="flex gap-1">
-        {(["outline", "shade", "review"] as const).map((name) => (
-          <button
-            key={name}
-            type="button"
-            aria-pressed={panel === name}
-            onClick={() => onPanel(panel === name ? null : name)}
-            className={`rounded-md border border-border px-2 py-1 text-xs ${panel === name ? "bg-surface-2 font-semibold text-text" : "bg-surface text-text-muted"}`}
-          >
-            {t(panelLabels[name])}
-          </button>
-        ))}
-      </div>
-      {agent && (
-        <div
-          role="status"
-          className="flex items-center gap-2 rounded-full border border-amber bg-surface px-3 py-1 text-xs"
-        >
-          <span className="h-2 w-2 rounded-full bg-amber" aria-hidden />
-          <span className="text-amber">{agent.text}</span>
-          <button
-            type="button"
-            onClick={agent.onStop}
-            className="border-l border-amber pl-2 font-semibold text-text"
-          >
-            {t("marker.stop")}
-          </button>
-        </div>
-      )}
-      <div
-        role="group"
-        aria-label={t("editor.viewMode")}
-        className="ml-auto flex rounded-md border border-border bg-surface p-0.5 text-xs"
-      >
-        {(["canvas", "text"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={mode === value}
-            onClick={() => onMode(value)}
-            className={`rounded px-3 py-1 ${mode === value ? "font-semibold text-text" : "text-text-muted"}`}
-          >
-            {t(value === "canvas" ? "editor.canvasMode" : "editor.textMode")}
-          </button>
-        ))}
       </div>
     </div>
   );

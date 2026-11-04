@@ -4,6 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
 import { drag, mockLayout, renderEditor } from "../testing/renderEditor";
 
+// The selection actions are enabled once something is selected.
+const selected = () =>
+  waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Flip horizontally" })
+        .hasAttribute("disabled"),
+    ).toBe(false),
+  );
+
 beforeEach(() => mockLayout(500, 300));
 afterEach(() => {
   cleanup();
@@ -33,20 +43,25 @@ async function withSelection(api = new FakeEditorApi(32, 4, 2)) {
       [5, 2],
     ],
   );
-  await screen.findByRole("toolbar", { name: "Selection actions" });
+  await selected();
   return api;
 }
 
+const wrapButton = () =>
+  screen.getByRole("button", { name: "Wrap around when moving" });
+
 const last = (api: FakeEditorApi) => api.powerCalls[api.powerCalls.length - 1];
 
-describe("Selection bar", () => {
-  // Checks that the bar is only there while something is selected, and says
-  // the size of the selection.
-  it("shows the bar and the size only with a selection", async () => {
+describe("Selection actions", () => {
+  // Checks that the actions are disabled (not hidden) until something is
+  // selected.
+  it("enables the actions only with a selection", async () => {
     await ready(new FakeEditorApi(32, 4));
     expect(
-      screen.queryByRole("toolbar", { name: "Selection actions" }),
-    ).toBeNull();
+      screen
+        .getByRole("button", { name: "Flip horizontally" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
     drag(
       [32, 4],
       [
@@ -54,7 +69,7 @@ describe("Selection bar", () => {
         [5, 2],
       ],
     );
-    expect(await screen.findByText("Selection 4 × 3")).toBeTruthy();
+    await selected();
   });
 
   // Checks that a button sends its action for the selected rectangle only
@@ -79,7 +94,7 @@ describe("Selection bar", () => {
         false,
       ),
     );
-    expect(screen.getByText("Selection 4 × 3")).toBeTruthy();
+    await selected();
   });
 
   // Checks every other button sends the right action.
@@ -167,7 +182,7 @@ describe("Move the selection with the arrow keys", () => {
   // and the move says so.
   it("wraps when the option is on", async () => {
     const api = await withSelection();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Wrap" }));
+    fireEvent.click(wrapButton());
     fireEvent.keyDown(window, { key: "ArrowRight" });
     await waitFor(() => expect(api.powerCalls).toHaveLength(1));
     expect(last(api).args[3]).toEqual({
@@ -178,10 +193,7 @@ describe("Move the selection with the arrow keys", () => {
     });
     fireEvent.keyDown(window, { key: "w" });
     await waitFor(() =>
-      expect(
-        (screen.getByRole("checkbox", { name: "Wrap" }) as HTMLInputElement)
-          .checked,
-      ).toBe(false),
+      expect(wrapButton().getAttribute("aria-pressed") === "true").toBe(false),
     );
   });
 

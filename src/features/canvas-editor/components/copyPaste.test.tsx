@@ -4,6 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
 import { drag, mockLayout, renderEditor } from "../testing/renderEditor";
 
+// The selection actions are enabled once something is selected.
+const selected = () =>
+  waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Flip horizontally" })
+        .hasAttribute("disabled"),
+    ).toBe(false),
+  );
+
 beforeEach(() => mockLayout(500, 300));
 afterEach(() => {
   cleanup();
@@ -47,7 +57,7 @@ describe("Copy and paste", () => {
   it("copies the selection and pastes it", async () => {
     const { api } = await open();
     select();
-    await screen.findByText("Selection 4 × 3");
+    await selected();
     ctrl("c");
     expect(await screen.findByText(/Copied 4 × 3/)).toBeTruthy();
     expect(calls(api, "copy")[0].args[2]).toEqual({
@@ -67,7 +77,7 @@ describe("Copy and paste", () => {
       { x: 2, y: 0 },
       true,
     ]);
-    expect(await screen.findByText("Selection 4 × 3")).toBeTruthy();
+    await selected();
   });
 
   // Checks the "Paste in another frame" scenario: copy in frame 1, go to
@@ -75,7 +85,7 @@ describe("Copy and paste", () => {
   it("pastes in another frame", async () => {
     const { api } = await open();
     select();
-    await screen.findByText("Selection 4 × 3");
+    await selected();
     ctrl("c");
     await screen.findByText(/Copied/);
     await waitFor(() => {
@@ -96,7 +106,7 @@ describe("Copy and paste", () => {
   it("keeps the copy when another sprite is opened", async () => {
     const { api, view } = await open();
     select();
-    await screen.findByText("Selection 4 × 3");
+    await selected();
     ctrl("c");
     await screen.findByText(/Copied/);
     view.show(api, { folder: [], name: "slime" });
@@ -116,7 +126,7 @@ describe("Copy and paste", () => {
   it("shows a clear message when the palettes differ", async () => {
     const { api } = await open();
     select();
-    await screen.findByText("Selection 4 × 3");
+    await selected();
     ctrl("c");
     await screen.findByText(/Copied/);
     api.powerFailure = { code: "palette_mismatch" };
@@ -136,7 +146,7 @@ describe("Copy and paste", () => {
   it("enables the Paste button after a copy", async () => {
     await open();
     select();
-    await screen.findByText("Selection 4 × 3");
+    await selected();
     const paste = screen.getByRole("button", { name: "Paste" });
     expect((paste as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Copy" }));

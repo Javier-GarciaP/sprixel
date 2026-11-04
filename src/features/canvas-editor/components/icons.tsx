@@ -27,6 +27,18 @@ const paths: Record<string, string> = {
   mirrorRightToLeft: "M12 3v18M21 12h-6M18 9l-3 3 3 3",
   mirrorTopToBottom: "M3 12h18M12 3v6M9 6l3 3 3-3",
   mirrorBottomToTop: "M3 12h18M12 21v-6M9 18l3-3 3 3",
+  symmetryOff: "M5 5h14v14H5zM4 20L20 4",
+  symmetryHorizontal: "M12 3v18M4 8v8l5-4zM20 8v8l-5-4z",
+  symmetryVertical: "M3 12h18M8 4h8l-4 5zM8 20h8l-4-5z",
+  symmetryBoth:
+    "M12 3v18M3 12h18M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z",
+  outline: "M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z",
+  shade: "M12 4a8 8 0 100 16 8 8 0 000-16zM12 4a8 8 0 010 16z",
+  review:
+    "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",
+  wrap: "M17 3l4 4-4 4M21 7H8a4 4 0 00-4 4M7 21l-4-4 4-4M3 17h13a4 4 0 004-4",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  copy: "M9 9h11v11H9zM5 15V4h11",
   paste: "M9 4h6v3H9zM7 5H5v15h14V5h-2M9 12h6M9 16h6",
 };
 
@@ -44,6 +56,16 @@ export type EditorIconName =
   | "mirrorRightToLeft"
   | "mirrorTopToBottom"
   | "mirrorBottomToTop"
+  | "symmetryOff"
+  | "symmetryHorizontal"
+  | "symmetryVertical"
+  | "symmetryBoth"
+  | "outline"
+  | "shade"
+  | "review"
+  | "wrap"
+  | "more"
+  | "copy"
   | "paste";
 
 export function EditorIcon({

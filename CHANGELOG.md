@@ -7,6 +7,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The top bar of the editor no longer jumps when you select: every control stays
+  in place (disabled when it does not apply), uses an icon with a tooltip that
+  shows its name and shortcut, and the least used ones go to a "More" menu in
+  narrow windows.
+
 ### Added
 
 - Power tools for people in the editor, the same ones the AI has: a selection

@@ -29,7 +29,7 @@ async function open() {
   return api;
 }
 
-const outlineButton = () => screen.getByRole("button", { name: "Outline..." });
+const outlineButton = () => screen.getByRole("button", { name: "Outline" });
 const calls = (api: FakeEditorApi, name: string) =>
   api.powerCalls.filter((c) => c.name === name);
 const panel = () => screen.findByRole("dialog", { name: "Outline" });

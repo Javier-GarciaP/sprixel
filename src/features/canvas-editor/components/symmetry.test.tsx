@@ -35,12 +35,19 @@ describe("Symmetry mode in the editor", () => {
   // others off, and the S key goes through off, horizontal, vertical, both.
   it("has the four modes and the S key goes through them", async () => {
     await open();
-    expect(mode("Off").getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(mode("Vertical"));
-    expect(mode("Vertical").getAttribute("aria-pressed")).toBe("true");
-    expect(mode("Off").getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(mode("Off"));
-    for (const next of ["Horizontal", "Vertical", "Both", "Off"]) {
+    expect(mode("Symmetry: off").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(mode("Symmetry: vertical"));
+    expect(mode("Symmetry: vertical").getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(mode("Symmetry: off").getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(mode("Symmetry: off"));
+    for (const next of [
+      "Symmetry: horizontal",
+      "Symmetry: vertical",
+      "Symmetry: both",
+      "Symmetry: off",
+    ]) {
       fireEvent.keyDown(window, { key: "s" });
       await waitFor(() =>
         expect(mode(next).getAttribute("aria-pressed")).toBe("true"),
@@ -53,7 +60,7 @@ describe("Symmetry mode in the editor", () => {
   // entry), so one Undo takes both away.
   it("sends a mirrored stroke as one call", async () => {
     const api = await open();
-    fireEvent.click(mode("Horizontal"));
+    fireEvent.click(mode("Symmetry: horizontal"));
     drag([16, 16], [[1, 5]]);
     await waitFor(() => expect(api.calls).toHaveLength(1));
     expect(api.calls[0].changes.map(({ x, y }) => [x, y]).sort()).toEqual([
