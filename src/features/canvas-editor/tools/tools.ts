@@ -9,7 +9,8 @@ export type ToolId =
   | "rectangle"
   | "ellipse"
   | "select"
-  | "move";
+  | "move"
+  | "anchor";
 
 // The tools in the order of the tools column. The key is shown next to the
 // name; the shortcut itself is in the command registry of the app.
@@ -23,4 +24,5 @@ export const tools: { id: ToolId; key: string; labelKey: TranslationKey }[] = [
   { id: "ellipse", key: "C", labelKey: "command.tool.ellipse" },
   { id: "select", key: "M", labelKey: "command.tool.select" },
   { id: "move", key: "V", labelKey: "command.tool.move" },
+  { id: "anchor", key: "A", labelKey: "command.tool.anchor" },
 ];

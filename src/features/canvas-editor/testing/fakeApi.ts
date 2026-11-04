@@ -444,11 +444,9 @@ export class FakeEditorApi
     return this.power("tileCheck", [sprite, frame], this.tile);
   }
   anchors(sprite: SpriteRef) {
-    return this.power(
-      "anchors",
-      [sprite],
-      this.anchorList.map((a) => ({ ...a })),
-    );
+    // A read made on every change: not recorded with the actions.
+    void sprite;
+    return Promise.resolve(this.anchorList.map((a) => ({ ...a })));
   }
   async saveAnchor(
     sprite: SpriteRef,
@@ -461,6 +459,7 @@ export class FakeEditorApi
     const old = replaces ?? anchor;
     this.anchorList = this.anchorList.filter((a) => !same(a, old));
     this.anchorList.push({ ...anchor });
+    this.revision++;
   }
   async deleteAnchor(sprite: SpriteRef, key: AnchorKey) {
     await this.power("deleteAnchor", [sprite, key], undefined);
@@ -471,5 +470,6 @@ export class FakeEditorApi
           a.frame === key.frame
         ),
     );
+    this.revision++;
   }
 }

@@ -122,6 +122,7 @@ commands.push(
   tool("ellipse", "C"),
   tool("select", "M"),
   tool("move", "V"),
+  tool("anchor", "A"),
   {
     id: "colors.swap",
     labelKey: "command.colors.swap",

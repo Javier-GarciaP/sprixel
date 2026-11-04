@@ -25,6 +25,8 @@ import { corePowerApi } from "../api/power";
 import type {
   Clip,
   EditorApi,
+  Anchor,
+  AnchorKey,
   PowerApi,
   Preview,
   RegionAction,
@@ -35,6 +37,9 @@ import { SelectionBar } from "./SelectionBar";
 import { OutlinePanel } from "./OutlinePanel";
 import { ShadePanel } from "./ShadePanel";
 import { ReviewPanel } from "./ReviewPanel";
+import { AnchorLabels } from "./AnchorLabels";
+import { AnchorPanel, type AnchorTarget } from "./AnchorPanel";
+import { anchorAt, effectiveAnchors, keyOf, sameKey } from "../tools/anchors";
 import {
   useEditorCommands,
   type CommandHandlers,
@@ -316,6 +321,83 @@ function Ready(props: ReadyProps) {
   const [panel, setPanel] = useState<"outline" | "shade" | "review" | null>(
     null,
   );
+  // The anchors of the sprite, as the core has them, and the Anchor tool: the
+  // one being edited, and the one being dragged (with where it is now).
+  const [anchors, setAnchors] = useState<Anchor[]>([]);
+  const [anchorTarget, setAnchorTarget] = useState<AnchorTarget | null>(null);
+  const [anchorError, setAnchorError] = useState<string | null>(null);
+  const dragged = useRef<Anchor | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    let stale = false;
+    props.powerApi
+      .anchors(sprite)
+      .then((list) => !stale && setAnchors(list))
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
+  }, [props.powerApi, sprite, info.revision]);
+  const frameAnchors = useMemo(
+    () => effectiveAnchors(anchors, props.frame),
+    [anchors, props.frame],
+  );
+  const shownAnchors = frameAnchors.map((anchor) =>
+    dragged.current && dragPos && sameKey(keyOf(anchor), keyOf(dragged.current))
+      ? { ...anchor, ...dragPos }
+      : anchor,
+  );
+  const saveAnchor = (anchor: Anchor, replaces: AnchorKey | null) =>
+    props.powerApi
+      .saveAnchor(sprite, anchor, replaces)
+      .then(() => {
+        setAnchorError(null);
+        setAnchorTarget({ kind: "edit", key: keyOf(anchor) });
+        props.reload();
+      })
+      .catch((error: { code?: string; message?: string }) =>
+        setAnchorError(
+          t("anchor.error", { message: error?.message ?? error?.code ?? "" }),
+        ),
+      );
+  const deleteAnchor = (key: AnchorKey) =>
+    props.powerApi
+      .deleteAnchor(sprite, key)
+      .then(() => {
+        setAnchorError(null);
+        props.reload();
+      })
+      .catch((error: { code?: string; message?: string }) =>
+        setAnchorError(
+          t("anchor.error", { message: error?.message ?? error?.code ?? "" }),
+        ),
+      );
+  // The Anchor tool uses the pointer on the canvas: a click on an anchor
+  // selects it and a drag moves it; a click elsewhere starts a new anchor.
+  const anchorDown = (x: number, y: number) => {
+    const hit = anchorAt(frameAnchors, x, y);
+    if (hit) {
+      dragged.current = hit;
+      setAnchorTarget({ kind: "edit", key: keyOf(hit) });
+    } else if (x >= 0 && y >= 0 && x < info.width && y < info.height) {
+      setAnchorTarget({ kind: "new", x, y });
+    }
+  };
+  const anchorMove = (x: number, y: number) => {
+    if (!dragged.current) return;
+    if (x >= 0 && y >= 0 && x < info.width && y < info.height) {
+      setDragPos({ x, y });
+    }
+  };
+  const anchorUp = () => {
+    const anchor = dragged.current;
+    const to = dragPos;
+    dragged.current = null;
+    setDragPos(null);
+    if (anchor && to && (to.x !== anchor.x || to.y !== anchor.y)) {
+      void saveAnchor({ ...anchor, ...to }, keyOf(anchor));
+    }
+  };
   // The pixel the Review panel points at.
   const [pointed, setPointed] = useState<{
     frame: number;
@@ -583,6 +665,12 @@ function Ready(props: ReadyProps) {
           ? { pixels: props.previous, opacity: props.onion.opacity / 100 }
           : null,
       grid: props.pixelGrid,
+      anchors: shownAnchors.map((a) => ({
+        x: a.x,
+        y: a.y,
+        selected:
+          anchorTarget?.kind === "edit" && sameKey(anchorTarget.key, keyOf(a)),
+      })),
       axis: axisLines(info.width, info.height, props.symmetry),
       highlight:
         pointed && pointed.frame === props.frame
@@ -607,6 +695,9 @@ function Ready(props: ReadyProps) {
       props.symmetry,
       preview,
       pointed,
+      anchors,
+      anchorTarget,
+      dragPos,
       props.frame,
       props.previous,
       props.onion.on,
@@ -700,17 +791,22 @@ function Ready(props: ReadyProps) {
             canvasRef={canvasRef}
             onStrokeStart={(pixel, button, shift) => {
               props.strokeActive.current = true;
+              if (props.tool === "anchor") return anchorDown(pixel.x, pixel.y);
               controller.pointerDown(pixel.x, pixel.y, button, { shift });
             }}
             onStrokeMove={(pixel, shift) =>
-              controller.pointerMove(pixel.x, pixel.y, { shift })
+              props.tool === "anchor"
+                ? anchorMove(pixel.x, pixel.y)
+                : controller.pointerMove(pixel.x, pixel.y, { shift })
             }
             onStrokeEnd={() => {
               props.strokeActive.current = false;
+              if (props.tool === "anchor") return anchorUp();
               controller.pointerUp();
             }}
           />
           {cursor && <AgentCursor view={canvas.view} {...cursor} />}
+          <AnchorLabels view={canvas.view} anchors={shownAnchors} />
         </div>
         {mode === "canvas" && isBlank(pixels) && (
           <p className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-md border border-amber bg-surface px-4 py-2 text-xs text-text-muted">
@@ -771,6 +867,19 @@ function Ready(props: ReadyProps) {
               setPanel(null);
               setPointed(null);
             }}
+          />
+        )}
+        {props.tool === "anchor" && panel === null && (
+          <AnchorPanel
+            anchors={frameAnchors}
+            frame={props.frame}
+            width={info.width}
+            height={info.height}
+            target={anchorTarget}
+            onTarget={setAnchorTarget}
+            onSave={saveAnchor}
+            onDelete={deleteAnchor}
+            error={anchorError}
           />
         )}
       </section>

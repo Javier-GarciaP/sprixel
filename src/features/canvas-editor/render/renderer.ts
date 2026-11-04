@@ -20,6 +20,9 @@ export type Scene = {
   overlay?: { x: number; y: number; code: number }[];
   // A pixel to point at (the Review panel): a box around it.
   highlight?: { x: number; y: number } | null;
+  // The anchors of the frame, drawn as a small cross (their names are shown
+  // by the editor over the canvas).
+  anchors?: { x: number; y: number; selected?: boolean }[];
 };
 
 // How much of the preview color shows over the pixel under it.
@@ -142,6 +145,8 @@ export function renderScene(
   if (scene.selection) {
     drawSelection(buffer, viewWidth, viewHeight, scene.selection, view);
   }
+  if (scene.anchors)
+    drawAnchors(buffer, viewWidth, viewHeight, scene.anchors, view);
   if (scene.highlight)
     drawHighlight(buffer, viewWidth, viewHeight, scene.highlight, view);
   if (scene.axis) drawAxis(buffer, viewWidth, viewHeight, scene, view);
@@ -176,6 +181,52 @@ function drawOverlay(
         }
         buffer[o + 3] = 255;
       }
+    }
+  }
+}
+
+// A cross in the middle of the anchor pixel: amber with a black edge so it
+// shows on any color. The selected anchor is white.
+export const ANCHOR_COLOR = [255, 176, 0] as const;
+
+const AROUND = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+];
+
+function drawAnchors(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  anchors: NonNullable<Scene["anchors"]>,
+  view: View,
+) {
+  const put = (sx: number, sy: number, color: readonly number[]) => {
+    if (sx < 0 || sy < 0 || sx >= viewWidth || sy >= viewHeight) return;
+    const o = (sy * viewWidth + sx) * 4;
+    [buffer[o], buffer[o + 1], buffer[o + 2]] = color;
+    buffer[o + 3] = 255;
+  };
+  const arm = Math.max(3, Math.round(view.zoom * 0.9));
+  for (const { x, y, selected } of anchors) {
+    const cx = Math.floor(view.x + (x + 0.5) * view.zoom);
+    const cy = Math.floor(view.y + (y + 0.5) * view.zoom);
+    const color = selected ? [255, 255, 255] : ANCHOR_COLOR;
+    for (let d = -arm; d <= arm; d++) {
+      for (const [ox, oy] of AROUND) {
+        put(cx + d + ox, cy + oy, [0, 0, 0]);
+        put(cx + ox, cy + d + oy, [0, 0, 0]);
+      }
+    }
+    for (let d = -arm; d <= arm; d++) {
+      put(cx + d, cy, color);
+      put(cx, cy + d, color);
     }
   }
 }

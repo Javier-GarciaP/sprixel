@@ -65,6 +65,26 @@ describe("preview overlay", () => {
   });
 });
 
+describe("anchors", () => {
+  // Checks that an anchor is a cross in the middle of its pixel (amber), that
+  // the selected one is white, and that nothing is drawn without anchors.
+  it("draws a cross in the middle of the pixel", () => {
+    const view = { zoom: 8, x: 0, y: 0 };
+    const rows = ["....", "...."];
+    const amber = paint(scene(rows, { anchors: [{ x: 1, y: 0 }] }), view);
+    // The middle of pixel (1, 0) is screen (12, 4).
+    expect(amber.at(12, 4)).toEqual([255, 176, 0, 255]);
+    expect(amber.at(12, 7)).toEqual([255, 176, 0, 255]);
+    const white = paint(
+      scene(rows, { anchors: [{ x: 1, y: 0, selected: true }] }),
+      view,
+    );
+    expect(white.at(12, 4)).toEqual([255, 255, 255, 255]);
+    const none = paint(scene(rows), view);
+    expect(none.at(12, 4)).not.toEqual([255, 176, 0, 255]);
+  });
+});
+
 describe("highlight", () => {
   // Checks the box around a pixel: black just outside its edge, white one
   // pixel further out, and nothing for a scene without highlight.

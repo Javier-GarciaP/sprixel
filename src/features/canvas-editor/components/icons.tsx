@@ -16,6 +16,8 @@ const paths: Record<string, string> = {
   undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
   redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
   swap: "M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7",
+  anchor:
+    "M12 4a2 2 0 100 4 2 2 0 000-4zM12 8v12M7 14c0 3 2.5 6 5 6s5-3 5-6M4 14h3M17 14h3",
   flipHorizontal: "M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z",
   flipVertical: "M3 12h18M7 8l5-5 5 5zM7 16l5 5 5-5z",
   rotateRight: "M20 12a8 8 0 11-3-6.2M20 4v5h-5",

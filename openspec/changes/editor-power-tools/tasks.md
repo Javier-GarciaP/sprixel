@@ -39,7 +39,7 @@
 ## 8. Frames and anchors
 
 - [x] 8.1 Add the duration field to the frames strip and verify the value, the animation speed when empty and the update
-- [ ] 8.2 Add anchors on the canvas (draw, create, drag, rename, delete) and verify each action
+- [x] 8.2 Add anchors on the canvas (draw, create, drag, rename, delete) and verify each action
 
 ## 9. Preview tools
 
