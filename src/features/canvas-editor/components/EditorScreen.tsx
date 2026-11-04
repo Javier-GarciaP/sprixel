@@ -26,11 +26,13 @@ import type {
   Clip,
   EditorApi,
   PowerApi,
+  Preview,
   RegionAction,
   SpriteRef,
 } from "../api/types";
 import { powerErrorText } from "../powerError";
 import { SelectionBar } from "./SelectionBar";
+import { OutlinePanel } from "./OutlinePanel";
 import {
   useEditorCommands,
   type CommandHandlers,
@@ -308,6 +310,9 @@ function Ready(props: ReadyProps) {
   const [selection, setSelection] = useState<Rect | null>(null);
   const selectionRef = useRef<Rect | null>(null);
   const [wrap, setWrap] = useState(false);
+  // The panel with a preview that is open, and the pixels it shows.
+  const [panel, setPanel] = useState<"outline" | "shade" | null>(null);
+  const [preview, setPreview] = useState<Preview["pixels"] | null>(null);
   const controller = useMemo(() => {
     const made = new DrawingController(
       info.width,
@@ -539,6 +544,9 @@ function Ready(props: ReadyProps) {
     "selection.moveDown": () => nudge(0, 1),
     "selection.wrap": () => setWrap((on) => !on),
     "draw.symmetry": () => props.onSymmetry(nextSymmetry(props.symmetry)),
+    "edit.outline": () =>
+      setPanel((now) => (now === "outline" ? null : "outline")),
+    "edit.shade": () => setPanel((now) => (now === "shade" ? null : "shade")),
     "edit.copy": copy,
     "edit.paste": paste,
     "view.onionSkin": () =>
@@ -564,6 +572,11 @@ function Ready(props: ReadyProps) {
           : null,
       grid: props.pixelGrid,
       axis: axisLines(info.width, info.height, props.symmetry),
+      overlay: preview?.map(([x, y, key]) => ({
+        x,
+        y,
+        code: key.charCodeAt(0),
+      })),
       // The controller owns the selection and repaints its area.
       get selection() {
         return controller.selection;
@@ -576,6 +589,7 @@ function Ready(props: ReadyProps) {
       controller,
       props.pixelGrid,
       props.symmetry,
+      preview,
       props.previous,
       props.onion.on,
       props.onion.opacity,
@@ -619,6 +633,8 @@ function Ready(props: ReadyProps) {
           onFilled={props.onFilled}
           symmetry={props.symmetry}
           onSymmetry={props.onSymmetry}
+          panel={panel}
+          onPanel={setPanel}
           agent={
             writing && {
               text: agentText,
@@ -689,6 +705,21 @@ function Ready(props: ReadyProps) {
             onZoomIn={() => canvas.zoomIn()}
             onZoomOut={() => canvas.zoomOut()}
             onFit={canvas.fit}
+          />
+        )}
+        {panel === "outline" && (
+          <OutlinePanel
+            api={props.powerApi}
+            sprite={sprite}
+            frame={props.frame}
+            palette={palette}
+            onPreview={setPreview}
+            onApplied={(result) => {
+              setHistory(result);
+              setPanel(null);
+              props.reload();
+            }}
+            onClose={() => setPanel(null)}
           />
         )}
       </section>

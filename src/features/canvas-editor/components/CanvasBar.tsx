@@ -19,6 +19,9 @@ type Props = {
   // Symmetry mode: what is drawn is also drawn mirrored.
   symmetry: Symmetry;
   onSymmetry: (symmetry: Symmetry) => void;
+  // The panels with a preview, and which one is open.
+  panel: "outline" | "shade" | null;
+  onPanel: (panel: "outline" | "shade" | null) => void;
   // An AI agent is drawing: what to say and what Stop does.
   agent?: { text: string; onStop: () => void } | null;
   // The Canvas and Text switch: the same place in both views.
@@ -52,6 +55,8 @@ export function CanvasBar({
   onFilled,
   symmetry,
   onSymmetry,
+  panel,
+  onPanel,
   agent,
   mode,
   onMode,
@@ -120,6 +125,23 @@ export function CanvasBar({
             className={`rounded px-2 py-1 ${symmetry === mode ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
           >
             {t(symmetryLabels[mode])}
+          </button>
+        ))}
+      </div>
+      <div role="group" aria-label={t("editor.finish")} className="flex gap-1">
+        {(["outline", "shade"] as const).map((name) => (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={panel === name}
+            onClick={() => onPanel(panel === name ? null : name)}
+            className={`rounded-md border border-border px-2 py-1 text-xs ${panel === name ? "bg-surface-2 font-semibold text-text" : "bg-surface text-text-muted"}`}
+          >
+            {t(
+              name === "outline"
+                ? "command.edit.outline"
+                : "command.edit.shade",
+            )}
           </button>
         ))}
       </div>

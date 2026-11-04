@@ -24,7 +24,7 @@
 ## 5. Outline and shade
 
 - [x] 5.1 Add the canvas overlay for preview pixels and verify the renderer test
-- [ ] 5.2 Add the Outline dialog with live preview and verify the preview does not write, Apply writes one entry and Cancel changes nothing
+- [x] 5.2 Add the Outline dialog with live preview and verify the preview does not write, Apply writes one entry and Cancel changes nothing
 - [ ] 5.3 Add the Shade dialog with live preview and verify the same, and the selection region
 
 ## 6. Review panel

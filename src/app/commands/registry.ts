@@ -285,6 +285,18 @@ commands.push(
     group: "editor",
     shortcut: "S",
   },
+  {
+    id: "edit.outline",
+    labelKey: "command.edit.outline",
+    group: "editor",
+    shortcut: "Shift+O",
+  },
+  {
+    id: "edit.shade",
+    labelKey: "command.edit.shade",
+    group: "editor",
+    shortcut: "Shift+S",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);
