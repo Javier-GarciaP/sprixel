@@ -47,7 +47,8 @@ Project  (a folder on your disk)
         └── Animations    tags: a name, from-to frames, speed, repeat mode
 ```
 
-- The **canvas size** is chosen when the sprite is created (8x8 to 512x512).
+- The **canvas size** is chosen when the sprite is created (8x8 to 512x512) and
+  changed only with the explicit action "Change canvas" in the details panel.
 - An **animation** is a tag on a sprite (for example "walk" = frames 1 to 4 at
   12 fps). It is not a separate file.
 - Version 1 has **one layer** per sprite. The file format already allows more.

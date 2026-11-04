@@ -141,7 +141,8 @@ brief and audits the result. These rules came from real problems:
 - **Text grid keywords are English** (`palette`, `legend`, `frame`), even in the
   Spanish UI. The format is in `docs/text-grid-format.md`.
 - **Sprite size** is chosen when the sprite is created (1 to 512 per side) and
-  never changed in the editor.
+  changed only by the explicit action "Change canvas" (operation
+  `ResizeSprite`, tool `resize_sprite`). Drawing never resizes a sprite.
 - **All user-facing text goes through the translation files** (Spanish and
   English). Never hard-code UI text.
 - **Names** of sprites and folders are unique per folder, ignoring case.
