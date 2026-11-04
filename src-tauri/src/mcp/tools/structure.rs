@@ -26,7 +26,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "create_tag",
-            description: concat!("Creates an animation (a tag): a named range of frames with a speed. `sprite` is the sprite, `name` is the name of the new animation. Frames are numbered from 1 and both ends are included.", write_note!()),
+            description: concat!("Creates an animation (a tag): a named range of frames with a speed. `sprite` is the sprite, `name` is the name of the new animation. Frames are numbered from 1 and both ends are included. An animation never shares a frame with another one (`animation_overlap`).", write_note!()),
             schema: json!({ "type": "object", "required": ["sprite", "name", "from", "to", "fps"], "properties": {
                 "sprite": { "type": "string", "description": "The sprite that gets the animation." },
                 "folder": { "type": "string" },
@@ -96,6 +96,7 @@ fn create_tag(ctx: &Ctx, input: &Value) -> ToolResult {
     write(ctx, input, |session| {
         let target = args::sprite_at(&session.project, input, "sprite")?;
         let tag = Tag { name: name.clone(), from, to, fps, mode };
+        session.project.check_new_animation(&target, &tag, None)?;
         let ops = vec![Operation::AddTag { sprite: target.clone(), tag, index: None }];
         let extra = json!({ "animation": name, "from": from, "to": to, "fps": fps, "mode": mode.as_str() });
         Ok(Plan::new(ops, extra).about(&target))

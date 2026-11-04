@@ -1,5 +1,5 @@
 use super::error::DocError;
-use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, TRANSPARENT, Tag, check_size};
+use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, MAX_PARTS, Palette, Part, Project, Sprite, TRANSPARENT, Tag, check_size};
 use super::names::{same_name, validate_name};
 use super::resize::{ResizeAnchor, move_anchors, resize_pixels};
 
@@ -210,6 +210,18 @@ pub enum Operation {
         sprite: SpriteRef,
         name: String,
         frame: Option<u32>,
+    },
+    /// Adds a named part (a rectangle), or replaces the one with the same
+    /// name (it keeps its place). `index` is where a new one goes; `None` is
+    /// the end.
+    SetPart {
+        sprite: SpriteRef,
+        part: Part,
+        index: Option<usize>,
+    },
+    RemovePart {
+        sprite: SpriteRef,
+        name: String,
     },
     /// Crops or extends every frame of every layer to a new size, with
     /// transparent pixels. The old content stays at `anchor`. The anchors of
@@ -1125,6 +1137,42 @@ impl Project {
                     touched: vec![Target::Sprite(sprite_ref)],
                 })
             }
+            Operation::SetPart { sprite, part, index } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                part.validate(target.width, target.height)?;
+                let sprite_ref = SpriteRef { folder, name: target.name.clone() };
+                let inverse = match target.parts.iter().position(|p| same_name(&p.name, &part.name)) {
+                    Some(at) => {
+                        let old = std::mem::replace(&mut target.parts[at], part.clone());
+                        Operation::SetPart { sprite: sprite_ref.clone(), part: old, index: None }
+                    }
+                    None => {
+                        if target.parts.len() >= MAX_PARTS {
+                            return Err(DocError::new("too_many_parts", format!("a sprite has at most {MAX_PARTS} parts")));
+                        }
+                        let at = index.unwrap_or(target.parts.len()).min(target.parts.len());
+                        target.parts.insert(at, part.clone());
+                        Operation::RemovePart { sprite: sprite_ref.clone(), name: part.name.clone() }
+                    }
+                };
+                Ok(Applied { inverse, touched: vec![Target::Sprite(sprite_ref)] })
+            }
+            Operation::RemovePart { sprite, name } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                let at = target
+                    .parts
+                    .iter()
+                    .position(|p| same_name(&p.name, name))
+                    .ok_or_else(|| not_found("part", name))?;
+                let part = target.parts.remove(at);
+                let sprite_ref = SpriteRef { folder, name: target.name.clone() };
+                Ok(Applied {
+                    inverse: Operation::SetPart { sprite: sprite_ref.clone(), part, index: Some(at) },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
             Operation::ResizeSprite { sprite, width, height, anchor } => {
                 check_size(*width, *height)?;
                 let (folder, sprite_index) = self.locate(sprite)?;
@@ -1203,6 +1251,44 @@ impl Project {
     pub fn find_sprite(&self, sprite: &SpriteRef) -> Option<&Sprite> {
         let (folder, index) = self.locate(sprite).ok()?;
         Some(&self.folder(&folder).sprites[index])
+    }
+
+    /// Checks an animation that a person or a tool wants to create (or, with
+    /// `replacing`, to change): the same checks as `AddTag` and `SetTag`, and
+    /// then the animation must not share a frame with another one
+    /// (`animation_overlap`). The operations themselves accept overlaps, so old
+    /// files and the undo of a delete keep working. A change that keeps the
+    /// frames of the animation (a rename, a new speed) is always allowed.
+    pub fn check_new_animation(&self, sprite: &SpriteRef, tag: &Tag, replacing: Option<&str>) -> Result<(), DocError> {
+        let target = self.find_sprite(sprite).ok_or_else(|| not_found("sprite", &sprite.name))?;
+        let old = match replacing {
+            Some(name) => Some(
+                target
+                    .tags
+                    .iter()
+                    .find(|t| same_name(&t.name, name))
+                    .ok_or_else(|| not_found("tag", name))?,
+            ),
+            None => None,
+        };
+        tag.validate(target.frame_count())?;
+        let others = || target.tags.iter().filter(|t| !old.is_some_and(|o| std::ptr::eq(*t, o)));
+        if others().any(|t| same_name(&t.name, &tag.name)) {
+            return Err(DocError::new("tag_exists", format!("tag {:?} already exists", tag.name)));
+        }
+        if old.is_some_and(|o| o.from == tag.from && o.to == tag.to) {
+            return Ok(());
+        }
+        if let Some(other) = others().find(|t| t.from <= tag.to && tag.from <= t.to) {
+            return Err(DocError::new(
+                "animation_overlap",
+                format!(
+                    "frames {} to {} share frames with the animation {:?} (frames {} to {}); use frames that belong to no animation",
+                    tag.from, tag.to, other.name, other.from, other.to
+                ),
+            ));
+        }
+        Ok(())
     }
 
     /// Finds a folder by its path, ignoring case in names. An empty path is the root.

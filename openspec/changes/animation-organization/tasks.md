@@ -2,11 +2,11 @@
 
 ## 1. Core and agent tools (agent A)
 
-- [ ] 1.1 Add the no-overlap rule and `animation_overlap` to `create_tag` and the editor operations; verify with old overlapping files kept as they are
-- [ ] 1.2 Add `create_animation` (copy the base, tag, one history entry) and verify frames, tag, undo and `name_exists`
-- [ ] 1.3 Add `duplicate_animation`, `rename_animation`, `delete_animation` (`with_frames`) and `move_frame`; verify tags follow frames and undo
-- [ ] 1.4 Add `frames` (list or range) to `transform_region` and `copy_region`; verify one atomic history entry
-- [ ] 1.5 Add the guide topic `animations-from-base`, the rules (base first, one tag per animation, no pixels outside the app without asking), an example call per new tool, and update the skill, the instructions and `docs/ai-and-mcp.md`; verify skill equals guide
+- [x] 1.1 Add the no-overlap rule and `animation_overlap` to `create_tag` and the editor operations; verify with old overlapping files kept as they are
+- [x] 1.2 Add `create_animation` (copy the base, tag, one history entry) and verify frames, tag, undo and `name_exists`
+- [x] 1.3 Add `duplicate_animation`, `rename_animation`, `delete_animation` (`with_frames`) and `move_frame`; verify tags follow frames and undo
+- [x] 1.4 Add `frames` (list or range) to `transform_region` and `copy_region`; verify one atomic history entry
+- [x] 1.5 Add the guide topic `animations-from-base`, the rules (base first, one tag per animation, no pixels outside the app without asking), an example call per new tool, and update the skill, the instructions and `docs/ai-and-mcp.md`; verify skill equals guide
 
 ## 2. Interface (agent B)
 
@@ -16,5 +16,5 @@
 
 ## 3. Parts (phase 2, agent A after 1.5)
 
-- [ ] 3.1 Add the optional `parts` list to the model, the operations, the file (optional field, `format_version` note) and verify old projects open
+- [x] 3.1 Add the optional `parts` list to the model, the operations, the file (optional field, `format_version` note) and verify old projects open
 - [ ] 3.2 Add `set_part`, `remove_part` and `part` in the region tools, update the guide and skill; verify

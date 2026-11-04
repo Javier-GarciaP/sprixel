@@ -5,6 +5,7 @@ pub mod preferences;
 pub mod project;
 pub mod editor;
 pub mod frames;
+pub mod animations;
 pub mod export;
 pub mod mcp;
 pub mod grid;
