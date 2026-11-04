@@ -1,4 +1,4 @@
-use super::plan::{self, ExportFile, Item, Options, Scope};
+use super::plan::{self, ExportFile, Item, JsonFormat, Options, Scope};
 use super::ExportError;
 use crate::document::{Anchor, Project, Sprite};
 use crate::render::{FRAMES_PER_ROW, Image, Placement, pack_rows, render_frame};
@@ -160,6 +160,22 @@ pub fn build(
     }
     let (sheet, placements) = render_sheet(&items, options);
     let png = encode_png(&sheet)?;
+
+    if options.json_format == JsonFormat::Aseprite {
+        let sprites = plan::sprites_of(project, scope);
+        let text = super::aseprite::json(
+            &items,
+            &placements,
+            &sprites,
+            format!("{name}.png"),
+            (sheet.width, sheet.height),
+            options.scale,
+        )?;
+        return Ok(vec![
+            ExportFile { name: format!("{name}.png"), bytes: png },
+            ExportFile { name: format!("{name}.json"), bytes: text.into_bytes() },
+        ]);
+    }
 
     let frames = items
         .iter()

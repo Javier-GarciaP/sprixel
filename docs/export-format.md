@@ -172,6 +172,149 @@ example `personajes.png` and `personajes.json`).
 | `animations[].mode` | `loop`, `once` or `pingpong`. |
 | `animations[].fps` | Frames per second, 1 to 60. |
 
+### Aseprite JSON
+
+The JSON layout is chosen with the option **`json_format`** (the tool
+`export` argument and the "JSON format" selector of the Export screen):
+
+- `sprixel` (default): the layout above.
+- `aseprite`: the **array form** of the Aseprite sprite sheet JSON. The PNG is
+  the same. It is what the Aseprite importers of Godot and Unity read. It is
+  the same project and options as the sample above:
+
+```json aseprite
+{
+  "frames": [
+    {
+      "filename": "blob_1",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "sourceSize": {
+        "w": 2,
+        "h": 2
+      },
+      "duration": 100
+    },
+    {
+      "filename": "hero_walk_1",
+      "frame": {
+        "x": 3,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "sourceSize": {
+        "w": 2,
+        "h": 2
+      },
+      "duration": 83
+    },
+    {
+      "filename": "hero_walk_2",
+      "frame": {
+        "x": 6,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "sourceSize": {
+        "w": 2,
+        "h": 2
+      },
+      "duration": 83
+    },
+    {
+      "filename": "hero_3",
+      "frame": {
+        "x": 9,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 2
+      },
+      "sourceSize": {
+        "w": 2,
+        "h": 2
+      },
+      "duration": 250
+    }
+  ],
+  "meta": {
+    "app": "Sprixel",
+    "version": "1",
+    "image": "kit.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 11,
+      "h": 2
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "hero_walk",
+        "from": 1,
+        "to": 2,
+        "direction": "forward"
+      }
+    ]
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `frames[].filename` | The name of the frame, as `frames[].name` above. |
+| `frames[].frame` | The rectangle of the frame in the PNG. |
+| `frames[].rotated`, `trimmed` | Always `false`. |
+| `frames[].spriteSourceSize`, `sourceSize` | The size of the frame in pixels (with the scale): `x`, `y` are `0`. |
+| `frames[].duration` | Milliseconds, as above. |
+| `meta.image`, `meta.size` | The PNG name and size. |
+| `meta.scale` | The scale **as text** (`"1"`), as Aseprite writes it. |
+| `meta.format` | Always `RGBA8888`. |
+| `meta.frameTags` | The animations: `name`, `from`, `to` (positions in `frames` from 0, as in the Sprixel layout) and `direction`. |
+
+`direction` is `pingpong` for a `pingpong` animation and `forward` for `loop`
+and `once` (Aseprite has no loop flag: the engine decides). When the export has
+more than one sprite, the tag name is `sprite_animation` (for example
+`hero_walk`) so that two sprites can have a `walk`. The Sprixel anchors and
+the pivot are not in this layout (Aseprite has no such field): use the Sprixel
+layout if you need them.
+
 ### Anchors
 
 An anchor is a named point of a sprite (`feet`, `hand`, `muzzle`) that the

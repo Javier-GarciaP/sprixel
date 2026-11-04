@@ -8,9 +8,9 @@
 ## 2. Export JSON
 
 - [x] 2.1 Add `index` and `frame_number` to the frames and the `feet` pivot; verify scale, fallback and the docs sample
-- [ ] 2.2 Add `json_format` `aseprite` to the core and the `export` tool; verify the shape, tags and `bad_argument`
+- [x] 2.2 Add `json_format` `aseprite` to the core and the `export` tool; verify the shape, tags and `bad_argument`
 - [ ] 2.3 Add the JSON format selector to the Export screen; verify it with UI tests
-- [ ] 2.4 Update `docs/export-format.md` with both formats; verify the docs tests
+- [x] 2.4 Update `docs/export-format.md` with both formats; verify the docs tests
 
 ## 3. Change the canvas
 
