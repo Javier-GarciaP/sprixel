@@ -13,6 +13,7 @@
   <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-F5C542?style=flat-square&labelColor=17171c">
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-F5C542?style=flat-square&labelColor=17171c">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-F5C542?style=flat-square&labelColor=17171c">
+  <a href="README.es.md"><img alt="Español" src="https://img.shields.io/badge/idioma-Espa%C3%B1ol-F5C542?style=flat-square&labelColor=17171c"></a>
 </p>
 
 <p align="center">
