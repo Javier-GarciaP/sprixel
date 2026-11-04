@@ -15,7 +15,13 @@ export type Scene = {
   // The mirror lines of the symmetry mode, in sprite pixels (see
   // `axisLines`): `x` is the vertical line and `y` the horizontal one.
   axis?: { x: number | null; y: number | null };
+  // Pixels that a dialog would write (Outline, Shade): shown over the frame
+  // in see-through colors, but not written. `code` is a palette key code.
+  overlay?: { x: number; y: number; code: number }[];
 };
+
+// How much of the preview color shows over the pixel under it.
+export const OVERLAY_ALPHA = 0.75;
 
 // Where the sprite is on the screen: a whole-number zoom and the screen
 // position of its top left corner.
@@ -123,10 +129,51 @@ export function renderScene(
       }
     }
   }
+  if (scene.overlay) {
+    drawOverlay(buffer, viewWidth, viewHeight, scene, view, {
+      first,
+      last,
+      top,
+      bottom,
+    });
+  }
   if (scene.selection) {
     drawSelection(buffer, viewWidth, viewHeight, scene.selection, view);
   }
   if (scene.axis) drawAxis(buffer, viewWidth, viewHeight, scene, view);
+}
+
+// The preview pixels that are inside the painted area, blended over it.
+function drawOverlay(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  scene: Scene,
+  view: View,
+  area: { first: number; last: number; top: number; bottom: number },
+) {
+  const table = scene.colors;
+  for (const { x, y, code } of scene.overlay!) {
+    if (x < area.first || x > area.last || y < area.top || y > area.bottom) {
+      continue;
+    }
+    const color = [table[code * 4], table[code * 4 + 1], table[code * 4 + 2]];
+    for (let ly = 0; ly < view.zoom; ly++) {
+      const sy = view.y + y * view.zoom + ly;
+      if (sy < 0 || sy >= viewHeight) continue;
+      for (let lx = 0; lx < view.zoom; lx++) {
+        const sx = view.x + x * view.zoom + lx;
+        if (sx < 0 || sx >= viewWidth) continue;
+        const o = (sy * viewWidth + sx) * 4;
+        for (let c = 0; c < 3; c++) {
+          buffer[o + c] = Math.round(
+            buffer[o + c] + (color[c] - buffer[o + c]) * OVERLAY_ALPHA,
+          );
+        }
+        buffer[o + 3] = 255;
+      }
+    }
+  }
 }
 
 // Magenta stands out on the gray checkerboard and on most palettes.

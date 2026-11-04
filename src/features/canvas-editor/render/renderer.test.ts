@@ -42,6 +42,29 @@ function paint(s: Scene, view: View, size = { width: 40, height: 40 }) {
   return { buffer, at };
 }
 
+describe("preview overlay", () => {
+  // Checks that a preview pixel is blended over the frame (here red over
+  // transparent gray), that the frame itself is not changed, and that a
+  // scene without overlay paints as before.
+  it("blends the preview color over the pixel and leaves the scene alone", () => {
+    const s = scene(["..", ".."], {
+      overlay: [{ x: 1, y: 0, code: code("R") }],
+    });
+    const before = [...s.pixels];
+    const { at } = paint(s, { zoom: 4, x: 0, y: 0 });
+    const [r, g, b, a] = at(5, 1);
+    expect(r).toBeGreaterThan(200);
+    expect(g).toBeLessThan(80);
+    expect(b).toBeLessThan(80);
+    expect(a).toBe(255);
+    expect([...s.pixels]).toEqual(before);
+    // The pixel next to it has no overlay: it is the checkerboard.
+    expect(at(1, 1)).toEqual(
+      paint(scene(["..", ".."]), { zoom: 4, x: 0, y: 0 }).at(1, 1),
+    );
+  });
+});
+
 describe("symmetry axis", () => {
   // Checks that the vertical line is drawn on the screen column of the axis
   // (x 2 of a 4 pixel wide sprite at 4x zoom is column 8) and that nothing is
