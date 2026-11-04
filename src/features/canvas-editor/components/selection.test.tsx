@@ -43,13 +43,10 @@ describe("Selection bar", () => {
   // Checks that the bar is only there while something is selected, and says
   // the size of the selection.
   it("shows the bar and the size only with a selection", async () => {
-    const api = new FakeEditorApi(32, 4);
-    renderEditor(api);
-    await screen.findByText("1500%");
+    await ready(new FakeEditorApi(32, 4));
     expect(
       screen.queryByRole("toolbar", { name: "Selection actions" }),
     ).toBeNull();
-    fireEvent.keyDown(window, { key: "m" });
     drag(
       [32, 4],
       [

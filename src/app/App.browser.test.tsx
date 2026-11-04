@@ -29,6 +29,9 @@ const paletteApi = vi.hoisted(() => ({
   applyEdit: vi.fn(),
   listPresets: vi.fn(),
   createPalette: vi.fn(),
+  rampPreview: vi.fn(),
+  rampApply: vi.fn(),
+  removeUnused: vi.fn(),
 }));
 
 vi.mock("./api/project", async (original) => ({
@@ -233,6 +236,7 @@ describe("Palettes in the Project tab", () => {
       name: "dungeon16",
       colors: [{ key: "R", name: "red", hex: "#F04545", used: false }],
     });
+    paletteApi.rampPreview.mockResolvedValue([]);
     await openProject();
     fireEvent.click(await screen.findByRole("button", { name: /dungeon16/ }));
     const dialog = await screen.findByRole("dialog");
