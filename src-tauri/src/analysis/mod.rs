@@ -10,7 +10,7 @@ mod shade;
 
 pub use outline::{OutlineOptions, auto_outline, thin_regions};
 pub use report::{FrameChange, colors, compare, loose_pixels, outline_gaps};
-pub use shade::{Light, Region, ShadeOptions, auto_shade};
+pub use shade::{Light, Region, ShadeOptions, auto_shade, isolated_changes};
 
 use crate::document::TRANSPARENT;
 

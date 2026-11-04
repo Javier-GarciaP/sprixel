@@ -35,7 +35,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "auto_shade",
-            description: concat!("Shades the pixels of one key with a ramp of tones, so you do not shade by hand. Give the `light` direction, the `base` key to shade and the ramp `keys` from dark to light (it includes `base`). A pixel of `base` is measured by how many steps it is from the edge of its area, going toward the light and away from it. The pixels on the edge that faces the light get the lightest key, the next row a little less light, and so on for as many keys as are lighter than `base`; the same on the edge that faces away with the darker keys. A pixel that is as near the lit edge as the dark edge keeps `base`. Pixels of other keys never change. `region` limits which pixels change. Returns `pixels_changed`, `lit`, `shadow` and an image of the frame.", write_note!()),
+            description: concat!("Shades the pixels of one key with a ramp of tones, so you do not shade by hand. Give the `light` direction, the `base` key to shade and the ramp `keys` from dark to light (it includes `base`). A pixel of `base` is measured by how many steps it is from the edge of its area, going toward the light and away from it. The pixels on the edge that faces the light get the lightest key, the next row a little less light, and so on for as many keys as are lighter than `base`; the same on the edge that faces away with the darker keys. A pixel that is as near the lit edge as the dark edge keeps `base`. Pixels of other keys never change. `region` limits which pixels change. Returns `pixels_changed`, `lit`, `shadow`, `speckled_pixels` (shaded pixels with no neighbor of the same tone; a `warnings` entry says so when it is more than 0) and an image of the frame.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "light", "base", "keys"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -201,8 +201,15 @@ fn auto_shade(ctx: &Ctx, input: &Value) -> ToolResult {
         let region = region_of(input, sprite)?;
         let shade = analysis::auto_shade(view_of(sprite, frame), &ShadeOptions { light, base, keys: &keys, region });
         let (count, lit, shadow) = (shade.changes.len(), shade.lit, shade.shadow);
+        let speckled = analysis::isolated_changes(view_of(sprite, frame), &shade.changes);
+        let mut extra = json!({ "pixels_changed": count, "lit": lit, "shadow": shadow, "speckled_pixels": speckled });
+        if speckled > 0 {
+            extra["warnings"] = json!([format!(
+                "{speckled} shaded pixel(s) are alone (no neighbor with the same tone): the area is too small or too thin for this ramp and will look like noise. Look at the image; use fewer keys, a bigger area, or undo"
+            )]);
+        }
         let ops = set_ops(&target, frame, shade.changes);
-        Ok(Plan::new(ops, json!({ "pixels_changed": count, "lit": lit, "shadow": shadow })).preview().busy(&target, frame))
+        Ok(Plan::new(ops, extra).preview().busy(&target, frame))
     })
 }
 

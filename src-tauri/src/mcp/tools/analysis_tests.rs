@@ -319,3 +319,19 @@ fn inner_outline_warns_about_thin_parts() {
     let outside = call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R", "dry_run": true })).unwrap();
     assert!(outside.get("warnings").is_none() && outside.get("thin_regions").is_none());
 }
+
+// Task 2.2: shading a 2x2 block makes two lone pixels: the answer counts them
+// and warns. The 6x6 square of the other tests has none and no warning.
+#[test]
+fn auto_shade_warns_about_speckles() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    block(&host, &core, &session);
+    let grid = "legend\n  Y yellow #FFFF00\nframe 1\nY.......\n........\n........\n........\n........\n........\n........\n........\n";
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid, "x": 0, "y": 0, "skip_transparent": true })).unwrap();
+
+    let done = call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top-left", "base": "G", "keys": ["R", "G", "Y"], "dry_run": true })).unwrap();
+
+    assert_eq!((done["pixels_changed"].as_u64(), done["speckled_pixels"].as_u64()), (Some(2), Some(2)));
+    assert!(done["warnings"][0].as_str().unwrap().starts_with("2 shaded pixel(s)"));
+}
