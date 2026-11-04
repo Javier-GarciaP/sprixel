@@ -57,7 +57,7 @@ the Sprixel JSON `meta.version`; a UI to edit anchors.
 
 ## Risks
 
-- A big crop loses pixels: undo restores them (tested), and the dialog says
-  how many anchors would be lost.
+- A big crop loses pixels: undo restores them (tested), and the dialog warns
+  when a side gets smaller that pixels and anchors can be lost.
 - Engine importers are not tested with the engines themselves (Linux CI
   only): the docs say so.

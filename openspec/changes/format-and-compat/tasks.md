@@ -26,4 +26,4 @@
 
 ## 5. Finish
 
-- [ ] 5.1 Update `docs/ai-and-mcp.md`, the changelog; run format, lint, tests, builds and `openspec validate --all --strict`
+- [x] 5.1 Update `docs/ai-and-mcp.md`, the changelog; run format, lint, tests, builds and `openspec validate --all --strict`

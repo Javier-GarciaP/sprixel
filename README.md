@@ -137,6 +137,8 @@ AppImage, which may need FUSE 2 (`libfuse2`) on some distributions. See the
 | [AI and MCP](docs/ai-and-mcp.md) | Connecting an AI, available tools and security |
 | [Text grid format](docs/text-grid-format.md) | The text format an AI uses to draw sprites |
 | [Export format](docs/export-format.md) | The sprite sheet, the JSON and the PNG files |
+| [Game engines](docs/game-engines.md) | From a drawing to Godot 4 and Unity, step by step |
+| [Project format](docs/project-format.md) | Format versions and the rules for changing the project files |
 | [Architecture](docs/architecture.md) | How the app, the CLI and the project files fit together |
 | [Design](docs/design/README.md) | The idea behind Sprixel and all the screens (light and dark) |
 | [Roadmap](docs/roadmap.md) | The plan for version 1 and the specs behind it |
