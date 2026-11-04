@@ -180,6 +180,88 @@ commands.push(
     group: "editor",
     shortcut: "O",
   },
+  {
+    id: "selection.flipHorizontal",
+    labelKey: "command.selection.flipHorizontal",
+    group: "editor",
+    shortcut: "H",
+  },
+  {
+    id: "selection.flipVertical",
+    labelKey: "command.selection.flipVertical",
+    group: "editor",
+    shortcut: "Shift+H",
+  },
+  {
+    id: "selection.rotate90",
+    labelKey: "command.selection.rotate90",
+    group: "editor",
+    shortcut: "Shift+R",
+  },
+  {
+    id: "selection.rotate180",
+    labelKey: "command.selection.rotate180",
+    group: "editor",
+    shortcut: "Shift+U",
+  },
+  {
+    id: "selection.rotate270",
+    labelKey: "command.selection.rotate270",
+    group: "editor",
+    shortcut: "Shift+L",
+  },
+  {
+    id: "selection.mirrorLeftToRight",
+    labelKey: "command.selection.mirrorLeftToRight",
+    group: "editor",
+    shortcut: "Shift+M",
+  },
+  {
+    id: "selection.mirrorRightToLeft",
+    labelKey: "command.selection.mirrorRightToLeft",
+    group: "editor",
+  },
+  {
+    id: "selection.mirrorTopToBottom",
+    labelKey: "command.selection.mirrorTopToBottom",
+    group: "editor",
+    shortcut: "Shift+N",
+  },
+  {
+    id: "selection.mirrorBottomToTop",
+    labelKey: "command.selection.mirrorBottomToTop",
+    group: "editor",
+  },
+  {
+    id: "selection.moveLeft",
+    labelKey: "command.selection.moveLeft",
+    group: "editor",
+    shortcut: "ArrowLeft",
+  },
+  {
+    id: "selection.moveRight",
+    labelKey: "command.selection.moveRight",
+    group: "editor",
+    shortcut: "ArrowRight",
+  },
+  {
+    id: "selection.moveUp",
+    labelKey: "command.selection.moveUp",
+    group: "editor",
+    shortcut: "ArrowUp",
+  },
+  {
+    id: "selection.moveDown",
+    labelKey: "command.selection.moveDown",
+    group: "editor",
+    shortcut: "ArrowDown",
+  },
+  {
+    id: "selection.wrap",
+    labelKey: "command.selection.wrap",
+    group: "editor",
+    shortcut: "W",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);

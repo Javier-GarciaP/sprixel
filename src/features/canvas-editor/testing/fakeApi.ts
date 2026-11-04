@@ -8,6 +8,17 @@ import type {
 } from "@/features/palette-editor";
 import type { ChangedEvent, FrameData } from "@/shared/lib/core";
 import type {
+  Anchor,
+  AnchorKey,
+  Applied,
+  Clip,
+  OutlineArgs,
+  PowerApi,
+  Preview,
+  RegionAction,
+  Review,
+  ShadeArgs,
+  TileCheck,
   AgentActivity,
   AgentOps,
   ApplyResult,
@@ -17,7 +28,7 @@ import type {
   SpriteInfo,
   SpriteRef,
 } from "../api/types";
-import type { PaletteColor } from "../types";
+import type { PaletteColor, Rect } from "../types";
 
 // An in-memory stand-in for the Rust core, for the tests. It follows the same
 // rules the core has for strokes: one history entry per call, a palette that
@@ -34,7 +45,9 @@ type Entry = {
   added: PaletteColor[];
 };
 
-export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
+export class FakeEditorApi
+  implements EditorApi, FramesApi, PaletteApi, PowerApi
+{
   frames: string[];
   palette: PaletteColor[];
   calls: { frame: number; changes: PixelChange[] }[] = [];
@@ -334,5 +347,106 @@ export class FakeEditorApi implements EditorApi, FramesApi, PaletteApi {
     return () => {
       this.changed.delete(listener);
     };
+  }
+
+  // The power tools (see `PowerApi`). The calls are recorded; the tests of
+  // the core check what they do. `powerFailure` makes the next write fail.
+  powerCalls: { name: string; args: unknown[] }[] = [];
+  powerFailure: { code: string; message?: string } | null = null;
+  clip: Clip = { palette: "main", width: 1, height: 1, keys: "." };
+  preview: Preview = { pixels: [] };
+  review_: Review = { used: [], unused: [], frames: [], changes: [] };
+  tile: TileCheck = { seamless: true, mismatches: [] };
+  anchorList: Anchor[] = [];
+
+  private async power<T>(name: string, args: unknown[], value: T): Promise<T> {
+    this.powerCalls.push({ name, args });
+    const failure = this.powerFailure;
+    if (failure && !name.endsWith("Preview")) {
+      this.powerFailure = null;
+      throw failure;
+    }
+    return value;
+  }
+
+  private applied(): Applied {
+    this.revision++;
+    return { pixelsChanged: 1, ...this.history(), canUndo: true };
+  }
+
+  region(
+    sprite: SpriteRef,
+    frame: number,
+    region: Rect | null,
+    action: RegionAction,
+  ) {
+    return this.power(
+      "region",
+      [sprite, frame, region, action],
+      this.applied(),
+    );
+  }
+  copy(sprite: SpriteRef, frame: number, region: Rect | null) {
+    return this.power("copy", [sprite, frame, region], this.clip);
+  }
+  paste(
+    sprite: SpriteRef,
+    frame: number,
+    clip: Clip,
+    at: { x: number; y: number },
+    skipTransparent: boolean,
+  ) {
+    return this.power(
+      "paste",
+      [sprite, frame, clip, at, skipTransparent],
+      this.applied(),
+    );
+  }
+  outlinePreview(sprite: SpriteRef, frame: number, args: OutlineArgs) {
+    return this.power("outlinePreview", [sprite, frame, args], this.preview);
+  }
+  outlineApply(sprite: SpriteRef, frame: number, args: OutlineArgs) {
+    return this.power("outlineApply", [sprite, frame, args], this.applied());
+  }
+  shadePreview(sprite: SpriteRef, frame: number, args: ShadeArgs) {
+    return this.power("shadePreview", [sprite, frame, args], this.preview);
+  }
+  shadeApply(sprite: SpriteRef, frame: number, args: ShadeArgs) {
+    return this.power("shadeApply", [sprite, frame, args], this.applied());
+  }
+  review(sprite: SpriteRef, outlineKey: string | null) {
+    return this.power("review", [sprite, outlineKey], this.review_);
+  }
+  tileCheck(sprite: SpriteRef, frame: number) {
+    return this.power("tileCheck", [sprite, frame], this.tile);
+  }
+  anchors(sprite: SpriteRef) {
+    return this.power(
+      "anchors",
+      [sprite],
+      this.anchorList.map((a) => ({ ...a })),
+    );
+  }
+  async saveAnchor(
+    sprite: SpriteRef,
+    anchor: Anchor,
+    replaces: AnchorKey | null,
+  ) {
+    await this.power("saveAnchor", [sprite, anchor, replaces], undefined);
+    const same = (a: Anchor, k: AnchorKey) =>
+      a.name.toLowerCase() === k.name.toLowerCase() && a.frame === k.frame;
+    const old = replaces ?? anchor;
+    this.anchorList = this.anchorList.filter((a) => !same(a, old));
+    this.anchorList.push({ ...anchor });
+  }
+  async deleteAnchor(sprite: SpriteRef, key: AnchorKey) {
+    await this.power("deleteAnchor", [sprite, key], undefined);
+    this.anchorList = this.anchorList.filter(
+      (a) =>
+        !(
+          a.name.toLowerCase() === key.name.toLowerCase() &&
+          a.frame === key.frame
+        ),
+    );
   }
 }

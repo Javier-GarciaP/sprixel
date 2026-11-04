@@ -40,3 +40,26 @@ describe("formatShortcut", () => {
     expect(formatShortcut("Mod+Shift+Z", "mac")).toBe("⌘⇧Z");
   });
 });
+
+describe("editor shortcuts", () => {
+  // Checks that no two commands share a shortcut, so a key press can never
+  // run two commands (the power tools added many keys).
+  it("has no shortcut used twice", () => {
+    const keys = commands.flatMap((c) => (c.shortcut ? [c.shortcut] : []));
+    expect(keys.filter((key, i) => keys.indexOf(key) !== i)).toEqual([]);
+  });
+
+  // Checks that the selection commands exist with the planned default keys.
+  it("has the selection commands with their default keys", () => {
+    const key = (id: string) => commands.find((c) => c.id === id)?.shortcut;
+    expect(key("selection.flipHorizontal")).toBe("H");
+    expect(key("selection.flipVertical")).toBe("Shift+H");
+    expect(key("selection.moveRight")).toBe("ArrowRight");
+    expect(key("selection.mirrorRightToLeft")).toBeUndefined();
+  });
+
+  // Checks that arrow keys are shown as arrows on the shortcuts page.
+  it("shows arrow keys as arrows", () => {
+    expect(formatShortcut("ArrowLeft", "other")).toBe("←");
+  });
+});

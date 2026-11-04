@@ -21,6 +21,14 @@ const translatedKeys: Record<string, TranslationKey> = {
   Space: "key.space",
 };
 
+// The arrow keys are shown as arrows.
+const arrows: Record<string, string> = {
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+};
+
 export type KeyName = (key: TranslationKey) => string;
 
 // The key caps to show: ["Ctrl", "Shift", "Z"], with the names translated
@@ -36,6 +44,7 @@ export function shortcutKeys(
       : { Mod: "Ctrl", Alt: "Alt" };
   return parts(shortcut).map((part) => {
     if (part in symbols) return symbols[part];
+    if (part in arrows) return arrows[part];
     return part in translatedKeys ? translate(translatedKeys[part]) : part;
   });
 }
