@@ -279,6 +279,12 @@ commands.push(
     shortcut: "Mod+V",
     notWhileTyping: true,
   },
+  {
+    id: "draw.symmetry",
+    labelKey: "command.draw.symmetry",
+    group: "editor",
+    shortcut: "S",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);

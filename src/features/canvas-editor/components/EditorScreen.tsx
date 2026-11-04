@@ -45,6 +45,7 @@ import { ColorBook } from "../controller/colorBook";
 import { DrawingController } from "../controller/DrawingController";
 import type { Scene } from "../render/renderer";
 import type { ToolId } from "../tools/tools";
+import { axisLines, nextSymmetry, type Symmetry } from "../tools/symmetry";
 import type { Rect } from "../types";
 import { useCanvasView } from "../view/useCanvasView";
 import { AgentCursor } from "./AgentCursor";
@@ -173,6 +174,7 @@ function OpenSprite({
   const [main, setMain] = useState("#000000");
   const [secondary, setSecondary] = useState("#FFFFFF");
   const [filled, setFilled] = useState(false);
+  const [symmetry, setSymmetry] = useState<Symmetry>("off");
   const [onion, setOnion] = useState({ on: true, opacity: DEFAULT_OPACITY });
   const { data, previous, reload } = useSpriteData(
     api,
@@ -231,6 +233,8 @@ function OpenSprite({
       }}
       filled={filled}
       onFilled={setFilled}
+      symmetry={symmetry}
+      onSymmetry={setSymmetry}
       onion={onion}
       onOnion={setOnion}
       pixelGrid={preferences.pixelGrid}
@@ -267,6 +271,8 @@ type ReadyProps = {
   onSwap: () => void;
   filled: boolean;
   onFilled: (filled: boolean) => void;
+  symmetry: Symmetry;
+  onSymmetry: (symmetry: Symmetry) => void;
   onion: { on: boolean; opacity: number };
   onOnion: (onion: { on: boolean; opacity: number }) => void;
   pixelGrid: boolean;
@@ -428,7 +434,15 @@ function Ready(props: ReadyProps) {
     controller.main = props.main;
     controller.secondary = props.secondary;
     controller.filled = props.filled;
-  }, [controller, props.tool, props.main, props.secondary, props.filled]);
+    controller.symmetry = props.symmetry;
+  }, [
+    controller,
+    props.tool,
+    props.main,
+    props.secondary,
+    props.filled,
+    props.symmetry,
+  ]);
 
   // Undo and redo are done by the core. The screen then reads the sprite
   // again, because the change can be anywhere (pixels and palette).
@@ -524,6 +538,7 @@ function Ready(props: ReadyProps) {
     "selection.moveUp": () => nudge(0, -1),
     "selection.moveDown": () => nudge(0, 1),
     "selection.wrap": () => setWrap((on) => !on),
+    "draw.symmetry": () => props.onSymmetry(nextSymmetry(props.symmetry)),
     "edit.copy": copy,
     "edit.paste": paste,
     "view.onionSkin": () =>
@@ -548,6 +563,7 @@ function Ready(props: ReadyProps) {
           ? { pixels: props.previous, opacity: props.onion.opacity / 100 }
           : null,
       grid: props.pixelGrid,
+      axis: axisLines(info.width, info.height, props.symmetry),
       // The controller owns the selection and repaints its area.
       get selection() {
         return controller.selection;
@@ -559,6 +575,7 @@ function Ready(props: ReadyProps) {
       pixels,
       controller,
       props.pixelGrid,
+      props.symmetry,
       props.previous,
       props.onion.on,
       props.onion.opacity,
@@ -600,6 +617,8 @@ function Ready(props: ReadyProps) {
           onRedo={redo}
           filled={props.filled}
           onFilled={props.onFilled}
+          symmetry={props.symmetry}
+          onSymmetry={props.onSymmetry}
           agent={
             writing && {
               text: agentText,

@@ -42,6 +42,41 @@ function paint(s: Scene, view: View, size = { width: 40, height: 40 }) {
   return { buffer, at };
 }
 
+describe("symmetry axis", () => {
+  // Checks that the vertical line is drawn on the screen column of the axis
+  // (x 2 of a 4 pixel wide sprite at 4x zoom is column 8) and that nothing is
+  // drawn when the line is off.
+  it("draws the mirror line only where it is on", () => {
+    const rows = ["....", "...."];
+    const view = { zoom: 4, x: 0, y: 0 };
+    const on = paint(scene(rows, { axis: { x: 2, y: null } }), view);
+    const lit = [0, 1, 2, 3, 4, 5, 6, 7].filter((sy) => {
+      const [r, g, b] = on.at(8, sy);
+      return r === 236 && g === 72 && b === 153;
+    });
+    expect(lit.length).toBeGreaterThan(0);
+    // The horizontal line is off: the row in the middle has no magenta.
+    const row = [0, 1, 2, 3, 5, 6, 7].map((sx) => on.at(sx, 4));
+    expect(row.some(([r, g, b]) => r === 236 && g === 72 && b === 153)).toBe(
+      false,
+    );
+    const off = paint(scene(rows, { axis: { x: null, y: null } }), view);
+    expect(off.at(8, 0)).toEqual(paint(scene(rows), view).at(8, 0));
+  });
+
+  // Checks that both lines cross and are clipped to the sprite.
+  it("draws the horizontal line across the sprite width only", () => {
+    const { at } = paint(scene(["....", "...."], { axis: { x: null, y: 1 } }), {
+      zoom: 4,
+      x: 0,
+      y: 0,
+    });
+    const lit = (sx: number) => at(sx, 4)[0] === 236 && at(sx, 4)[1] === 72;
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 8].some(lit)).toBe(true);
+    expect(at(16, 4)[3]).toBe(0);
+  });
+});
+
 describe("renderScene", () => {
   // Checks the "Zoomed in" scenario: at 800% every sprite pixel is an 8x8
   // block of one color, and the next block starts with no blending.

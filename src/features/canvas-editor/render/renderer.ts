@@ -12,6 +12,9 @@ export type Scene = {
   onion: { pixels: Uint8Array; opacity: number } | null;
   grid: boolean;
   selection: Rect | null;
+  // The mirror lines of the symmetry mode, in sprite pixels (see
+  // `axisLines`): `x` is the vertical line and `y` the horizontal one.
+  axis?: { x: number | null; y: number | null };
 };
 
 // Where the sprite is on the screen: a whole-number zoom and the screen
@@ -122,6 +125,40 @@ export function renderScene(
   }
   if (scene.selection) {
     drawSelection(buffer, viewWidth, viewHeight, scene.selection, view);
+  }
+  if (scene.axis) drawAxis(buffer, viewWidth, viewHeight, scene, view);
+}
+
+// Magenta stands out on the gray checkerboard and on most palettes.
+export const AXIS_COLOR = [236, 72, 153] as const;
+
+// A dashed line over the sprite for each mirror line that is on. It is
+// painted last, so it is on top of the pixels and of the selection.
+function drawAxis(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  scene: Scene,
+  view: View,
+) {
+  const put = (sx: number, sy: number) => {
+    if (sx < 0 || sy < 0 || sx >= viewWidth || sy >= viewHeight) return;
+    const o = (sy * viewWidth + sx) * 4;
+    [buffer[o], buffer[o + 1], buffer[o + 2]] = AXIS_COLOR;
+    buffer[o + 3] = 255;
+  };
+  const { x, y } = scene.axis!;
+  const left = view.x;
+  const top = view.y;
+  const right = left + scene.width * view.zoom;
+  const bottom = top + scene.height * view.zoom;
+  if (x !== null) {
+    const sx = Math.round(view.x + x * view.zoom);
+    for (let sy = top; sy < bottom; sy++) if ((sy >> 2) % 2 === 0) put(sx, sy);
+  }
+  if (y !== null) {
+    const sy = Math.round(view.y + y * view.zoom);
+    for (let sx = left; sx < right; sx++) if ((sx >> 2) % 2 === 0) put(sx, sy);
   }
 }
 

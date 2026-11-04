@@ -19,7 +19,7 @@
 ## 4. Symmetry
 
 - [x] 4.1 Add the symmetry math to the drawing controller and verify pencil, line, rectangle, ellipse and bucket mirror, with one commit per stroke
-- [ ] 4.2 Add the symmetry toggle, the axis on the canvas and the shortcut, and verify the toggle states and the axis
+- [x] 4.2 Add the symmetry toggle, the axis on the canvas and the shortcut, and verify the toggle states and the axis
 
 ## 5. Outline and shade
 
