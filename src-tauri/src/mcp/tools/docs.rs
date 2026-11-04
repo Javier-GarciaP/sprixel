@@ -528,7 +528,7 @@ Tools guide: which tool for which job\n\
 6. Finish: `auto_outline` when the shape is done, `auto_shade` for lit and shadow tones.\n\
 7. Check: `analyze_sprite` (loose pixels, outline gaps, unused colors, what changes between frames), `check_tile` (seams of a tile).\n\
 8. Colors: `set_palette_color`, `generate_ramp`, `create_palette`, `set_sprite_palette`, `remove_unused_colors`.\n\
-9. Animation and game data: `create_animation` (a named animation made from the base frame in one call), `create_tag`, `set_frame_duration`, `set_anchor`, `remove_anchor`, `export`.\n\
+9. Animation and game data: `create_animation` (a named animation made from the base frame in one call), `duplicate_animation`, `rename_animation`, `delete_animation` (`with_frames` also deletes its frames), `move_frame`, `create_tag`, `set_frame_duration`, `set_anchor`, `remove_anchor`, `export`.\n\
 10. Mistakes: `undo_last_ai_action` takes back your last action, if nothing happened after it.\n\
 Pick the smallest tool: one pixel is `set_pixels`; a shape or a part is `apply_grid`; a copy is `copy_region`; both sides at once is `symmetry`; an outline or shading is `auto_outline` or `auto_shade`; a move or a flip is `transform_region`. Never redraw a whole frame to move or flip something.\n\
 When a call fails read its `message`. Common codes: `unknown_key` (the key is not in the palette), `out_of_range` and `region_out` (outside the sprite), `stale_revision` (read again), `permission_denied` (ask the person).\n\
@@ -568,6 +568,10 @@ Example calls (the tool, then its arguments as JSON; change the names and number
 `set_sprite_palette` {\"name\":\"slime\",\"palette\":\"forest\"}\n\
 `remove_unused_colors` {\"palette\":\"main\"}\n\
 `create_animation` {\"sprite\":\"walker\",\"name\":\"walk\",\"frames\":4,\"fps\":10,\"mode\":\"loop\"}\n\
+`duplicate_animation` {\"sprite\":\"walker\",\"name\":\"walk\",\"new_name\":\"walk-fast\"}\n\
+`rename_animation` {\"sprite\":\"walker\",\"name\":\"walk-fast\",\"new_name\":\"run\"}\n\
+`delete_animation` {\"sprite\":\"walker\",\"name\":\"run\",\"with_frames\":true}\n\
+`move_frame` {\"name\":\"walker\",\"from\":5,\"to\":2}\n\
 `create_tag` {\"sprite\":\"walker\",\"name\":\"walk\",\"from\":1,\"to\":4,\"fps\":10,\"mode\":\"loop\"}\n\
 `set_frame_duration` {\"name\":\"walker\",\"frame\":2,\"milliseconds\":80}\n\
 `set_anchor` {\"sprite\":\"walker\",\"name\":\"feet\",\"x\":4,\"y\":9}\n\
