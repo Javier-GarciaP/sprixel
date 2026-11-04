@@ -152,6 +152,8 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "rename_animation" => format!("Renamed the animation {} to {} on {name}", text(answer, "was"), text(answer, "animation")),
         "delete_animation" => format!("Deleted the animation {} from {name}", text(answer, "deleted")),
         "move_frame" => format!("Moved frame {} of {name} to {}", answer["moved_frame"], answer["to"]),
+        "set_part" => format!("Named the part {} on {name}", text(answer, "part")),
+        "remove_part" => format!("Removed the part {} from {name}", text(answer, "removed")),
         "set_palette_color" => format!(
             "{} the color {} in palette {}",
             if answer["action"] == "added" { "Added" } else { "Changed" },

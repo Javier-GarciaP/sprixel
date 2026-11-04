@@ -235,7 +235,8 @@ fn the_animations_from_base_example_makes_two_animations() {
     call(&core, &session, "set_pixels", json!({ "name": "goat", "pixels": [{ "x": 22, "y": 5, "key": "R" }] })).unwrap();
     for line in [
         r#"`create_animation` {"sprite":"goat","name":"walk","frames":6,"fps":10}"#,
-        r#"`transform_region` {"name":"goat","frames":"3-5","region":{"x":20,"y":4,"width":12,"height":10},"operation":"move","dx":0,"dy":1}"#,
+        r#"`set_part` {"sprite":"goat","name":"head","x":20,"y":4,"width":12,"height":10}"#,
+        r#"`transform_region` {"name":"goat","frames":"3-5","part":"head","operation":"move","dx":0,"dy":1}"#,
         r#"`render_frames` {"name":"goat","from":2,"to":7,"labels":true}"#,
         r#"`create_animation` {"sprite":"goat","name":"attack","frames":4,"fps":12,"mode":"once"}"#,
     ] {

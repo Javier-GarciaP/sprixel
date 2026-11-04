@@ -26,6 +26,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
   without the agreement of the person. New editor commands `animation_create`,
   `animation_duplicate`, `animation_rename` and `animation_delete`. A new
   animation that shares a frame with another one is refused (`animation_overlap`).
+- Named parts for the AI: `set_part` and `remove_part` name a rectangle of a sprite
+  (head, tail), and `transform_region` and `copy_region` accept it as `part`.
+  Stored in an optional `parts` list of the sprite file; old projects open as
+  before.
 - Power tools for people in the editor, the same ones the AI has: a selection
   bar (flip, rotate, mirror a half, move with the arrow keys and wrap), copy
   and paste between frames and sprites, a symmetry mode with the axis on the

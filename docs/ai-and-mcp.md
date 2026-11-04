@@ -141,8 +141,8 @@ description tells the AI the rules, so it does not need this page.
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
 | `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). With `inner` it warns about parts thinner than 3 pixels (`thin_regions`). Takes `dry_run`. Returns an image of the edited frame |
 | `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns `speckled_pixels` and a warning for lone shade pixels. Takes `dry_run`. Returns an image of the edited frame |
-| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. With `frames` (a list like `[8, 9]` or a range as text like `"8-13"`) it does the same on many frames as ONE history entry. Takes `dry_run`. Returns an image of the edited frame |
-| `copy_region` | Copies a region inside a sprite, or to another frame, to many frames with `frames` (one history entry), or to another sprite (same palette), with an offset and `skip_transparent`. Takes `dry_run`. Returns an image of the edited frame |
+| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. With `frames` (a list like `[8, 9]` or a range as text like `"8-13"`) it does the same on many frames as ONE history entry. `part` (a name from `set_part`) replaces `region`. Takes `dry_run`. Returns an image of the edited frame |
+| `copy_region` | Copies a region inside a sprite, or to another frame, to many frames with `frames` (one history entry), or to another sprite (same palette), with an offset and `skip_transparent`; the source can be a `part`. Takes `dry_run`. Returns an image of the edited frame |
 | `import_reference` | Draws a PNG from the project folder `references/` into a frame, using the nearest colors of the palette (`width`, `height` scale it down, `max_colors` adds colors). Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000, or `null` for the animation speed) |
@@ -154,6 +154,8 @@ description tells the AI the rules, so it does not need this page.
 | `rename_animation` | Renames an animation (`name`, `new_name`); frames and speed stay |
 | `delete_animation` | Removes an animation; its frames stay unless `with_frames` is true |
 | `move_frame` | Moves frame `from` to position `to`; animations and anchors follow their frames. Returns an image |
+| `set_part` | Names a rectangle of a sprite (`sprite`, `name`, `x`, `y`, `width`, `height`), for example `head`; `transform_region` and `copy_region` accept it as `part`. At most 64 per sprite. `get_sprite` lists them |
+| `remove_part` | Removes a part by name |
 | `create_tag` | Names a range of frames you already drew as an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`). Frames of animations never overlap (`animation_overlap`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
 | `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |

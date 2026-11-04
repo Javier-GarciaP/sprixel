@@ -369,7 +369,7 @@ fn the_animation_rules_are_the_same_everywhere() {
     assert!(INSTRUCTIONS.contains(ANIMATION_RULES), "the instructions");
     assert!(ANIMATIONS_FROM_BASE_GUIDE.contains(ANIMATION_RULES), "the guide");
     assert!(skill().contains(ANIMATION_RULES), "the skill");
-    for part in ["create_animation", "duplicate_animation", "rename_animation", "delete_animation", "move_frame", "with_frames", "animation_overlap", "name_exists", "frames"] {
+    for part in ["create_animation", "duplicate_animation", "rename_animation", "delete_animation", "move_frame", "with_frames", "animation_overlap", "name_exists", "frames", "set_part"] {
         assert!(ANIMATIONS_FROM_BASE_GUIDE.contains(part), "the guide does not say {part:?}");
     }
 }

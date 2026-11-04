@@ -18,7 +18,7 @@ pub fn tools() -> Vec<Tool> {
     vec![Tool {
         name: "transform_region",
         description: concat!(
-            "Changes a rectangle of one frame, or of many frames with `frames` (a list or a range like \"8-13\"), in one step, without rewriting pixels. `region` is {x, y, width, height} (default: the whole frame). `operation`: `flip_horizontal` (left and right swap), `flip_vertical`, `mirror` (needs `direction`: `left_to_right` copies the mirrored left half over the right half; also `right_to_left`, `top_to_bottom`, `bottom_to_top`), `move` (needs `dx` and `dy`; pixels that leave the region are lost unless `wrap` is true) and `rotate` (needs `degrees`: 90 clockwise, 180 or 270; 90 and 270 need a square region).",
+            "Changes a rectangle of one frame, or of many frames with `frames` (a list or a range like \"8-13\"), in one step, without rewriting pixels. `region` is {x, y, width, height} (default: the whole frame), or `part` is the name of a part made with `set_part`. `operation`: `flip_horizontal` (left and right swap), `flip_vertical`, `mirror` (needs `direction`: `left_to_right` copies the mirrored left half over the right half; also `right_to_left`, `top_to_bottom`, `bottom_to_top`), `move` (needs `dx` and `dy`; pixels that leave the region are lost unless `wrap` is true) and `rotate` (needs `degrees`: 90 clockwise, 180 or 270; 90 and 270 need a square region).",
             write_note!()
         ),
         schema: json!({ "type": "object", "required": ["name", "operation"], "properties": {
@@ -27,6 +27,7 @@ pub fn tools() -> Vec<Tool> {
             "frame": { "type": "integer", "minimum": 1, "description": "Default 1. Not with `frames`." },
             "frames": frames_schema("The frames to change, all with the same region and operation, as ONE step (one undo). Not with `frame`."),
             "region": region_schema("The rectangle to change. Default: the whole frame."),
+            "part": part_schema(),
             "operation": { "type": "string", "enum": ["flip_horizontal", "flip_vertical", "mirror", "move", "rotate"] },
             "direction": { "type": "string", "enum": ["left_to_right", "right_to_left", "top_to_bottom", "bottom_to_top"], "description": "For `mirror`." },
             "dx": { "type": "integer", "description": "For `move`: pixels to the right (negative: left)." },
@@ -43,7 +44,7 @@ pub fn tools() -> Vec<Tool> {
     Tool {
         name: "copy_region",
         description: concat!(
-            "Copies a rectangle of a frame to a place in the same frame, another frame, many frames of the destination with `frames` (a list or a range like \"8-13\") or another sprite (it must use the same palette). `region` is the source {x, y, width, height} (default: the whole frame) of frame `frame` of sprite `name`. The copy goes to `to_sprite` (default: the same sprite), `to_frame` (default: `frame`), with its top left pixel at `to_x`, `to_y` (default: the same place as the source). With `skip_transparent` the `.` pixels of the source keep what is in the destination.",
+            "Copies a rectangle of a frame to a place in the same frame, another frame, many frames of the destination with `frames` (a list or a range like \"8-13\") or another sprite (it must use the same palette). `region` is the source {x, y, width, height} (default: the whole frame; or `part`, the name of a part made with `set_part`) of frame `frame` of sprite `name`. The copy goes to `to_sprite` (default: the same sprite), `to_frame` (default: `frame`), with its top left pixel at `to_x`, `to_y` (default: the same place as the source). With `skip_transparent` the `.` pixels of the source keep what is in the destination.",
             write_note!()
         ),
         schema: json!({ "type": "object", "required": ["name"], "properties": {
@@ -51,6 +52,7 @@ pub fn tools() -> Vec<Tool> {
             "folder": { "type": "string" },
             "frame": { "type": "integer", "minimum": 1, "description": "The source frame. Default 1." },
             "region": region_schema("The source rectangle. Default: the whole frame."),
+            "part": part_schema(),
             "to_sprite": { "type": "string", "description": "The destination sprite. Default: the source sprite." },
             "to_folder": { "type": "string" },
             "to_frame": { "type": "integer", "minimum": 1, "description": "Default: the source frame. Not with `frames`." },
@@ -70,6 +72,11 @@ pub fn tools() -> Vec<Tool> {
 /// The schema of a `frames` argument: a list or a range as text.
 fn frames_schema(description: &str) -> Value {
     json!({ "type": ["array", "string"], "items": { "type": "integer", "minimum": 1 }, "description": format!("{description} A list like [8, 9] or a range as text like \"8-13\".") })
+}
+
+/// The schema of a `part` argument.
+fn part_schema() -> Value {
+    json!({ "type": "string", "description": "The name of a part made with `set_part`, instead of `region` (not both). `not_found` lists the parts." })
 }
 
 /// The schema of a `region` argument.
@@ -136,7 +143,7 @@ fn transform_region(ctx: &Ctx, input: &Value) -> ToolResult {
             }
         };
         let (sw, sh) = (sprite.width, sprite.height);
-        let rect = args::region(input, "region", sw, sh)?.unwrap_or((0, 0, sw, sh));
+        let rect = super::parts::rect_of(input, sprite, "region")?.unwrap_or((0, 0, sw, sh));
         let (w, h) = (rect.2 as usize, rect.3 as usize);
         // Every frame is worked out before anything is written, so one error
         // changes nothing.
@@ -229,7 +236,7 @@ fn copy_region(ctx: &Ctx, input: &Value) -> ToolResult {
             .with("from_palette", from.palette.clone())
             .with("to_palette", to.palette.clone()));
         }
-        let (x, y, w, h) = args::region(input, "region", from.width, from.height)?.unwrap_or((0, 0, from.width, from.height));
+        let (x, y, w, h) = super::parts::rect_of(input, from, "region")?.unwrap_or((0, 0, from.width, from.height));
         let (dx, dy) = (to_x.unwrap_or(x), to_y.unwrap_or(y));
         if u64::from(dx) + u64::from(w) > u64::from(to.width) || u64::from(dy) + u64::from(h) > u64::from(to.height) {
             return Err(ToolError::new(
