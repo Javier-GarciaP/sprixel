@@ -4,6 +4,10 @@ import type { RepeatMode } from "./types";
 // One step of the animation: a frame and how long it is shown.
 export type Step = { frame: number; ms: number };
 
+// The frames from `from` to `to`, both ends included (empty if backwards).
+export const rangeFrames = (from: number, to: number): number[] =>
+  Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i);
+
 // The steps of one pass. Ping-pong goes forward and then backward, without
 // showing the two ends twice, so 1 2 3 4 plays as 1 2 3 4 3 2 and starts again.
 export function stepsOf(

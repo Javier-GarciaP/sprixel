@@ -3,7 +3,7 @@ import type { FrameData } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { drawFrame } from "@/shared/lib/render";
 import { backgroundStyle, type PreviewBackground } from "./background";
-import { stepAt, stepsOf } from "./playback";
+import { rangeFrames, stepAt, stepsOf } from "./playback";
 import type { FramesApi, FramesInfo, SpriteRef, Tag } from "./types";
 import { useSpriteChanges } from "./useSpriteChanges";
 
@@ -29,8 +29,11 @@ type Props = {
   api: FramesApi;
   sprite: SpriteRef;
   info: FramesInfo | null;
-  // The animation that is played, or null to play all the frames.
+  // The animation chosen in the frames column, or null for all the frames.
+  // The preview follows it until the person picks another one in its own list.
   tag: Tag | null;
+  // The animations of the sprite: the entries of the list above the controls.
+  tags?: Tag[];
   clock?: Clock;
   // What shows behind the transparent pixels.
   background?: PreviewBackground;
@@ -45,7 +48,8 @@ export function PreviewPanel({
   api,
   sprite,
   info,
-  tag,
+  tag: followed,
+  tags = [],
   clock = screenClock,
   background = "checker",
   playToken = 0,
@@ -53,6 +57,21 @@ export function PreviewPanel({
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
   const canvas = useRef<HTMLCanvasElement>(null);
+  // The own choice of the person: an animation name, or "" for all the
+  // frames. It counts only while the column and the play buttons stay as they
+  // were when it was made: a new choice in the column, or a play button, wins
+  // over it. An animation that was deleted counts as "All frames".
+  const [picked, setPicked] = useState<{
+    name: string;
+    followed?: string;
+    token: number;
+  } | null>(null);
+  const own =
+    picked && picked.followed === followed?.name && picked.token === playToken
+      ? picked.name
+      : null;
+  const tag =
+    own === null ? followed : (tags.find((x) => x.name === own) ?? null);
   const [fps, setFps] = useState(tag?.fps ?? DEFAULT_FPS);
   const [playing, setPlaying] = useState(false);
   const [data, setData] = useState<Map<number, FrameData>>(new Map());
@@ -66,13 +85,7 @@ export function PreviewPanel({
   const mode = tag?.mode ?? "loop";
   const durations = info?.durations;
   const steps = useMemo(
-    () =>
-      stepsOf(
-        Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i),
-        durations ?? [],
-        fps,
-        mode,
-      ),
+    () => stepsOf(rangeFrames(from, to), durations ?? [], fps, mode),
     [from, to, durations, fps, mode],
   );
   const [shown, setShown] = useState(from);
@@ -80,10 +93,7 @@ export function PreviewPanel({
   const path = JSON.stringify([...sprite.folder, sprite.name]);
   useEffect(() => {
     let stopped = false;
-    const wanted = Array.from(
-      { length: Math.max(0, to - from + 1) },
-      (_, i) => from + i,
-    );
+    const wanted = rangeFrames(from, to);
     Promise.all(wanted.map((n) => api.loadFrameData(sprite, n)))
       .then((frames) => {
         if (!stopped) setData(new Map(wanted.map((n, i) => [n, frames[i]])));
@@ -140,6 +150,25 @@ export function PreviewPanel({
           className="max-h-full max-w-full object-contain [image-rendering:pixelated]"
         />
       </div>
+      <select
+        aria-label={t("anim.select")}
+        value={tag?.name ?? ""}
+        onChange={(event) =>
+          setPicked({
+            name: event.target.value,
+            followed: followed?.name,
+            token: playToken,
+          })
+        }
+        className="mt-2 h-7 w-full rounded-md border border-border bg-surface px-1.5 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-amber"
+      >
+        <option value="">{t("preview.allFrames")}</option>
+        {tags.map((x) => (
+          <option key={x.name} value={x.name}>
+            {x.name} ({t("frames.count", { count: x.to - x.from + 1 })})
+          </option>
+        ))}
+      </select>
       <div className="mt-2 flex items-center gap-2">
         <button
           type="button"
