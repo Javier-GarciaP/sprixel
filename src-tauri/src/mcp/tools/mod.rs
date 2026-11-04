@@ -9,6 +9,7 @@ macro_rules! write_note {
 }
 
 mod analysis;
+mod animation;
 mod args;
 mod create;
 mod docs;
@@ -47,6 +48,7 @@ pub fn all() -> Vec<Tool> {
     tools.extend(region::tools());
     tools.extend(reference::tools());
     tools.extend(structure::tools());
+    tools.extend(animation::tools());
     tools.extend(palettes::tools());
     tools.extend(export::tools());
     tools.extend(gamedata::tools());
@@ -69,6 +71,9 @@ mod draw_tests;
 
 #[cfg(test)]
 mod structure_tests;
+
+#[cfg(test)]
+mod animation_tests;
 
 #[cfg(test)]
 mod edit_tests;

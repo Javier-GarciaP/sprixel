@@ -149,7 +149,8 @@ description tells the AI the rules, so it does not need this page.
 | `set_anchor` | Adds or moves a named point of a sprite (`feet`, `hand`...), for the whole sprite or one `frame` |
 | `remove_anchor` | Removes an anchor by name |
 | `resize_sprite` | Changes the canvas size (`width`, `height` 1 to 512, `anchor` for where the drawing stays). Anchors move with the drawing; those that end outside are removed and listed in `dropped_anchors`. Returns an image |
-| `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
+| `create_animation` | Makes a named animation from the base frame in one call: copies `base_frame` (default 1) `frames` times at the end or at `at`, and tags the copies (`sprite`, `name`, `fps`, `mode`). One history entry, no pixels sent. Errors: `name_exists`, `animation_overlap`. Returns an image |
+| `create_tag` | Names a range of frames you already drew as an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`). Frames of animations never overlap (`animation_overlap`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
 | `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
 | `set_sprite_palette` | Makes a sprite use another palette; fails with `keys_missing` if the sprite uses a key the palette lacks |

@@ -143,6 +143,11 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "remove_anchor" => format!("Removed the anchor {} from {name}", text(answer, "removed")),
         "resize_sprite" => format!("Changed the canvas of {name} to {}x{}", answer["width"], answer["height"]),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
+        "create_animation" => format!(
+            "Created the animation {} on {name} ({} frames from the base)",
+            text(answer, "animation"),
+            answer["to"].as_u64().unwrap_or(0) + 1 - answer["from"].as_u64().unwrap_or(0)
+        ),
         "set_palette_color" => format!(
             "{} the color {} in palette {}",
             if answer["action"] == "added" { "Added" } else { "Changed" },
