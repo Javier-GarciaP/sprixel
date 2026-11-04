@@ -29,7 +29,7 @@
 
 ## 6. Review panel
 
-- [ ] 6.1 Add the Review panel and the pixel highlight and verify the lists, the empty state and the click-to-highlight
+- [x] 6.1 Add the Review panel and the pixel highlight and verify the lists, the empty state and the click-to-highlight
 
 ## 7. Palette editor
 

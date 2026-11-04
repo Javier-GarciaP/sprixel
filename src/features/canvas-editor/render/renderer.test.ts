@@ -65,6 +65,22 @@ describe("preview overlay", () => {
   });
 });
 
+describe("highlight", () => {
+  // Checks the box around a pixel: black just outside its edge, white one
+  // pixel further out, and nothing for a scene without highlight.
+  it("draws a black and white box around the pixel", () => {
+    const view = { zoom: 8, x: 4, y: 4 };
+    const { at } = paint(
+      scene(["..", ".."], { highlight: { x: 0, y: 0 } }),
+      view,
+    );
+    expect(at(3, 8)).toEqual([0, 0, 0, 255]);
+    expect(at(2, 8)).toEqual([255, 255, 255, 255]);
+    const plain = paint(scene(["..", ".."]), view);
+    expect(plain.at(3, 8)).not.toEqual([0, 0, 0, 255]);
+  });
+});
+
 describe("symmetry axis", () => {
   // Checks that the vertical line is drawn on the screen column of the axis
   // (x 2 of a 4 pixel wide sprite at 4x zoom is column 8) and that nothing is

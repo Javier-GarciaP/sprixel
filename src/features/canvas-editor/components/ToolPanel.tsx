@@ -6,8 +6,9 @@ type Props = {
   title: string;
   onClose: () => void;
   // The Apply button; it stays off while `canApply` is false.
-  onApply: () => void;
-  canApply: boolean;
+  // Without Apply the panel only shows information (the Review panel).
+  onApply?: () => void;
+  canApply?: boolean;
   children: ReactNode;
 };
 
@@ -18,7 +19,7 @@ export function ToolPanel({
   title,
   onClose,
   onApply,
-  canApply,
+  canApply = false,
   children,
 }: Props) {
   const t = useT();
@@ -45,13 +46,19 @@ export function ToolPanel({
           <Icon name="close" />
         </button>
       </div>
-      <p className="text-xs text-text-muted">{t("panel.previewing")}</p>
+      {onApply && (
+        <p className="text-xs text-text-muted">{t("panel.previewing")}</p>
+      )}
       {children}
       <div className="flex justify-end gap-2">
-        <Button onClick={onClose}>{t("panel.cancel")}</Button>
-        <Button variant="primary" disabled={!canApply} onClick={onApply}>
-          {t("panel.apply")}
+        <Button onClick={onClose}>
+          {t(onApply ? "panel.cancel" : "panel.done")}
         </Button>
+        {onApply && (
+          <Button variant="primary" disabled={!canApply} onClick={onApply}>
+            {t("panel.apply")}
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -18,6 +18,8 @@ export type Scene = {
   // Pixels that a dialog would write (Outline, Shade): shown over the frame
   // in see-through colors, but not written. `code` is a palette key code.
   overlay?: { x: number; y: number; code: number }[];
+  // A pixel to point at (the Review panel): a box around it.
+  highlight?: { x: number; y: number } | null;
 };
 
 // How much of the preview color shows over the pixel under it.
@@ -140,6 +142,8 @@ export function renderScene(
   if (scene.selection) {
     drawSelection(buffer, viewWidth, viewHeight, scene.selection, view);
   }
+  if (scene.highlight)
+    drawHighlight(buffer, viewWidth, viewHeight, scene.highlight, view);
   if (scene.axis) drawAxis(buffer, viewWidth, viewHeight, scene, view);
 }
 
@@ -174,6 +178,38 @@ function drawOverlay(
       }
     }
   }
+}
+
+// A black box with a white box around it: seen on any color.
+function drawHighlight(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  pixel: { x: number; y: number },
+  view: View,
+) {
+  const box = (grow: number, value: number) => {
+    const left = view.x + pixel.x * view.zoom - grow;
+    const top = view.y + pixel.y * view.zoom - grow;
+    const right = view.x + (pixel.x + 1) * view.zoom - 1 + grow;
+    const bottom = view.y + (pixel.y + 1) * view.zoom - 1 + grow;
+    const put = (sx: number, sy: number) => {
+      if (sx < 0 || sy < 0 || sx >= viewWidth || sy >= viewHeight) return;
+      const o = (sy * viewWidth + sx) * 4;
+      buffer[o] = buffer[o + 1] = buffer[o + 2] = value;
+      buffer[o + 3] = 255;
+    };
+    for (let sx = left; sx <= right; sx++) {
+      put(sx, top);
+      put(sx, bottom);
+    }
+    for (let sy = top; sy <= bottom; sy++) {
+      put(left, sy);
+      put(right, sy);
+    }
+  };
+  box(2, 255);
+  box(1, 0);
 }
 
 // Magenta stands out on the gray checkerboard and on most palettes.

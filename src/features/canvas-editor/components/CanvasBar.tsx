@@ -20,8 +20,8 @@ type Props = {
   symmetry: Symmetry;
   onSymmetry: (symmetry: Symmetry) => void;
   // The panels with a preview, and which one is open.
-  panel: "outline" | "shade" | null;
-  onPanel: (panel: "outline" | "shade" | null) => void;
+  panel: "outline" | "shade" | "review" | null;
+  onPanel: (panel: "outline" | "shade" | "review" | null) => void;
   // An AI agent is drawing: what to say and what Stop does.
   agent?: { text: string; onStop: () => void } | null;
   // The Canvas and Text switch: the same place in both views.
@@ -34,6 +34,12 @@ const symmetryLabels = {
   horizontal: "editor.symmetryHorizontal",
   vertical: "editor.symmetryVertical",
   both: "editor.symmetryBoth",
+} as const;
+
+const panelLabels = {
+  outline: "command.edit.outline",
+  shade: "command.edit.shade",
+  review: "command.view.review",
 } as const;
 
 const iconButton =
@@ -129,7 +135,7 @@ export function CanvasBar({
         ))}
       </div>
       <div role="group" aria-label={t("editor.finish")} className="flex gap-1">
-        {(["outline", "shade"] as const).map((name) => (
+        {(["outline", "shade", "review"] as const).map((name) => (
           <button
             key={name}
             type="button"
@@ -137,11 +143,7 @@ export function CanvasBar({
             onClick={() => onPanel(panel === name ? null : name)}
             className={`rounded-md border border-border px-2 py-1 text-xs ${panel === name ? "bg-surface-2 font-semibold text-text" : "bg-surface text-text-muted"}`}
           >
-            {t(
-              name === "outline"
-                ? "command.edit.outline"
-                : "command.edit.shade",
-            )}
+            {t(panelLabels[name])}
           </button>
         ))}
       </div>

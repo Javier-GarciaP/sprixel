@@ -34,6 +34,7 @@ import { powerErrorText } from "../powerError";
 import { SelectionBar } from "./SelectionBar";
 import { OutlinePanel } from "./OutlinePanel";
 import { ShadePanel } from "./ShadePanel";
+import { ReviewPanel } from "./ReviewPanel";
 import {
   useEditorCommands,
   type CommandHandlers,
@@ -312,7 +313,15 @@ function Ready(props: ReadyProps) {
   const selectionRef = useRef<Rect | null>(null);
   const [wrap, setWrap] = useState(false);
   // The panel with a preview that is open, and the pixels it shows.
-  const [panel, setPanel] = useState<"outline" | "shade" | null>(null);
+  const [panel, setPanel] = useState<"outline" | "shade" | "review" | null>(
+    null,
+  );
+  // The pixel the Review panel points at.
+  const [pointed, setPointed] = useState<{
+    frame: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [preview, setPreview] = useState<Preview["pixels"] | null>(null);
   const controller = useMemo(() => {
     const made = new DrawingController(
@@ -548,6 +557,8 @@ function Ready(props: ReadyProps) {
     "edit.outline": () =>
       setPanel((now) => (now === "outline" ? null : "outline")),
     "edit.shade": () => setPanel((now) => (now === "shade" ? null : "shade")),
+    "view.review": () =>
+      setPanel((now) => (now === "review" ? null : "review")),
     "edit.copy": copy,
     "edit.paste": paste,
     "view.onionSkin": () =>
@@ -573,6 +584,10 @@ function Ready(props: ReadyProps) {
           : null,
       grid: props.pixelGrid,
       axis: axisLines(info.width, info.height, props.symmetry),
+      highlight:
+        pointed && pointed.frame === props.frame
+          ? { x: pointed.x, y: pointed.y }
+          : null,
       overlay: preview?.map(([x, y, key]) => ({
         x,
         y,
@@ -591,6 +606,8 @@ function Ready(props: ReadyProps) {
       props.pixelGrid,
       props.symmetry,
       preview,
+      pointed,
+      props.frame,
       props.previous,
       props.onion.on,
       props.onion.opacity,
@@ -737,6 +754,22 @@ function Ready(props: ReadyProps) {
               props.reload();
             }}
             onClose={() => setPanel(null)}
+          />
+        )}
+        {panel === "review" && (
+          <ReviewPanel
+            api={props.powerApi}
+            sprite={sprite}
+            palette={palette}
+            revision={info.revision}
+            onPoint={(frame, x, y) => {
+              props.onFrame(frame);
+              setPointed({ frame, x, y });
+            }}
+            onClose={() => {
+              setPanel(null);
+              setPointed(null);
+            }}
           />
         )}
       </section>

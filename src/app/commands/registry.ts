@@ -297,6 +297,12 @@ commands.push(
     group: "editor",
     shortcut: "Shift+S",
   },
+  {
+    id: "view.review",
+    labelKey: "command.view.review",
+    group: "editor",
+    shortcut: "Shift+A",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);
