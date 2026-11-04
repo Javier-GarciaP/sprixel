@@ -119,7 +119,7 @@ describe("Export tab: format and options", () => {
     expect(api.run).toHaveBeenCalledWith(
       { kind: "folder", path: ["Personajes"] },
       "sheet",
-      { scale: 4, spacing: 2, naming: null },
+      { scale: 4, spacing: 2, naming: null, jsonFormat: "sprixel" },
       "out",
     );
   });
@@ -187,5 +187,29 @@ describe("Export tab: preview and files", () => {
       kind: "folder",
       path: ["Personajes"],
     });
+  });
+
+  // Checks that the JSON format selector starts on Sprixel, and that choosing
+  // Aseprite sends `jsonFormat: "aseprite"` to the core.
+  it("sends the Aseprite JSON format when it is chosen", async () => {
+    const api = fakeApi();
+    renderExport(api, { folder: ["Personajes"] });
+    const sprixel = await screen.findByRole("button", { name: "Sprixel" });
+    expect(sprixel.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Aseprite" }));
+    await clickExport();
+    await waitFor(() => expect(api.run).toHaveBeenCalled());
+    expect(api.run.mock.calls[0][2].jsonFormat).toBe("aseprite");
+  });
+
+  // Checks that PNG files have no JSON, so the selector is disabled for them
+  // (like the spacing).
+  it("disables the JSON format for PNG files", async () => {
+    renderExport(fakeApi(), { folder: ["Personajes"] });
+    fireEvent.click(await card(/PNG files/));
+    const aseprite = (await screen.findByRole("button", {
+      name: "Aseprite",
+    })) as HTMLButtonElement;
+    await waitFor(() => expect(aseprite.disabled).toBe(true));
   });
 });

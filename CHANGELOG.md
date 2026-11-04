@@ -9,6 +9,20 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Format and compatibility: files with no `formatVersion` or no
+  `frameDurations` (the first ones) open as version 1, a project from a newer
+  Sprixel is refused without writing anything, and `docs/project-format.md`
+  lists the format versions and the rules for changing the format. Old-project
+  fixtures test it.
+- Export JSON for engines: every frame has `index` and `frame_number`, `pivot`
+  uses the `feet` anchor, and the new option `json_format` `aseprite` (tool
+  `export` and a selector in the Export screen) writes the Aseprite sprite
+  sheet JSON.
+- Change the canvas: the operation `ResizeSprite`, the tool `resize_sprite` and
+  the dialog **Change canvas…** in the details panel crop or extend a sprite
+  with an anchor, move its anchors and undo exactly. The sprite size is now
+  changed only by this explicit action.
+- `docs/game-engines.md`: from a drawing to Godot 4 and Unity, step by step.
 - Safer AI tools: `dry_run` on `auto_outline`, `auto_shade`, `transform_region`,
   `copy_region` and `apply_grid` shows the result without writing; warnings for
   thin parts under `inner` outlines and for lone shade pixels; `analyze_sprite`

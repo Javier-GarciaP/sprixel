@@ -1,6 +1,7 @@
 use super::error::DocError;
-use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, TRANSPARENT, Tag};
+use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, TRANSPARENT, Tag, check_size};
 use super::names::{same_name, validate_name};
+use super::resize::{ResizeAnchor, move_anchors, resize_pixels};
 
 /// Where a sprite is: the folders from the project root, then its name.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -209,6 +210,25 @@ pub enum Operation {
         sprite: SpriteRef,
         name: String,
         frame: Option<u32>,
+    },
+    /// Crops or extends every frame of every layer to a new size, with
+    /// transparent pixels. The old content stays at `anchor`. The anchors of
+    /// the sprite move with it; those that end outside are removed. Tags and
+    /// durations do not change.
+    ResizeSprite {
+        sprite: SpriteRef,
+        width: u32,
+        height: u32,
+        anchor: ResizeAnchor,
+    },
+    /// The inverse of `ResizeSprite`: puts back the size, the pixels (one
+    /// buffer per frame, per layer) and the anchors that the sprite had.
+    RestoreCanvas {
+        sprite: SpriteRef,
+        width: u32,
+        height: u32,
+        layers: Vec<Vec<Vec<u8>>>,
+        anchors: Vec<Anchor>,
     },
 }
 
@@ -1103,6 +1123,65 @@ impl Project {
                         index: Some(at),
                     },
                     touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::ResizeSprite { sprite, width, height, anchor } => {
+                check_size(*width, *height)?;
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                if (target.width, target.height) == (*width, *height) {
+                    return Err(DocError::new("bad_size", format!("the sprite already is {width}x{height}")));
+                }
+                let old_size = (target.width, target.height);
+                let offset = anchor.offset(old_size, (*width, *height));
+                let inverse = Operation::RestoreCanvas {
+                    sprite: SpriteRef { folder: folder.clone(), name: target.name.clone() },
+                    width: target.width,
+                    height: target.height,
+                    layers: target.layers.iter().map(|l| l.frames.iter().map(|f| f.pixels.clone()).collect()).collect(),
+                    anchors: target.anchors.clone(),
+                };
+                for layer in &mut target.layers {
+                    for frame in &mut layer.frames {
+                        frame.pixels = resize_pixels(&frame.pixels, old_size, (*width, *height), offset);
+                    }
+                }
+                target.anchors = move_anchors(&target.anchors, offset, (*width, *height)).0;
+                target.width = *width;
+                target.height = *height;
+                Ok(Applied {
+                    inverse,
+                    touched: vec![Target::Sprite(SpriteRef { folder, name: target.name.clone() })],
+                })
+            }
+            Operation::RestoreCanvas { sprite, width, height, layers, anchors } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                let shape_ok = layers.len() == target.layers.len()
+                    && layers.iter().zip(&target.layers).all(|(saved, layer)| saved.len() == layer.frames.len())
+                    && layers.iter().flatten().all(|pixels| pixels.len() == *width as usize * *height as usize);
+                if !shape_ok {
+                    return Err(DocError::new("bad_sprite", "the saved canvas does not match the layers and frames of the sprite"));
+                }
+                check_size(*width, *height)?;
+                let inverse = Operation::RestoreCanvas {
+                    sprite: SpriteRef { folder: folder.clone(), name: target.name.clone() },
+                    width: target.width,
+                    height: target.height,
+                    layers: target.layers.iter().map(|l| l.frames.iter().map(|f| f.pixels.clone()).collect()).collect(),
+                    anchors: target.anchors.clone(),
+                };
+                for (layer, saved) in target.layers.iter_mut().zip(layers) {
+                    for (frame, pixels) in layer.frames.iter_mut().zip(saved) {
+                        frame.pixels = pixels.clone();
+                    }
+                }
+                target.anchors = anchors.clone();
+                target.width = *width;
+                target.height = *height;
+                Ok(Applied {
+                    inverse,
+                    touched: vec![Target::Sprite(SpriteRef { folder, name: target.name.clone() })],
                 })
             }
         }

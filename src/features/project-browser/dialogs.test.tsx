@@ -18,6 +18,7 @@ const core = vi.hoisted(() => ({
   checkName: vi.fn(),
   createSprite: vi.fn(),
   createFolder: vi.fn(),
+  resizeSprite: vi.fn(),
 }));
 vi.mock("@/shared/lib/core", async (original) => ({
   ...(await original<typeof import("@/shared/lib/core")>()),
@@ -307,5 +308,43 @@ describe("New sprite dialog", () => {
     expect(
       await screen.findByRole("dialog", { name: "New sprite" }),
     ).toBeTruthy();
+  });
+});
+
+describe("Change canvas from the details panel", () => {
+  // Checks the spec scenario "Dialog": the details panel of a sprite has the
+  // button, the dialog sends the new size and the anchor for THAT sprite to the
+  // core, and closes.
+  it("changes the canvas of the selected sprite", async () => {
+    core.resizeSprite.mockResolvedValue(undefined);
+    renderBrowser();
+    fireEvent.click(
+      await within(
+        await screen.findByRole("region", { name: "Sprites" }),
+      ).findByRole("button", { name: /^orc/ }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Change canvas…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Change canvas" });
+    fireEvent.change(within(dialog).getByLabelText("Width"), {
+      target: { value: "20" },
+    });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Top left" }));
+    const apply = within(dialog).getByRole("button", { name: "Change canvas" });
+    await vi.waitFor(() => expect(enabled(apply)).toBe(true));
+    fireEvent.click(apply);
+
+    await vi.waitFor(() =>
+      expect(core.resizeSprite).toHaveBeenCalledWith(
+        [],
+        "orc",
+        20,
+        expect.any(Number),
+        "top-left",
+      ),
+    );
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

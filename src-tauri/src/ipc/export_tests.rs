@@ -49,7 +49,7 @@ fn folder(name: &str) -> ScopeArg {
 }
 
 fn options() -> OptionsArg {
-    OptionsArg { scale: 1, spacing: 1, naming: None }
+    OptionsArg { scale: 1, spacing: 1, naming: None, json_format: Default::default() }
 }
 
 // Checks the counts the tab shows for a folder and for the empty one.

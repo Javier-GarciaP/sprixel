@@ -34,11 +34,25 @@ pub struct Listing {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Header {
+    #[serde(default = "first_version")]
     format_version: u32,
     width: u32,
     height: u32,
     palette: String,
+    /// Missing in the first files: the frames of the first layer are counted.
+    #[serde(default)]
     frame_durations: Vec<u32>,
+    layers: Vec<HeaderLayer>,
+}
+
+// Only the number of frames of a layer is needed.
+#[derive(Deserialize)]
+struct HeaderLayer {
+    frames: Vec<serde::de::IgnoredAny>,
+}
+
+fn first_version() -> u32 {
+    1
 }
 
 /// Lists a project without loading the pixels of its sprites, so a project
@@ -80,16 +94,29 @@ fn list_folder(dir: &Path, folder: &mut Vec<String>, listing: &mut Listing) {
         } else if let Some(sprite_name) = name.strip_suffix(".sprite.json") {
             let info = check(sprite_name, &mut used).and_then(|()| read_header(&path));
             match info {
-                Ok(header) => listing.sprites.push(SpriteInfo {
+                Ok(header) => {
+                    let frames = header.frame_count();
+                    listing.sprites.push(SpriteInfo {
                     folder: folder.clone(),
                     name: sprite_name.to_string(),
                     width: header.width,
                     height: header.height,
                     palette: header.palette,
-                    frames: header.frame_durations.len(),
-                }),
+                    frames,
+                    });
+                }
                 Err(reason) => damage(listing, &path, reason),
             }
+        }
+    }
+}
+
+impl Header {
+    fn frame_count(&self) -> usize {
+        if self.frame_durations.is_empty() {
+            self.layers.first().map_or(0, |l| l.frames.len())
+        } else {
+            self.frame_durations.len()
         }
     }
 }

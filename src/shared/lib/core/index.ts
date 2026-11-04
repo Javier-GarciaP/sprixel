@@ -66,6 +66,17 @@ export const createSprite = (
 ) =>
   call<SpriteTarget>("create_sprite", { folder, name, width, height, palette });
 
+// Changes the canvas size of a sprite. `anchor` is where the old drawing stays
+// (`top-left`, `top`, `top-right`, `left`, `center`, `right`, `bottom-left`,
+// `bottom` or `bottom-right`). It is one step that Undo takes back.
+export const resizeSprite = (
+  folder: string[],
+  name: string,
+  width: number,
+  height: number,
+  anchor: string,
+) => call<void>("resize_sprite", { folder, name, width, height, anchor });
+
 export const createFolder = (parent: string[], name: string) =>
   call<string[]>("create_folder", { parent, name });
 

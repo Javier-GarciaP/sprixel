@@ -33,6 +33,7 @@ function show(
         onOpen={vi.fn()}
         onRename={vi.fn()}
         onDuplicate={vi.fn()}
+        onResize={vi.fn()}
         onDelete={vi.fn()}
         moveItems={[]}
         framesApi={api as unknown as FramesApi}

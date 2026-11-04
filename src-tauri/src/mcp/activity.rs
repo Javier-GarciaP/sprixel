@@ -141,6 +141,7 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "set_frame_duration" => format!("Set frame {} of {name} to {} ms", answer["frame"], answer["milliseconds"]),
         "set_anchor" => format!("Set the anchor {} on {name}", text(answer, "anchor")),
         "remove_anchor" => format!("Removed the anchor {} from {name}", text(answer, "removed")),
+        "resize_sprite" => format!("Changed the canvas of {name} to {}x{}", answer["width"], answer["height"]),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
         "set_palette_color" => format!(
             "{} the color {} in palette {}",
