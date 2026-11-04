@@ -25,7 +25,8 @@ async function open() {
   return api;
 }
 
-describe("Frame durations", () => {
+// The Windows runner is slow: one run of these tests took 6.7 s and 5 s is the default limit.
+describe("Frame durations", { timeout: 20000 }, () => {
   // Checks that a frame without a time of its own shows the time its
   // animation gives it (8 fps is 125 ms), and a frame outside any animation
   // shows the default 100. The boxes are empty: no frame has its own time.
