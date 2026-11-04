@@ -1,6 +1,7 @@
 //! `analyze_sprite`: what is wrong in a sprite, as plain numbers and places.
 
 use super::{Connectivity, Region, View, exterior};
+use std::collections::BTreeMap;
 
 /// The opaque pixels that touch no other opaque pixel (8 neighbors), as (x, y)
 /// in reading order.
@@ -77,4 +78,29 @@ pub fn compare(from: View, to: View, ground_rows: usize) -> FrameChange {
     }
     let bbox = (changed > 0).then(|| Region { x: x0, y: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 });
     FrameChange { changed_pixels: changed, bbox, ground_kept }
+}
+
+/// The key of the outline of a sprite, when there is a clear one. The edge of
+/// the silhouette is the opaque pixels that have a pixel of the exterior at
+/// their side (the same pixels `outline_gaps` looks at). The key that most of
+/// them have, counted over all frames, wins if it has MORE than half of them.
+/// With no shape, a tie or no majority the answer is `None`.
+pub fn detect_outline_key(frames: &[View]) -> Option<char> {
+    let mut counts: BTreeMap<u8, usize> = BTreeMap::new();
+    for view in frames {
+        let outside = exterior(*view);
+        for y in 0..view.height as i64 {
+            for x in 0..view.width as i64 {
+                let open = Connectivity::Four.offsets().iter().any(|(dx, dy)| {
+                    let (nx, ny) = (x + dx, y + dy);
+                    view.get(nx, ny).is_some() && outside[ny as usize * view.width + nx as usize]
+                });
+                if view.is_opaque(x, y) && open {
+                    *counts.entry(view.get(x, y).expect("inside")).or_default() += 1;
+                }
+            }
+        }
+    }
+    let total: usize = counts.values().sum();
+    counts.into_iter().find(|(_, n)| n * 2 > total).map(|(key, _)| key as char)
 }

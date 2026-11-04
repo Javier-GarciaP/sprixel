@@ -56,7 +56,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "analyze_sprite",
-            description: "Checks a sprite and reports what is wrong, as JSON. `colors` has the number of colors used and the palette keys that no frame uses. For each frame, `loose_pixels` are pixels that touch no other pixel and, if you give `outline_key`, `outline_gaps` are shape pixels that are open to the outside because the outline is missing there (holes do not need an outline). Each list has `count` and `at` (a list of [x, y], at most 50). With more than one frame, `changes` compares each frame with the next: `changed_pixels`, `bbox` of the change and `ground_kept` (the bottom `ground_rows` rows are equal, so the feet did not move). It changes nothing and needs no permission.",
+            description: "Checks a sprite and reports what is wrong, as JSON. `checked` and `not_checked` say what was looked at (`colors`, `loose_pixels`, `outline`, `frame_changes`, `ground`): a problem that is not reported is only good news for what is in `checked`. `colors` has the number of colors used and the palette keys that no frame uses. For each frame, `loose_pixels` are pixels that touch no other pixel and, if there is an outline key (you give `outline_key`, or it is detected as the key of most of the silhouette edge and returned as `outline_key_used`; when it cannot decide, `outline` is in `not_checked`), `outline_gaps` are shape pixels that are open to the outside because the outline is missing there (holes do not need an outline). Each list has `count` and `at` (a list of [x, y], at most 50). With more than one frame, `changes` compares each frame with the next: `changed_pixels`, `bbox` of the change and `ground_kept` (the bottom `ground_rows` rows are equal, so the feet did not move). It changes nothing and needs no permission.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -232,8 +232,9 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         let target = args::sprite(project, input)?;
         let sprite = project.find_sprite(&target).expect("just found");
         let valid = valid_keys(project, sprite);
-        let outline_key = outline_text.as_deref().map(|text| opaque_key(text, &valid, "outline_key")).transpose()?;
+        let given = outline_text.as_deref().map(|text| opaque_key(text, &valid, "outline_key")).transpose()?;
         let frames: Vec<View> = (1..=sprite.frame_count() as u32).map(|n| view_of(sprite, n)).collect();
+        let outline_key = given.or_else(|| analysis::detect_outline_key(&frames));
         let palette: Vec<char> = project.palette(&sprite.palette).map(|p| p.colors.iter().map(|c| c.key).collect()).unwrap_or_default();
         let (used, unused) = analysis::colors(&frames, &palette);
         let keys = |list: &[char]| list.iter().map(|k| k.to_string()).collect::<Vec<_>>();
@@ -255,6 +256,24 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
             "colors": { "count": used.len(), "used": keys(&used), "unused": keys(&unused) },
             "frame_reports": reports,
         });
+        // What was looked at and what was not: a missing problem is only good
+        // news for the things in `checked`.
+        let mut checked = vec!["colors", "loose_pixels"];
+        let mut not_checked = Vec::new();
+        match outline_key {
+            Some(key) => {
+                checked.push("outline");
+                answer["outline_key_used"] = json!(key.to_string());
+            }
+            None => not_checked.push("outline"),
+        }
+        if frames.len() > 1 {
+            checked.extend(["frame_changes", "ground"]);
+        } else {
+            not_checked.extend(["frame_changes", "ground"]);
+        }
+        answer["checked"] = json!(checked);
+        answer["not_checked"] = json!(not_checked);
         if frames.len() > 1 {
             answer["changes"] = frames
                 .windows(2)

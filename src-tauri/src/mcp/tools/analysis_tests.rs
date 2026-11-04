@@ -245,7 +245,9 @@ fn analyze_sprite_reports_loose_pixels_colors_and_changes() {
     assert_eq!(report["colors"], json!({ "count": 2, "used": ["R", "G"], "unused": [] }));
     // Frame 1: R at (0,0) and G at (3,3) touch nothing.
     assert_eq!(report["frame_reports"][0]["loose_pixels"], json!({ "count": 2, "at": [[0, 0], [3, 3]] }));
-    assert!(report["frame_reports"][0]["outline_gaps"].is_null(), "no outline_key, no gaps");
+    // No `outline_key`: G is on 5 of the 6 edge pixels of the two frames, so it is detected.
+    assert_eq!(report["outline_key_used"], "G");
+    assert_eq!(report["frame_reports"][0]["outline_gaps"]["count"], 1, "R at (0,0) is open to the outside");
     // Frame 2: only (3,0) is alone (the R of frame 1 is gone; (0,3),(1,3),(1,2) touch).
     assert_eq!(report["frame_reports"][1]["loose_pixels"], json!({ "count": 1, "at": [[3, 0]] }));
     let change = &report["changes"][0];
@@ -334,4 +336,43 @@ fn auto_shade_warns_about_speckles() {
 
     assert_eq!((done["pixels_changed"].as_u64(), done["speckled_pixels"].as_u64()), (Some(2), Some(2)));
     assert!(done["warnings"][0].as_str().unwrap().starts_with("2 shaded pixel(s)"));
+}
+
+// Task 3.1: the report says what it checked. A ringed block: the key R is
+// detected, `outline_gaps` is reported and `outline` is in `checked`; one
+// frame means frame changes and ground are not checked.
+#[test]
+fn analyze_sprite_detects_the_outline_and_lists_what_it_checked() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    block(&host, &core, &session);
+    call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R" })).unwrap();
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+
+    assert_eq!(report["outline_key_used"], "R");
+    assert_eq!(report["checked"], json!(["colors", "loose_pixels", "outline"]));
+    assert_eq!(report["not_checked"], json!(["frame_changes", "ground"]));
+    assert_eq!(report["frame_reports"][0]["outline_gaps"]["count"], 0);
+    // A key the caller gives is used as it is.
+    let given = call(&core, &session, "analyze_sprite", json!({ "name": "slime", "outline_key": "G" })).unwrap();
+    assert_eq!(given["outline_key_used"], "G");
+    assert!(given["frame_reports"][0]["outline_gaps"]["count"].as_u64().unwrap() > 0);
+}
+
+// Task 3.1: when it cannot decide (an empty sprite, or a block with no outline
+// whose edge is half R and half G) `outline` is NOT checked and there are no
+// `outline_gaps`, so "no gaps" is never said by mistake.
+#[test]
+fn analyze_sprite_says_when_it_cannot_find_the_outline() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let empty = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+    assert_eq!(empty["not_checked"], json!(["outline", "frame_changes", "ground"]));
+    assert!(empty.get("outline_key_used").is_none() && empty["frame_reports"][0].get("outline_gaps").is_none());
+
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "frame": 1, "x": 2, "y": 2, "grid": "RG\nRG\n" })).unwrap();
+    let tie = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+    assert_eq!(tie["not_checked"], json!(["outline", "frame_changes", "ground"]));
+    assert!(tie["frame_reports"][0].get("outline_gaps").is_none());
 }

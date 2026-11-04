@@ -11,7 +11,7 @@
 
 ## 3. Analysis
 
-- [ ] 3.1 Add `checked`, `not_checked` and outline detection to `analyze_sprite`; verify detected, tie, no shape, given key and one frame
+- [x] 3.1 Add `checked`, `not_checked` and outline detection to `analyze_sprite`; verify detected, tie, no shape, given key and one frame
 - [ ] 3.2 Add `analysis::lowest_row` and the support rule of `ground_kept`; verify the lifted foot, the `feet` anchor, the frame anchor and the old fields
 
 ## 4. Erase safety
