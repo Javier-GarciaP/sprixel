@@ -30,6 +30,9 @@ afterEach(() => fs.rmSync(copy, { recursive: true, force: true }));
 const run = (...args) =>
   spawnSync("node", [script, ...args], { cwd: copy, encoding: "utf8" });
 const read = (file) => fs.readFileSync(path.join(copy, file), "utf8");
+// The version of the repository today. The tests must not hard-code it, or
+// every release would break them.
+const current = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 
 describe("bump-version", () => {
   it("the real repository passes the check", () => {
@@ -66,7 +69,7 @@ describe("bump-version", () => {
     run("0.2.0");
 
     expect(read("src-tauri/Cargo.toml")).toBe(
-      before.replace('version = "0.1.0"', 'version = "0.2.0"'),
+      before.replace(`version = "${current}"`, 'version = "0.2.0"'),
     );
   });
 
@@ -85,7 +88,7 @@ describe("bump-version", () => {
   });
 
   it("the check fails when one file disagrees", () => {
-    const toml = read("src-tauri/Cargo.toml").replace("0.1.0", "0.9.9");
+    const toml = read("src-tauri/Cargo.toml").replace(current, "0.9.9");
     fs.writeFileSync(path.join(copy, "src-tauri/Cargo.toml"), toml);
     const check = run("--check");
 
@@ -96,7 +99,7 @@ describe("bump-version", () => {
   // Checks the scenario "Wrong tag": the tag says one version and the code
   // another, so the release pipeline must stop before building.
   it("--tag passes when the tag is v plus the code version", () => {
-    expect(run("--tag", "v0.1.0").status).toBe(0);
+    expect(run("--tag", `v${current}`).status).toBe(0);
   });
 
   it("--tag fails when the tag and the code version differ", () => {
@@ -104,19 +107,19 @@ describe("bump-version", () => {
 
     expect(wrong.status).toBe(1);
     expect(wrong.stderr).toContain("v1.2.0");
-    expect(wrong.stderr).toContain("0.1.0");
+    expect(wrong.stderr).toContain(current);
   });
 
   it("--tag fails when the tag is not in the vMAJOR.MINOR.PATCH form", () => {
-    expect(run("--tag", "0.1.0").status).toBe(1);
+    expect(run("--tag", current).status).toBe(1);
     expect(run("--tag", "release-1").status).toBe(1);
   });
 
   it("--tag also fails when the version files disagree", () => {
-    const toml = read("src-tauri/Cargo.toml").replace("0.1.0", "0.9.9");
+    const toml = read("src-tauri/Cargo.toml").replace(current, "0.9.9");
     fs.writeFileSync(path.join(copy, "src-tauri/Cargo.toml"), toml);
 
-    expect(run("--tag", "v0.1.0").status).toBe(1);
+    expect(run("--tag", `v${current}`).status).toBe(1);
   });
 
   it("--tag fails when the tag has a bad suffix, even if the code agrees", () => {
