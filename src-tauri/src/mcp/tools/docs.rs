@@ -500,7 +500,7 @@ Tools guide: which tool for which job\n\
 \n\
 1. Read (they change nothing): `get_project` (folders, palettes, revision), `list_sprites` (sizes, frames, animations), `get_sprite` (the grid; `frame`, `region` and `include_palette` read a part), `get_palette` (the keys), `list_projects` and `open_project` (find and open a project), `get_guide`.\n\
 2. See: `render_preview` (one frame), `render_frames` (many frames, `labels`), `render_onion` (the movement), `render_tiled` (a tile 3 by 3), `open_sprite` (shows a sprite to the person). Every pixel write also returns an image.\n\
-3. Create: `create_folder`, `create_sprite` (`own_palette` for a palette of its own), `add_frame` (`copy_of` copies a frame), `delete_frame`, `delete_sprite`.\n\
+3. Create: `create_folder`, `create_sprite` (`own_palette` for a palette of its own), `add_frame` (`copy_of` copies a frame), `delete_frame`, `delete_sprite`, `resize_sprite` (change the canvas size, with an `anchor` for where the drawing stays).\n\
 4. Draw: `apply_grid` (a frame or a region from text; best for shapes), `set_pixels` (single pixels), `draw_shape` (line, rectangle, ellipse, fill). `symmetry` and `only_over` work on all three.\n\
 5. Edit: `transform_region` (flip, mirror, move, rotate), `copy_region` (copy to another place, frame or sprite), `import_reference` (a PNG from `references/`).\n\
 6. Finish: `auto_outline` when the shape is done, `auto_shade` for lit and shadow tones.\n\

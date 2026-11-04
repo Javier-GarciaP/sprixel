@@ -148,6 +148,7 @@ description tells the AI the rules, so it does not need this page.
 | `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000) |
 | `set_anchor` | Adds or moves a named point of a sprite (`feet`, `hand`...), for the whole sprite or one `frame` |
 | `remove_anchor` | Removes an anchor by name |
+| `resize_sprite` | Changes the canvas size (`width`, `height` 1 to 512, `anchor` for where the drawing stays). Anchors move with the drawing; those that end outside are removed and listed in `dropped_anchors`. Returns an image |
 | `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
 | `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
@@ -161,7 +162,7 @@ description tells the AI the rules, so it does not need this page.
 | Tool | What it does |
 | --- | --- |
 | `delete_sprite` | Moves a sprite to the trash (permission "Delete sprites", off by default) |
-| `export` | Writes a sprite sheet with JSON, or PNG files, into a folder inside the project (permission "Export files") |
+| `export` | Writes a sprite sheet with JSON, or PNG files, into a folder inside the project (permission "Export files"). `json_format` is `sprixel` (default) or `aseprite` |
 
 Every write tool is **atomic**: it is applied whole or not at all, as one entry
 of the history by the agent. Every write returns the new `revision` and takes
