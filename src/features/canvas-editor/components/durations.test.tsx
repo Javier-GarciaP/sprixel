@@ -19,9 +19,9 @@ async function open() {
   api.tags = [{ name: "walk", from: 1, to: 2, fps: 8, mode: "loop" }];
   renderEditor(api);
   // The animations load after the frames; the boxes are used once the strip
-  // has its groups (the frames move into them).
+  // has its groups. Only the open group shows its frames (here walk, 1-2).
   await screen.findByRole("region", { name: "walk" });
-  await screen.findByLabelText("Duration of frame 3 (ms)");
+  await screen.findByLabelText("Duration of frame 2 (ms)");
   return api;
 }
 
@@ -34,8 +34,12 @@ describe("Frame durations", { timeout: 20000 }, () => {
     await open();
     await waitFor(() => expect(field(1).placeholder).toBe("125"));
     expect(field(2).placeholder).toBe("125");
-    expect(field(3).placeholder).toBe("100");
     expect(field(1).value).toBe("");
+    // Frame 3 is in no animation: choose that group to see its box.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select No animation" }),
+    );
+    await waitFor(() => expect(field(3).placeholder).toBe("100"));
   });
 
   // Checks the "Duration" scenario: 200 on frame 2 is sent to the core, frame
@@ -56,11 +60,11 @@ describe("Frame durations", { timeout: 20000 }, () => {
   // sent again.
   it("saves with Enter and ignores an unchanged box", async () => {
     const api = await open();
-    fireEvent.change(field(3), { target: { value: "300" } });
-    fireEvent.keyDown(field(3), { key: "Enter" });
+    fireEvent.change(field(2), { target: { value: "300" } });
+    fireEvent.keyDown(field(2), { key: "Enter" });
     await waitFor(() => expect(api.durationCalls).toHaveLength(1));
-    await waitFor(() => expect(field(3).value).toBe("300"));
-    fireEvent.blur(field(3));
+    await waitFor(() => expect(field(2).value).toBe("300"));
+    fireEvent.blur(field(2));
     expect(api.durationCalls).toHaveLength(1);
   });
 

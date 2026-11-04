@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Menu } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
-import { AnimationSelect } from "./AnimationSelect";
 import { AnimationHeader } from "./AnimationHeader";
 import { chosenTag } from "./animation";
 import { DurationField } from "./DurationField";
 import { frameDurationMs, DEFAULT_FRAME_MS } from "./duration";
 import { FrameThumb } from "./FrameThumb";
+import { IconButton } from "./IconButton";
 import { NewAnimationDialog } from "./NewAnimationDialog";
 import { RenameDialog } from "./RenameDialog";
 import { groupsOf } from "./groups";
@@ -37,14 +37,21 @@ type Props = {
   durations?: number[];
 };
 
-// Above this many frames the groups start closed.
-export const COLLAPSE_ABOVE = 40;
+// The size of a thumbnail: two of them fit side by side in the column.
+const THUMB = 56;
 
-const button =
-  "flex h-7 flex-1 items-center justify-center rounded border border-border bg-surface text-sm text-text hover:bg-surface-2";
+// The icons of the two buttons at the bottom.
+const PLUS = "M12 5v14M5 12h14";
+const COPY = "M9 9h11v11H9zM5 15V4h11";
 
-// The frames of the sprite, one thumbnail each. "+" adds a frame right after
-// the current one, blank or as a copy of it.
+const spriteKeyOf = (sprite: SpriteRef) =>
+  JSON.stringify([...sprite.folder, sprite.name]);
+
+// The frames of the sprite in groups: Base, one for each animation and the
+// frames of no animation. The groups are the selector of the animation: the
+// chosen one is open and shows its frames in a grid, the others are one row.
+// The buttons at the bottom add a frame right after the current one, blank or
+// as a copy of it.
 export function FramesColumn({
   api,
   sprite,
@@ -62,10 +69,19 @@ export function FramesColumn({
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
   const { groups, overlaps } = groupsOf(tags, frameCount);
-  // Groups the person closed (true) or opened (false). Without a choice, all
-  // groups are open, except in a long sprite (more than COLLAPSE_ABOVE
-  // frames), where all start closed so the strip stays short.
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  // Base and "No animation" are not animations, so choosing them sets no
+  // animation ("All"). This remembers which of the two the person chose; it
+  // is forgotten when the current frame changes.
+  const [plain, setPlain] = useState<string | null>(null);
+  useEffect(() => setPlain(null), [frame, spriteKeyOf(sprite)]);
+  // Only one group is open: the chosen animation, else the one the person
+  // chose, else the group of the current frame.
+  const chosen = chosenTag(tags, animation);
+  const openId =
+    groups.find((g) => g.tag && g.tag === chosen)?.id ??
+    groups.find((g) => g.id === plain)?.id ??
+    groups.find((g) => g.frames.includes(frame))?.id ??
+    groups[0]?.id;
 
   const [menu, setMenu] = useState<{
     frame: number;
@@ -82,7 +98,6 @@ export function FramesColumn({
   const [dialog, setDialog] = useState<
     { kind: "new" } | { kind: "rename"; name: string } | null
   >(null);
-  const spriteKey = JSON.stringify([...sprite.folder, sprite.name]);
   const names = tags.map((tag) => tag.name);
   const menuTag = tags.find((tag) => tag.name === groupMenu?.name);
   const menuSize = menuTag ? menuTag.to - menuTag.from + 1 : 0;
@@ -107,7 +122,7 @@ export function FramesColumn({
   const renderFrame = (n: number) => (
     <div
       key={n}
-      className="relative"
+      className="relative flex flex-col items-center gap-0.5"
       draggable
       onDragStart={(event) => {
         dragged.current = n;
@@ -134,26 +149,26 @@ export function FramesColumn({
         aria-busy={n === busyFrame ? true : undefined}
         title={n === busyFrame ? t("marker.frameBusy") : undefined}
         onClick={() => onFrame(n)}
-        className={`relative rounded-md border p-1 ${n === frame ? "border-amber bg-surface-2" : "border-border bg-surface"}`}
+        className={`relative rounded-md border p-1 outline-none focus-visible:ring-2 focus-visible:ring-amber ${n === frame ? "border-amber bg-surface-2" : "border-border bg-surface"}`}
       >
         <FrameThumb
           api={api}
           sprite={sprite}
           frame={n}
           revision={revision}
-          box={64}
+          box={THUMB}
         />
-        <span className="absolute bottom-1.5 left-2 font-mono text-[10px] text-white">
-          {n}
-        </span>
         {n === busyFrame && (
           <span
             aria-hidden
-            className="absolute top-1.5 right-2 h-2 w-2 rounded-full bg-amber"
+            className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber"
           />
         )}
       </button>
-      <div className="mt-0.5 flex justify-center">
+      <div className="flex w-full items-center justify-between gap-1 px-0.5">
+        <span aria-hidden className="font-mono text-[10px] text-text-faint">
+          {n}
+        </span>
         <DurationField
           frame={n}
           own={
@@ -174,6 +189,7 @@ export function FramesColumn({
       <button
         type="button"
         aria-label={t("frames.menu", { n })}
+        title={t("frames.menu", { n })}
         onClick={(event) => {
           const box = event.currentTarget.getBoundingClientRect();
           setMenu({ frame: n, x: box.left, y: box.bottom });
@@ -185,53 +201,89 @@ export function FramesColumn({
     </div>
   );
 
+  // Up and Down (and Home, End) move between the headers of the groups.
+  const moveBetweenHeaders = (event: KeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowUp", "ArrowDown", "Home", "End"];
+    const from = (event.target as HTMLElement).closest("[data-group-header]");
+    if (!from || !keys.includes(event.key)) return;
+    const all = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>(
+        "[data-group-header]",
+      ),
+    ];
+    const at = all.indexOf(from as HTMLElement);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? all.length - 1
+          : Math.max(
+              0,
+              Math.min(all.length - 1, at + (event.key === "ArrowUp" ? -1 : 1)),
+            );
+    event.preventDefault();
+    all[next]?.focus();
+  };
+
   return (
     <aside
       aria-label={t("editor.frames")}
-      className="flex w-36 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-border bg-bg py-3"
+      className="flex w-40 shrink-0 flex-col border-r border-border bg-bg"
     >
-      <h2 className="text-xs font-semibold text-text-muted">
+      <h2 className="px-3 pt-3 pb-2 text-xs font-semibold text-text-muted">
         {t("editor.frames")}
       </h2>
-      <AnimationSelect tags={tags} value={animation} onChange={onAnimation} />
-      {overlaps && (
-        <p role="status" className="w-24 text-[10px] text-text-faint">
-          {t("frames.overlap")}
-        </p>
-      )}
-      {groups.map((group) => {
-        const key = `${spriteKey}|${group.id}`;
-        const open = !(closed[key] ?? frameCount > COLLAPSE_ABOVE);
-        return (
-          <section
-            key={group.id}
-            aria-label={
-              group.tag?.name ??
-              t(`frames.group${group.kind === "base" ? "Base" : "None"}`)
-            }
-            className="flex w-full flex-col items-center gap-2 px-1"
-          >
-            <AnimationHeader
-              group={group}
-              open={open}
-              chosen={group.tag?.name === animation}
-              onToggle={() => setClosed({ ...closed, [key]: open })}
-              onPlay={() =>
-                group.tag && (onPlay ?? onAnimation)(group.tag.name)
+      <div
+        onKeyDown={moveBetweenHeaders}
+        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 pb-2"
+      >
+        {overlaps && (
+          <p role="status" className="text-[10px] text-text-faint">
+            {t("frames.overlap")}
+          </p>
+        )}
+        {groups.map((group) => {
+          const selected = group.id === openId;
+          return (
+            <section
+              key={group.id}
+              aria-label={
+                group.tag?.name ??
+                t(`frames.group${group.kind === "base" ? "Base" : "None"}`)
               }
-              onMenu={(box) =>
-                group.tag &&
-                setGroupMenu({
-                  name: group.tag.name,
-                  x: box.left,
-                  y: box.bottom,
-                })
-              }
-            />
-            {open && group.frames.map(renderFrame)}
-          </section>
-        );
-      })}
+              className="flex flex-col"
+            >
+              <AnimationHeader
+                group={group}
+                selected={selected}
+                onSelect={() => {
+                  if (group.tag) onAnimation(group.tag.name);
+                  else {
+                    setPlain(group.id);
+                    onAnimation(null);
+                  }
+                }}
+                onPlay={() =>
+                  group.tag && (onPlay ?? onAnimation)(group.tag.name)
+                }
+                onMenu={(box) =>
+                  group.tag &&
+                  setGroupMenu({
+                    name: group.tag.name,
+                    x: box.left,
+                    y: box.bottom,
+                  })
+                }
+              />
+              {selected && (
+                <div className="grid grid-cols-2 justify-items-center gap-2 pt-1 pb-2">
+                  {group.frames.map(renderFrame)}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
       {menu && (
         <div className="fixed z-30" style={{ left: menu.x, top: menu.y }}>
           <Menu
@@ -326,32 +378,26 @@ export function FramesColumn({
           }
         />
       )}
-      <button
-        type="button"
-        className="h-7 w-28 rounded border border-border bg-surface text-xs text-text hover:bg-surface-2"
-        onClick={() => setDialog({ kind: "new" })}
-      >
-        {t("anim.newOpen")}
-      </button>
-      <div className="flex w-20 gap-1">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-border p-2">
         <button
           type="button"
-          className={button}
-          aria-label={t("frames.add")}
-          title={t("frames.add")}
-          onClick={() => add(null)}
+          className="h-8 w-full rounded-md border border-border bg-surface text-xs font-semibold text-text outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-amber"
+          onClick={() => setDialog({ kind: "new" })}
         >
-          +
+          {t("anim.newOpen")}
         </button>
-        <button
-          type="button"
-          className={button}
-          aria-label={t("frames.addCopy")}
-          title={t("frames.addCopy")}
-          onClick={() => add(frame)}
-        >
-          ⧉
-        </button>
+        <div className="flex gap-1">
+          <IconButton
+            label={t("frames.add")}
+            path={PLUS}
+            onClick={() => add(null)}
+          />
+          <IconButton
+            label={t("frames.addCopy")}
+            path={COPY}
+            onClick={() => add(frame)}
+          />
+        </div>
       </div>
     </aside>
   );

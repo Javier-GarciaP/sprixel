@@ -41,7 +41,7 @@ export function DurationField({ frame, own, fallback, onSave }: Props) {
       onChange={(event) => setText(event.target.value)}
       onBlur={commit}
       onKeyDown={(event) => event.key === "Enter" && commit()}
-      className="w-16 rounded border border-border bg-bg px-1 py-0.5 text-center font-mono text-[10px] text-text placeholder:text-text-muted"
+      className="w-11 min-w-0 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right font-mono text-[10px] text-text-muted outline-none placeholder:text-text-faint hover:border-border focus:border-amber focus:bg-bg"
     />
   );
 }
