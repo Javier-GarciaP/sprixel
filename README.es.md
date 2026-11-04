@@ -74,7 +74,7 @@ Descarga la app y el comando `sprixel` de tu sistema, más `checksums.txt`, desd
 la [página de Releases](https://github.com/Javier-GarciaP/sprixel/releases), y
 ponlos en su sitio. Los nombres de los archivos y los pasos exactos para cada
 sistema están en la
-[guía](docs/guide.md#method-2-download-from-github) (en inglés).
+[guía](docs/guide.es.md#método-2-descargar-desde-github).
 
 ### Comprobar
 
@@ -84,7 +84,7 @@ sprixel doctor
 
 > **La primera vez que abras la app**, tu sistema puede mostrar un aviso, porque
 > la versión 0.1.0 no está firmada. Es normal. Mira
-> [qué hacer](docs/guide.md#the-first-time-you-open-it).
+> [qué hacer](docs/guide.es.md#la-primera-vez-que-lo-abres).
 
 ## Inicio rápido
 
@@ -121,16 +121,16 @@ Cómo funciona, en corto:
   usar **Stop** o **Undo** (deshacer).
 
 La explicación completa está en la
-[guía](docs/guide.md#how-the-ai-understands-sprixel) (en inglés).
+[guía](docs/guide.es.md#cómo-entiende-la-ia-a-sprixel).
 
 ## Documentación
 
-**Empieza por la [guía de Sprixel](docs/guide.md).** Cubre la instalación, el uso
-de la app y todo sobre la IA y el MCP. La documentación está en inglés.
+**Empieza por la [guía de Sprixel](docs/guide.es.md).** Cubre la instalación, el
+uso de la app y todo sobre la IA y el MCP. Las demás páginas están en inglés.
 
 | Documento | Qué contiene |
 | --- | --- |
-| [Guía de Sprixel](docs/guide.md) | Instalar (dos formas), usar la app, conectar una IA y cómo aprende |
+| [Guía de Sprixel](docs/guide.es.md) | Instalar (dos formas), usar la app, conectar una IA y cómo aprende |
 | [Guía de uso](docs/usage.md) | Cada pantalla y atajo, y el comando `sprixel` |
 | [IA y MCP](docs/ai-and-mcp.md) | Cada herramienta, código de error, permiso y las reglas de seguridad |
 | [Formato de cuadrícula de texto](docs/text-grid-format.md) | El formato de texto que usa una IA para dibujar sprites |

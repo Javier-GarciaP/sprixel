@@ -1,5 +1,7 @@
 # Sprixel guide
 
+**English** · [Español](guide.es.md)
+
 This is the long guide to Sprixel: how to install it, how to use it, and how an
 AI connects to it and learns to use it. The [README](../README.md) is the short
 version. For every detail, each part links to a reference page.

@@ -10,6 +10,7 @@ const readme = read("README.md");
 // Prettier may wrap a line of the docs, so spaces and line breaks are equal.
 const usage = read("docs/usage.md").replace(/\s+/g, " ");
 const guide = read("docs/guide.md");
+const guideEs = read("docs/guide.es.md");
 const contributing = read("CONTRIBUTING.md");
 const sh = read("install.sh");
 const ps1 = read("install.ps1");
@@ -86,10 +87,12 @@ describe("install documentation", () => {
 
   // The manual download in the guide names the files of a release. If a file
   // is renamed in release-files.mjs, this test points at the guide to fix.
-  it("the guide names every app and command file of a release", () => {
+  it("the guides (English and Spanish) name every app and command file of a release", () => {
     for (const target of TARGETS) {
       expect(guide, appName(target)).toContain(appName(target));
       expect(guide, cliName(target)).toContain(cliName(target));
+      expect(guideEs, appName(target)).toContain(appName(target));
+      expect(guideEs, cliName(target)).toContain(cliName(target));
     }
     expect(guide).toContain("checksums.txt");
   });
