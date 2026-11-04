@@ -515,6 +515,46 @@ Tools guide: which tool for which job\n\
 Pick the smallest tool: one pixel is `set_pixels`; a shape or a part is `apply_grid`; a copy is `copy_region`; both sides at once is `symmetry`; an outline or shading is `auto_outline` or `auto_shade`; a move or a flip is `transform_region`. Never redraw a whole frame to move or flip something.\n\
 When a call fails read its `message`. Common codes: `unknown_key` (the key is not in the palette), `out_of_range` and `region_out` (outside the sprite), `stale_revision` (read again), `permission_denied` (ask the person).\n\
 \n\
+Example calls (the tool, then its arguments as JSON; change the names and numbers to yours):\n\
+`get_project` {}\n\
+`list_sprites` {\"folder\":\"Enemies\"}\n\
+`get_sprite` {\"name\":\"slime\",\"frame\":1,\"region\":{\"x\":0,\"y\":0,\"width\":8,\"height\":8},\"include_palette\":false}\n\
+`get_palette` {}\n\
+`list_projects` {}\n\
+`open_project` {\"path\":\"/home/me/sprites/my-game\"}\n\
+`get_guide` {\"topic\":\"animation\"}\n\
+`render_preview` {\"name\":\"slime\",\"frame\":1,\"scale\":8}\n\
+`render_frames` {\"name\":\"walker\",\"labels\":true}\n\
+`render_onion` {\"name\":\"walker\",\"frames\":[1,2,3]}\n\
+`render_tiled` {\"name\":\"grass\"}\n\
+`open_sprite` {\"name\":\"slime\"}\n\
+`create_folder` {\"name\":\"Enemies\"}\n\
+`create_sprite` {\"name\":\"slime\",\"width\":16,\"height\":16}\n\
+`add_frame` {\"name\":\"slime\",\"copy_of\":1}\n\
+`delete_frame` {\"name\":\"slime\",\"frame\":2}\n\
+`delete_sprite` {\"name\":\"old-slime\"}\n\
+`apply_grid` {\"name\":\"slime\",\"x\":4,\"y\":2,\"grid\":\"frame 1\\nBB\\nBB\\n\"}\n\
+`set_pixels` {\"name\":\"slime\",\"pixels\":[{\"x\":3,\"y\":4,\"key\":\"K\"}]}\n\
+`draw_shape` {\"name\":\"slime\",\"shape\":\"rectangle\",\"key\":\"B\",\"x\":2,\"y\":2,\"width\":4,\"height\":3,\"filled\":true}\n\
+`transform_region` {\"name\":\"walker\",\"frame\":5,\"operation\":\"move\",\"dx\":-1,\"dy\":0,\"region\":{\"x\":0,\"y\":1,\"width\":12,\"height\":7}}\n\
+`copy_region` {\"name\":\"walker\",\"frame\":1,\"region\":{\"x\":0,\"y\":0,\"width\":6,\"height\":6},\"to_frame\":2}\n\
+`import_reference` {\"name\":\"slime\",\"file\":\"references/slime.png\",\"max_colors\":8}\n\
+`auto_outline` {\"name\":\"slime\",\"key\":\"K\",\"dry_run\":true}\n\
+`auto_shade` {\"name\":\"slime\",\"light\":\"top-left\",\"base\":\"B\",\"keys\":[\"D\",\"B\",\"L\"],\"dry_run\":true}\n\
+`analyze_sprite` {\"name\":\"walker\",\"outline_key\":\"K\"}\n\
+`check_tile` {\"name\":\"grass\"}\n\
+`set_palette_color` {\"palette\":\"main\",\"key\":\"B\",\"hex\":\"#5CC85C\"}\n\
+`generate_ramp` {\"palette\":\"main\",\"base\":\"#6FD36B\",\"steps\":3,\"name\":\"leaf\"}\n\
+`create_palette` {\"name\":\"forest\",\"colors\":[{\"key\":\"B\",\"name\":\"base\",\"hex\":\"#6FD36B\"}]}\n\
+`set_sprite_palette` {\"name\":\"slime\",\"palette\":\"forest\"}\n\
+`remove_unused_colors` {\"palette\":\"main\"}\n\
+`create_tag` {\"sprite\":\"walker\",\"name\":\"walk\",\"from\":1,\"to\":4,\"fps\":10,\"mode\":\"loop\"}\n\
+`set_frame_duration` {\"name\":\"walker\",\"frame\":2,\"milliseconds\":80}\n\
+`set_anchor` {\"sprite\":\"walker\",\"name\":\"feet\",\"x\":4,\"y\":9}\n\
+`remove_anchor` {\"sprite\":\"walker\",\"name\":\"feet\",\"frame\":2}\n\
+`export` {\"format\":\"sheet\",\"scale\":2}\n\
+`undo_last_ai_action` {}\n\
+\n\
 Worked example: find and fix a gap in an outline (an 8x8 gem).\n\
 1. `create_sprite` with name gem, width 8 and height 8.\n\
 2. `apply_grid` with name gem and this grid. The outline is missing at the right of row 4:\n\

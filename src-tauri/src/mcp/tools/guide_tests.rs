@@ -317,3 +317,28 @@ fn the_animation_guides_require_bob_arms_frames_and_the_support_foot() {
         assert!(skill.contains(part), "the skill does not say {part:?}");
     }
 }
+
+// Task 6.2: the `tools` guide has one example call per tool, as a line
+// "`tool` {json}". Each one must parse, name a real tool, give every required
+// argument and only arguments that the tool has. No tool is left without one.
+#[test]
+fn the_tools_guide_has_a_valid_example_call_for_every_tool() {
+    let (_host, core) = core_with(tools::all());
+    let mut seen = BTreeSet::new();
+    for line in TOOLS_GUIDE.lines().filter(|l| l.starts_with('`')) {
+        let Some((name, json_text)) = line[1..].split_once("` ") else { continue };
+        let Ok(arguments) = serde_json::from_str::<serde_json::Value>(json_text) else { continue };
+        let tool = core.tools.iter().find(|t| t.name == name).unwrap_or_else(|| panic!("the example calls {name}, which does not exist"));
+        let properties = tool.schema["properties"].as_object().cloned().unwrap_or_default();
+        for key in arguments.as_object().unwrap().keys() {
+            assert!(properties.contains_key(key), "the example of {name} uses `{key}`, which the tool does not have");
+        }
+        for required in tool.schema["required"].as_array().into_iter().flatten() {
+            assert!(arguments.get(required.as_str().unwrap()).is_some(), "the example of {name} misses `{required}`");
+        }
+        seen.insert(name.to_string());
+    }
+    for tool in &core.tools {
+        assert!(seen.contains(tool.name), "the tools guide has no example call for {}", tool.name);
+    }
+}
