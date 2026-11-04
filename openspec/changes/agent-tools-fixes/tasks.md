@@ -24,6 +24,6 @@
 
 ## 6. Guides
 
-- [ ] 6.1 Update the `animation` and `walk-and-attack-cycles` guides and the skill; verify the required words
+- [x] 6.1 Update the `animation` and `walk-and-attack-cycles` guides and the skill; verify the required words
 - [ ] 6.2 Add one example call per tool to the `tools` guide; verify every example parses and names a real tool
 - [ ] 6.3 Update the instructions and the skill, `docs/ai-and-mcp.md`, `docs/text-grid-format.md` and `CHANGELOG.md`; run all checks and `npx openspec validate --all --strict`

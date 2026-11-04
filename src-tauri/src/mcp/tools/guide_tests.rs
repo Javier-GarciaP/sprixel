@@ -147,7 +147,7 @@ fn known_names() -> BTreeSet<String> {
     }
     // Fields of the answers and of the errors.
     known.extend(
-        ["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors", "ground_kept", "bbox", "changes", "changed_pixels", "loose_pixels", "outline_gaps", "seamless", "mismatch_count"]
+        ["revision", "code", "message", "errors", "line", "row", "column", "frame_durations", "anchors", "ground_kept", "bbox", "changes", "changed_pixels", "loose_pixels", "outline_gaps", "seamless", "mismatch_count", "checked", "not_checked", "outline_key_used", "ground_rule", "bottom_rows_equal", "erased", "warnings", "thin_regions", "speckled_pixels", "would_change", "feet", "null"]
             .map(String::from),
     );
     // The topics of `get_guide`.
@@ -295,4 +295,25 @@ fn the_worked_example_runs() {
     assert!(frame(1).contains('K') && frame(2).contains('K'));
     // The grid of the text is exactly what the example prints.
     assert!(EXAMPLE.contains(EXAMPLE_GRID));
+}
+
+// Task 6.1: the animation and walk guides require what a real agent got wrong:
+// a body bob, opposite arms, 6 or 8 frames, a fixed support foot with the
+// `feet` anchor, ground contact in actions, and `ground_kept` that follows the
+// support foot.
+#[test]
+fn the_animation_guides_require_bob_arms_frames_and_the_support_foot() {
+    let walk = WALK_GUIDE.to_lowercase();
+    for part in ["6 or 8 frames", "body bob", "up and down", "opposite", "support foot", "`feet`", "ground_kept", "follows the support foot", "a peck reaches the ground row"] {
+        assert!(walk.contains(part), "the walk guide does not say {part:?}");
+    }
+    let animation = ANIMATION_GUIDE.to_lowercase();
+    for part in ["support foot", "`feet`", "ground_kept", "bob", "opposite", "peck reaches the ground row"] {
+        assert!(animation.contains(part), "the animation guide does not say {part:?}");
+    }
+    // The skill carries the design rules, so it has the new tools' words too.
+    let skill = skill();
+    for part in ["dry_run", "`checked`", "not_checked"] {
+        assert!(skill.contains(part), "the skill does not say {part:?}");
+    }
 }
