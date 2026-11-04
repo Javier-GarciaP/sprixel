@@ -5,7 +5,7 @@
 
 use super::args;
 use super::create::base_revision;
-use super::draw::{key_of, preview_arg, valid_keys};
+use super::draw::{dry_run_arg, key_of, preview_arg, valid_keys};
 use super::read::{check_frame, read};
 use super::write::{Plan, write};
 use crate::analysis::{self, Connectivity, Light, OutlineOptions, Region, ShadeOptions, View};
@@ -17,7 +17,7 @@ pub fn tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "auto_outline",
-            description: concat!("Draws a one pixel outline with one palette key around the shape of a frame, so you do not draw it by hand. By default it draws on every transparent pixel that touches the shape (`connectivity` 8 also counts corners, 4 only the sides), holes included. `outside_only` true skips holes. `inner` true recolors the edge pixels of the shape instead of drawing around it. Outline pixels that fall outside the sprite are skipped and counted in `clipped`. Call it once, when the shape is done. Returns `pixels_changed` and an image of the frame.", write_note!()),
+            description: concat!("Draws a one pixel outline with one palette key around the shape of a frame, so you do not draw it by hand. By default it draws on every transparent pixel that touches the shape (`connectivity` 8 also counts corners, 4 only the sides), holes included. `outside_only` true skips holes. `inner` true recolors the edge pixels of the shape instead of drawing around it. Outline pixels that fall outside the sprite are skipped and counted in `clipped`. With `inner`, parts of the shape thinner than 3 pixels would turn entirely into outline: the answer then has `thin_regions` (boxes) and a `warnings` entry; try with `dry_run` first. Call it once, when the shape is done. Returns `pixels_changed` and an image of the frame.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "key"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -26,6 +26,7 @@ pub fn tools() -> Vec<Tool> {
                 "connectivity": { "type": "integer", "enum": [4, 8], "description": "Default 8." },
                 "outside_only": { "type": "boolean", "description": "Do not outline holes. Default false." },
                 "inner": { "type": "boolean", "description": "Outline inside the shape. Default false." },
+                "dry_run": dry_run_arg(),
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
@@ -34,7 +35,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "auto_shade",
-            description: concat!("Shades the pixels of one key with a ramp of tones, so you do not shade by hand. Give the `light` direction, the `base` key to shade and the ramp `keys` from dark to light (it includes `base`). A pixel of `base` is measured by how many steps it is from the edge of its area, going toward the light and away from it. The pixels on the edge that faces the light get the lightest key, the next row a little less light, and so on for as many keys as are lighter than `base`; the same on the edge that faces away with the darker keys. A pixel that is as near the lit edge as the dark edge keeps `base`. Pixels of other keys never change. `region` limits which pixels change. Returns `pixels_changed`, `lit`, `shadow` and an image of the frame.", write_note!()),
+            description: concat!("Shades the pixels of one key with a ramp of tones, so you do not shade by hand. Give the `light` direction, the `base` key to shade and the ramp `keys` from dark to light (it includes `base`). A pixel of `base` is measured by how many steps it is from the edge of its area, going toward the light and away from it. The pixels on the edge that faces the light get the lightest key, the next row a little less light, and so on for as many keys as are lighter than `base`; the same on the edge that faces away with the darker keys. A pixel that is as near the lit edge as the dark edge keeps `base`. Pixels of other keys never change. `region` limits which pixels change. Returns `pixels_changed`, `lit`, `shadow`, `speckled_pixels` (shaded pixels with no neighbor of the same tone; a `warnings` entry says so when it is more than 0) and an image of the frame.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "light", "base", "keys"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -46,6 +47,7 @@ pub fn tools() -> Vec<Tool> {
                     "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
                     "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
                 }},
+                "dry_run": dry_run_arg(),
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
@@ -54,7 +56,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "analyze_sprite",
-            description: "Checks a sprite and reports what is wrong, as JSON. `colors` has the number of colors used and the palette keys that no frame uses. For each frame, `loose_pixels` are pixels that touch no other pixel and, if you give `outline_key`, `outline_gaps` are shape pixels that are open to the outside because the outline is missing there (holes do not need an outline). Each list has `count` and `at` (a list of [x, y], at most 50). With more than one frame, `changes` compares each frame with the next: `changed_pixels`, `bbox` of the change and `ground_kept` (the bottom `ground_rows` rows are equal, so the feet did not move). It changes nothing and needs no permission.",
+            description: "Checks a sprite and reports what is wrong, as JSON. `checked` and `not_checked` say what was looked at (`colors`, `loose_pixels`, `outline`, `frame_changes`, `ground`): a problem that is not reported is only good news for what is in `checked`. `colors` has the number of colors used and the palette keys that no frame uses. For each frame, `loose_pixels` are pixels that touch no other pixel and, if there is an outline key (you give `outline_key`, or it is detected as the key of most of the silhouette edge and returned as `outline_key_used`; when it cannot decide, `outline` is in `not_checked`), `outline_gaps` are shape pixels that are open to the outside because the outline is missing there (holes do not need an outline). Each list has `count` and `at` (a list of [x, y], at most 50). With more than one frame, `changes` compares each frame with the next: `changed_pixels`, `bbox` of the change and `ground_kept` (the SUPPORT did not move: if the sprite has an anchor named `feet`, its y is the same in both frames; otherwise the lowest row with a pixel is the same in both frames; a lifted foot does not change it; `ground_rule` says which rule was used, `feet_anchor` or `lowest_row`), and `bottom_rows_equal` (the old measure: the bottom `ground_rows` rows are identical). It changes nothing and needs no permission.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -108,8 +110,22 @@ fn auto_outline(ctx: &Ctx, input: &Value) -> ToolResult {
         let key = opaque_key(&key_text, &valid_keys(project, sprite), "key")?;
         let outline = analysis::auto_outline(view_of(sprite, frame), &OutlineOptions { key, connectivity, outside_only, inner });
         let count = outline.changes.len();
+        let mut extra = json!({ "pixels_changed": count, "clipped": outline.clipped });
+        if inner {
+            let thin = analysis::thin_regions(view_of(sprite, frame), &outline.changes);
+            if !thin.is_empty() {
+                let boxes: Vec<String> =
+                    thin.iter().map(|r| format!("x {}, y {}, {}x{}", r.x, r.y, r.width, r.height)).collect();
+                extra["thin_regions"] = thin.iter().map(|r| json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })).collect();
+                extra["warnings"] = json!([format!(
+                    "{} part(s) of the shape are thinner than 3 pixels and turn entirely into outline: {}. Look at the image; draw them thicker, or outline outside (`inner` false)",
+                    thin.len(),
+                    boxes.join("; ")
+                )]);
+            }
+        }
         let ops = set_ops(&target, frame, outline.changes);
-        Ok(Plan::new(ops, json!({ "pixels_changed": count, "clipped": outline.clipped })).preview().busy(&target, frame))
+        Ok(Plan::new(ops, extra).preview().busy(&target, frame))
     })
 }
 
@@ -185,9 +201,24 @@ fn auto_shade(ctx: &Ctx, input: &Value) -> ToolResult {
         let region = region_of(input, sprite)?;
         let shade = analysis::auto_shade(view_of(sprite, frame), &ShadeOptions { light, base, keys: &keys, region });
         let (count, lit, shadow) = (shade.changes.len(), shade.lit, shade.shadow);
+        let speckled = analysis::isolated_changes(view_of(sprite, frame), &shade.changes);
+        let mut extra = json!({ "pixels_changed": count, "lit": lit, "shadow": shadow, "speckled_pixels": speckled });
+        if speckled > 0 {
+            extra["warnings"] = json!([format!(
+                "{speckled} shaded pixel(s) are alone (no neighbor with the same tone): the area is too small or too thin for this ramp and will look like noise. Look at the image; use fewer keys, a bigger area, or undo"
+            )]);
+        }
         let ops = set_ops(&target, frame, shade.changes);
-        Ok(Plan::new(ops, json!({ "pixels_changed": count, "lit": lit, "shadow": shadow })).preview().busy(&target, frame))
+        Ok(Plan::new(ops, extra).preview().busy(&target, frame))
     })
+}
+
+/// The `y` of the anchor `feet` in a frame (from 1): the anchor of that frame,
+/// or else the one of the whole sprite. `None` if there is none.
+fn feet_y(sprite: &Sprite, frame: u32) -> Option<u32> {
+    let named = |a: &&crate::document::Anchor| a.name.eq_ignore_ascii_case("feet");
+    let own = sprite.anchors.iter().filter(named).find(|a| a.frame == Some(frame));
+    own.or_else(|| sprite.anchors.iter().filter(named).find(|a| a.frame.is_none())).map(|a| a.y)
 }
 
 /// The most coordinates a list of the report has.
@@ -209,8 +240,9 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         let target = args::sprite(project, input)?;
         let sprite = project.find_sprite(&target).expect("just found");
         let valid = valid_keys(project, sprite);
-        let outline_key = outline_text.as_deref().map(|text| opaque_key(text, &valid, "outline_key")).transpose()?;
+        let given = outline_text.as_deref().map(|text| opaque_key(text, &valid, "outline_key")).transpose()?;
         let frames: Vec<View> = (1..=sprite.frame_count() as u32).map(|n| view_of(sprite, n)).collect();
+        let outline_key = given.or_else(|| analysis::detect_outline_key(&frames));
         let palette: Vec<char> = project.palette(&sprite.palette).map(|p| p.colors.iter().map(|c| c.key).collect()).unwrap_or_default();
         let (used, unused) = analysis::colors(&frames, &palette);
         let keys = |list: &[char]| list.iter().map(|k| k.to_string()).collect::<Vec<_>>();
@@ -232,6 +264,25 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
             "colors": { "count": used.len(), "used": keys(&used), "unused": keys(&unused) },
             "frame_reports": reports,
         });
+        // What was looked at and what was not: a missing problem is only good
+        // news for the things in `checked`.
+        let mut checked = vec!["colors", "loose_pixels"];
+        let mut not_checked = Vec::new();
+        match outline_key {
+            Some(key) => {
+                checked.push("outline");
+                answer["outline_key_used"] = json!(key.to_string());
+            }
+            None => not_checked.push("outline"),
+        }
+        if frames.len() > 1 {
+            checked.extend(["frame_changes", "ground"]);
+        } else {
+            not_checked.extend(["frame_changes", "ground"]);
+        }
+        answer["checked"] = json!(checked);
+        answer["not_checked"] = json!(not_checked);
+        let has_feet = sprite.anchors.iter().any(|a| a.name.eq_ignore_ascii_case("feet"));
         if frames.len() > 1 {
             answer["changes"] = frames
                 .windows(2)
@@ -239,7 +290,14 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
                 .map(|(i, pair)| {
                     let change = analysis::compare(pair[0], pair[1], ground_rows as usize);
                     let bbox = change.bbox.map(|b| json!({ "x": b.x, "y": b.y, "width": b.width, "height": b.height }));
-                    json!({ "from": i + 1, "to": i + 2, "changed_pixels": change.changed_pixels, "bbox": bbox, "ground_kept": change.ground_kept })
+                    let (rule, kept) = match has_feet {
+                        true => ("feet_anchor", feet_y(sprite, i as u32 + 1) == feet_y(sprite, i as u32 + 2)),
+                        false => ("lowest_row", analysis::lowest_row(pair[0]) == analysis::lowest_row(pair[1])),
+                    };
+                    json!({
+                        "from": i + 1, "to": i + 2, "changed_pixels": change.changed_pixels, "bbox": bbox,
+                        "ground_kept": kept, "ground_rule": rule, "bottom_rows_equal": change.ground_kept,
+                    })
                 })
                 .collect();
         }

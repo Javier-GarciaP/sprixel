@@ -97,3 +97,22 @@ fn light_names_are_parsed() {
         assert!(Light::parse(name).is_some(), "{name}");
     }
 }
+
+// Task 2.2: `isolated_changes` counts changed pixels with no side neighbor of
+// the same new key.
+
+fn speckles(rows: &[&str], light: Light) -> usize {
+    let f = frame(rows);
+    let out = auto_shade(view(&f), &options(light, &['D', 'B', 'L'], 'B'));
+    super::isolated_changes(view(&f), &out.changes)
+}
+
+// Checks a 2x2 block lit from the top left: one pixel becomes L and one D, and
+// each one is alone, so 2 are isolated. A 6x6 square gets lines of tones, so
+// none is isolated.
+#[test]
+fn a_tiny_block_is_speckled_and_a_square_is_not() {
+    let tiny = ["....", ".BB.", ".BB.", "...."];
+    assert_eq!(speckles(&tiny, Light::TopLeft), 2);
+    assert_eq!(speckles(&["........", ".BBBBBB.", ".BBBBBB.", ".BBBBBB.", ".BBBBBB.", ".BBBBBB.", ".BBBBBB.", "........"], Light::TopLeft), 0);
+}

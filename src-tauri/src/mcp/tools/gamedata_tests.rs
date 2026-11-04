@@ -27,7 +27,7 @@ fn set_frame_duration_changes_one_frame_and_is_undoable() {
     assert_eq!(done["revision"], before + 1);
     assert_eq!(durations(&host), vec![100, 250]);
     let sprite = call(&core, &session, "get_sprite", json!({ "name": "goblin" })).unwrap();
-    assert_eq!(sprite["frame_durations"], json!([100, 250]));
+    assert_eq!(sprite["frame_durations"], json!([null, 250]));
 
     call(&core, &session, "undo_last_ai_action", json!({})).unwrap();
     assert_eq!(durations(&host), vec![100, 100]);
@@ -242,4 +242,31 @@ fn render_tiled_respects_the_size_cap() {
 
     call(&core, &session, "create_sprite", json!({ "name": "huge", "width": 400, "height": 400 })).unwrap();
     assert_eq!(run(&core, json!({ "name": "huge" })).unwrap_err().code, "too_big");
+}
+
+// Task 5.1: the tool boundary has no magic 100. A frame with its own time shows
+// the number and the others show null. Sending null gives the frame back to
+// the animation speed (the core stores 100 ms). An explicit 100 is the same as
+// null, and the answer says so in `note`. A missing `milliseconds` is an error.
+#[test]
+fn frame_durations_use_null_for_the_animation_speed() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "set_frame_duration", json!({ "name": "goblin", "frame": 2, "milliseconds": 150 })).unwrap();
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "goblin" })).unwrap();
+    assert_eq!(sprite["frame_durations"], json!([null, 150]));
+
+    let reset = call(&core, &session, "set_frame_duration", json!({ "name": "goblin", "frame": 2, "milliseconds": null })).unwrap();
+    assert_eq!(reset["milliseconds"], serde_json::Value::Null);
+    assert!(reset["note"].as_str().unwrap().contains("animation speed"));
+    assert_eq!(durations(&host), vec![100, 100]);
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "goblin" })).unwrap();
+    assert_eq!(sprite["frame_durations"], json!([null, null]));
+
+    call(&core, &session, "set_frame_duration", json!({ "name": "goblin", "frame": 1, "milliseconds": 100 })).unwrap();
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "goblin" })).unwrap();
+    assert_eq!(sprite["frame_durations"], json!([null, null]), "an explicit 100 reads back as null");
+
+    let missing = call(&core, &session, "set_frame_duration", json!({ "name": "goblin", "frame": 1 })).unwrap_err();
+    assert_eq!(missing["code"], "bad_argument");
 }
