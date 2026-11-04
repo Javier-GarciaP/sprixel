@@ -928,6 +928,7 @@ function Ready(props: ReadyProps) {
               sprite={sprite}
               info={framesInfo}
               tag={chosenTag(tags, animation)}
+              tags={tags}
               clock={props.clock}
               background={background}
               playToken={playToken}

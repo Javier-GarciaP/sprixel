@@ -134,14 +134,18 @@ Use a sprite with a base frame and about 8 frames. Linux only.
 | 10.1 | Click **New animation…**, type "walk", frames 4, speed 8, then Create | A **walk** group appears with 4 new frames that look like frame 1. One Undo removes the group and the frames |
 | 10.2 | Create a second animation called "WALK" | The dialog says the name is already used and the button stays off |
 | 10.3 | Create "jump" with mode **Once** | A **jump** group appears after walk. The **Base** group is first |
-| 10.4 | Hover each button of a header (arrow, play, menu) | A tooltip shows its name |
-| 10.5 | Click the arrow of a header | Its frames hide. Every header keeps the same height and order; only the frames below it move up |
-| 10.6 | Click the play button of **jump** | The preview plays only the frames of jump, then stops (mode Once) |
+| 10.4 | Hover the play button and the menu button of a header, and the two icon buttons at the bottom | A tooltip shows the name of each one |
+| 10.5 | Click the header of **walk**, then the header of **jump** | Only the clicked group is open and shows its frames in two columns, with the frame number and its time under each one. The header rows keep the same height; walk closes when jump opens. The speed and the mode icon show under the name of the open group only |
+| 10.6 | Click the play button of **jump** | The group opens, the preview list shows **jump**, and it plays only the frames of jump, then stops (mode Once) |
 | 10.7 | Open the header menu of walk and choose **Rename…**, then "stroll" | The group shows the new name. One Undo brings "walk" back |
 | 10.8 | Open the menu and choose **Duplicate** | A "stroll copy" group appears with the same frames. One Undo |
 | 10.9 | Open the menu and choose **Delete animation (keep frames)** | The group is gone; its frames stay in the strip. One Undo |
 | 10.10 | Open the menu and choose **Delete animation and its frames** | The group and its frames are gone and the later animations follow their frames. One Undo |
-| 10.11 | Make a sprite of 41 frames or more with an animation | The groups start closed and show only the frame count. The arrow opens one |
+| 10.11 | Make a sprite of 100 frames or more with an animation | Only the open group lists its frames; the column scrolls inside itself and the header of the open group stays on top while you scroll |
+| 10.12 | Focus a header with Tab and press Down, Up, Home and End | The focus moves between the headers; Enter or Space chooses the group |
+| 10.13 | In the preview, open the list above the play button | It shows **All frames** and one entry per animation with its frame count. Choosing one plays only that range with its speed and mode; the scrubber follows it |
+| 10.14 | Choose **idle** in the preview list, then click the header of **walk** in the column | The preview list goes back to following the column and shows **walk** |
+| 10.15 | Check both themes and both languages | Colors, text and tooltips look right in light and dark, in English and Spanish |
 
 ## Notes
 

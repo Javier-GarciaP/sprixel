@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stepAt, stepsOf } from "./playback";
+import { rangeFrames, stepAt, stepsOf } from "./playback";
 
 const D = 100; // the duration of a frame with none of its own
 const durations = [D, D, D, D];
@@ -75,5 +75,28 @@ describe("stepAt timing", () => {
       [0, 99, 100, 399, 400].map((ms) => shown(steps, "loop", ms)),
     ).toEqual([1, 1, 2, 2, 1]);
     expect(stepAt(stepsOf([1], [D], 10, "once"), 5000, "once").index).toBe(0);
+  });
+});
+
+describe("A range of frames (what the preview plays)", () => {
+  // Checks the list of frames of a range, from 1, both ends included, cut at
+  // the frame count, and empty when the range is backwards.
+  it("lists the frames of a range", () => {
+    expect(rangeFrames(6, 8)).toEqual([6, 7, 8]);
+    expect(rangeFrames(3, 3)).toEqual([3]);
+    expect(rangeFrames(5, 2)).toEqual([]);
+  });
+
+  // Checks the exact frames shown, step after step, for the range 6 to 9 in
+  // each mode: only those frames, in that order.
+  it("plays exactly the frames of the range in each mode", () => {
+    const frames = rangeFrames(6, 9);
+    const sequence = (mode: "loop" | "once" | "pingpong") => {
+      const steps = stepsOf(frames, Array(9).fill(D), 10, mode);
+      return Array.from({ length: 9 }, (_, i) => shown(steps, mode, i * 100));
+    };
+    expect(sequence("loop")).toEqual([6, 7, 8, 9, 6, 7, 8, 9, 6]);
+    expect(sequence("once")).toEqual([6, 7, 8, 9, 9, 9, 9, 9, 9]);
+    expect(sequence("pingpong")).toEqual([6, 7, 8, 9, 8, 7, 6, 7, 8]);
   });
 });

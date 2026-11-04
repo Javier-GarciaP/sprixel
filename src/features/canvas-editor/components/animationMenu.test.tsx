@@ -27,10 +27,15 @@ function twoAnimations() {
   return api;
 }
 
-const framesIn = (name: string) =>
-  within(screen.getByRole("region", { name }))
+// Only the chosen group lists its frames, so the group is chosen first.
+const framesIn = async (name: string) => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: `Select ${name}` }),
+  );
+  return within(screen.getByRole("region", { name }))
     .queryAllByRole("button", { name: /^Frame \d+$/ })
     .map((b) => b.getAttribute("aria-label"));
+};
 
 async function openMenu(animation: string, item: string) {
   fireEvent.click(
@@ -66,9 +71,8 @@ describe("New animation", () => {
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Create animation" }),
     );
-    await waitFor(() =>
-      expect(framesIn("run")).toEqual(["Frame 6", "Frame 7", "Frame 8"]),
-    );
+    await screen.findByRole("region", { name: "run" });
+    expect(await framesIn("run")).toEqual(["Frame 6", "Frame 7", "Frame 8"]);
     expect(api.animationCalls).toEqual(["create run 3 8 pingpong"]);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -151,9 +155,8 @@ describe("The menu of an animation", () => {
     const api = twoAnimations();
     renderEditor(api);
     await openMenu("walk", "Duplicate");
-    await waitFor(() =>
-      expect(framesIn("walk copy")).toEqual(["Frame 6", "Frame 7"]),
-    );
+    await screen.findByRole("region", { name: "walk copy" });
+    expect(await framesIn("walk copy")).toEqual(["Frame 6", "Frame 7"]);
     expect(api.animationCalls).toEqual(["duplicate walk walk copy"]);
   });
 
@@ -166,7 +169,7 @@ describe("The menu of an animation", () => {
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: "walk" })).toBeNull(),
     );
-    expect(framesIn("Base")).toEqual(["Frame 1", "Frame 2", "Frame 3"]);
+    expect(await framesIn("Base")).toEqual(["Frame 1", "Frame 2", "Frame 3"]);
     expect(api.animationCalls).toEqual(["delete walk false"]);
   });
 
@@ -177,24 +180,27 @@ describe("The menu of an animation", () => {
     renderEditor(api);
     await openMenu("walk", "Delete animation and its frames");
     await waitFor(() =>
-      expect(framesIn("jump")).toEqual(["Frame 2", "Frame 3"]),
+      expect(screen.queryByRole("region", { name: "walk" })).toBeNull(),
     );
+    expect(await framesIn("jump")).toEqual(["Frame 2", "Frame 3"]);
     expect(api.animationCalls).toEqual(["delete walk true"]);
   });
 
   // Checks that every control of a header has a name for the tooltip and for
-  // screen readers (title and aria-label).
+  // screen readers (title and aria-label). The title of the name button also
+  // tells the speed and how the animation ends.
   it("names every header control", async () => {
     renderEditor(twoAnimations());
     const walk = await screen.findByRole("region", { name: "walk" });
-    for (const label of [
-      "Play walk",
-      "Menu of walk",
-      "Hide the frames of walk",
-    ]) {
+    for (const label of ["Play walk", "Menu of walk"]) {
       expect(
         within(walk).getByRole("button", { name: label }).getAttribute("title"),
       ).toBe(label);
     }
+    expect(
+      within(walk)
+        .getByRole("button", { name: "Select walk" })
+        .getAttribute("title"),
+    ).toBe("walk · 6 fps · Repeat");
   });
 });

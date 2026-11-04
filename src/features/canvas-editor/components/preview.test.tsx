@@ -5,6 +5,7 @@ import {
   fireEvent,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
@@ -40,6 +41,7 @@ async function open(mode: Mode, frames = 4) {
   await waitFor(() => expect(select.options).toHaveLength(3));
   fireEvent.change(select, { target: { value: "walk" } });
   await screen.findByRole("button", { name: "Play" });
+  await waitFor(() => expect(shown()).toBe(1));
   return api;
 }
 
@@ -155,6 +157,71 @@ describe("Preview", () => {
       seen.push(shown());
     }
     expect(seen).toEqual([1, 2, 3, 1, 2]);
+  });
+});
+
+describe("Preview selector", { timeout: 20000 }, () => {
+  const picker = () =>
+    screen.getByRole("combobox", { name: "Animation" }) as HTMLSelectElement;
+
+  // Checks that the selector lists "All frames" first and then one entry for
+  // each animation, with its name and its frame count.
+  it("lists All frames and every animation with its frame count", async () => {
+    await open("loop", 7);
+    expect([...picker().options].map((o) => o.text)).toEqual([
+      "All frames",
+      "walk (4 fr.)",
+      "idle (2 fr.)",
+    ]);
+  });
+
+  // Checks that "All frames" plays the whole sprite and uses the default speed
+  // (12 fps, 83 ms a frame), not the speed of an animation.
+  it("plays every frame when All frames is chosen", async () => {
+    await open("loop", 7);
+    fireEvent.change(picker(), { target: { value: "" } });
+    await waitFor(() => expect(shown()).toBe(1));
+    play();
+    const seen = new Set<number>();
+    for (let i = 0; i < 8; i++) {
+      pass(84);
+      seen.add(shown());
+    }
+    expect(seen).toEqual(new Set([1, 2, 3, 4, 5, 6, 7]));
+  });
+
+  // Checks that the speed shown is the one of the chosen animation.
+  it("uses the speed of the chosen animation", async () => {
+    await open("loop", 7);
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("preview")).getByText("10 fps"),
+      ).toBeTruthy(),
+    );
+  });
+
+  // Checks the header play button: it plays that animation and the selector
+  // shows it, even if the person had chosen another one in the selector.
+  it("follows the play button of a group after a manual choice", async () => {
+    await open("loop", 7);
+    fireEvent.change(picker(), { target: { value: "idle" } });
+    await waitFor(() => expect(shown()).toBe(6));
+    fireEvent.click(screen.getByRole("button", { name: "Play walk" }));
+    await waitFor(() => expect(picker().value).toBe("walk"));
+    await screen.findByRole("button", { name: "Pause" });
+    expect(new Set(sequence(6))).toEqual(new Set([1, 2, 3, 4]));
+  });
+
+  // Checks that a choice in the preview stays while the column keeps its
+  // animation, and that a new choice in the column wins over it again.
+  it("keeps the manual choice until the column selects an animation", async () => {
+    await open("loop", 7);
+    fireEvent.change(picker(), { target: { value: "idle" } });
+    await waitFor(() => expect(shown()).toBe(6));
+    expect(picker().value).toBe("idle");
+    // The column selects the other animation: the preview follows it.
+    fireEvent.click(screen.getByRole("button", { name: "Select walk" }));
+    await waitFor(() => expect(picker().value).toBe("walk"));
   });
 });
 

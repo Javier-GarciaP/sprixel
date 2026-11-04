@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeEditorApi } from "../testing/fakeApi";
 import {
@@ -232,7 +238,7 @@ describe("Frame menu and reorder", () => {
   });
 });
 
-describe("Animation selector", () => {
+describe("Choosing an animation in the column", () => {
   const frameButtons = () =>
     screen
       .getAllByRole("button", { name: /^Frame \d$/ })
@@ -248,33 +254,29 @@ describe("Animation selector", () => {
     return api;
   }
 
-  // Checks that the list has "All" and the animations of the sprite, and that
-  // it starts on "All" with every frame in the column.
-  it("lists All and the animations, and shows every frame at first", async () => {
+  // Checks that the column has no list of its own any more: the groups are the
+  // selector. The only list with the animations is the one of the preview.
+  it("has no dropdown in the column, only the groups", async () => {
     renderEditor(sevenFrames());
-    const select = (await screen.findByRole("combobox", {
-      name: "Animation",
-    })) as HTMLSelectElement;
-    await waitFor(() => expect(select.options).toHaveLength(3));
-    expect([...select.options].map((o) => o.text)).toEqual([
-      "All",
-      "walk",
-      "idle",
-    ]);
-    expect(frameButtons()).toHaveLength(7);
+    await screen.findByRole("region", { name: "idle" });
+    const column = screen.getByRole("complementary", { name: "Frames" });
+    expect(within(column).queryByRole("combobox")).toBeNull();
+    expect(screen.getAllByRole("combobox", { name: "Animation" })).toHaveLength(
+      1,
+    );
   });
 
-  // Checks that choosing an animation does not hide frames any more: the strip
-  // shows every frame in groups, and the choice only sets what the preview plays.
-  it("keeps every frame in the strip when an animation is chosen", async () => {
+  // Checks that the first animation is open at first (the current frame is
+  // frame 1) and the other one is a closed row.
+  it("shows only the frames of the open group", async () => {
     renderEditor(sevenFrames());
-    const select = (await screen.findByRole("combobox", {
-      name: "Animation",
-    })) as HTMLSelectElement;
-    await waitFor(() => expect(select.options).toHaveLength(3));
-    fireEvent.change(select, { target: { value: "walk" } });
-    await waitFor(() => expect(current()).toBe("Frame 1"));
-    expect(frameButtons()).toHaveLength(7);
+    await screen.findByRole("region", { name: "idle" });
+    expect(frameButtons()).toEqual([
+      "Frame 1",
+      "Frame 2",
+      "Frame 3",
+      "Frame 4",
+    ]);
   });
 
   // Checks that the current frame goes into the animation when it was outside
@@ -282,11 +284,7 @@ describe("Animation selector", () => {
   it("moves the current frame into the chosen animation", async () => {
     renderEditor(sevenFrames());
     fireEvent.click(await screen.findByRole("button", { name: "Frame 2" }));
-    const select = screen.getByRole("combobox", { name: "Animation" });
-    await waitFor(() =>
-      expect((select as HTMLSelectElement).options).toHaveLength(3),
-    );
-    fireEvent.change(select, { target: { value: "idle" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Select idle" }));
     await waitFor(() => expect(current()).toBe("Frame 6"));
   });
 
@@ -294,11 +292,11 @@ describe("Animation selector", () => {
   it("goes back to All when the animation is deleted", async () => {
     const api = sevenFrames();
     renderEditor(api);
-    const select = (await screen.findByRole("combobox", {
+    fireEvent.click(await screen.findByRole("button", { name: "Select walk" }));
+    const select = screen.getByRole("combobox", {
       name: "Animation",
-    })) as HTMLSelectElement;
-    await waitFor(() => expect(select.options).toHaveLength(3));
-    fireEvent.change(select, { target: { value: "walk" } });
+    }) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe("walk"));
     await api.removeTag({ folder: ["Characters"], name: "goblin" }, "walk");
     await waitFor(() => expect(select.value).toBe(""));
   });
