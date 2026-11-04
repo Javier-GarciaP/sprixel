@@ -69,7 +69,6 @@ export function OutlinePanel({
         show.current(null);
       });
     // `args` is rebuilt every render; its parts are the real inputs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, sprite, frame, key, connectivity, outsideOnly, inner]);
   // Closing the panel takes the preview away.
   useEffect(() => () => show.current(null), []);
