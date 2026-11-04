@@ -64,12 +64,13 @@ fn create_tag_creates_an_animation() {
     call(&core, &session, "add_frame", json!({ "name": "goblin" })).unwrap();
     call(&core, &session, "add_frame", json!({ "name": "goblin" })).unwrap();
 
-    let done = call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "run", "from": 1, "to": 4, "fps": 12 })).unwrap();
+    let done = call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "run", "from": 3, "to": 4, "fps": 12 })).unwrap();
 
     assert_eq!(done["mode"], "loop");
     let sprite = call(&core, &session, "get_sprite", json!({ "name": "goblin" })).unwrap();
-    assert!(sprite["animations"].as_array().unwrap().contains(&json!({ "name": "run", "from": 1, "to": 4, "fps": 12, "mode": "loop" })));
-    call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "bounce", "from": 2, "to": 3, "fps": 6, "mode": "pingpong" })).unwrap();
+    assert!(sprite["animations"].as_array().unwrap().contains(&json!({ "name": "run", "from": 3, "to": 4, "fps": 12, "mode": "loop" })));
+    call(&core, &session, "add_frame", json!({ "name": "goblin" })).unwrap();
+    call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "bounce", "from": 5, "to": 5, "fps": 6, "mode": "pingpong" })).unwrap();
 }
 
 // Checks that the errors of `create_tag` are the ones of the app for the same
@@ -103,6 +104,24 @@ fn create_tag_errors_match_the_app() {
     assert_eq!(mode["code"], "bad_mode");
     assert_eq!(call(&core, &session, "create_tag", json!({ "name": "x", "from": 1, "to": 2, "fps": 6 })).unwrap_err()["code"], "bad_argument");
     assert_eq!(revision(&host), before);
+}
+
+// Checks the "Overlap refused" scenario for the tool: a second animation that
+// shares a frame is refused with `animation_overlap` and nothing changes.
+#[test]
+fn create_tag_refuses_an_overlap() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "add_frame", json!({ "name": "goblin" })).unwrap();
+    call(&core, &session, "add_frame", json!({ "name": "goblin" })).unwrap();
+    call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "run", "from": 3, "to": 3, "fps": 12 })).unwrap();
+    let before = revision(&host);
+
+    let error = call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "jump", "from": 3, "to": 4, "fps": 12 })).unwrap_err();
+
+    assert_eq!(error["code"], "animation_overlap");
+    assert_eq!(revision(&host), before);
+    call(&core, &session, "create_tag", json!({ "sprite": "goblin", "name": "jump", "from": 4, "to": 4, "fps": 12 })).unwrap();
 }
 
 // Checks `set_palette_color`: a color is added with a key, added with the

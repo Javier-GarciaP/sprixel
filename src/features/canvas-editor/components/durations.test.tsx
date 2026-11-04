@@ -18,11 +18,15 @@ async function open() {
   const api = new FakeEditorApi(8, 8, 3);
   api.tags = [{ name: "walk", from: 1, to: 2, fps: 8, mode: "loop" }];
   renderEditor(api);
+  // The animations load after the frames; the boxes are used once the strip
+  // has its groups (the frames move into them).
+  await screen.findByRole("region", { name: "walk" });
   await screen.findByLabelText("Duration of frame 3 (ms)");
   return api;
 }
 
-describe("Frame durations", () => {
+// The Windows runner is slow: one run of these tests took 6.7 s and 5 s is the default limit.
+describe("Frame durations", { timeout: 20000 }, () => {
   // Checks that a frame without a time of its own shows the time its
   // animation gives it (8 fps is 125 ms), and a frame outside any animation
   // shows the default 100. The boxes are empty: no frame has its own time.

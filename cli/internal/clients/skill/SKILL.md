@@ -57,7 +57,9 @@ Design guide: how to make a sprite that looks good
 11. Let the server finish the sprite. When the shape is done, call `auto_outline` (the outline) and `auto_shade` (lit and shadow tones from one light direction), then `analyze_sprite` to find loose pixels, gaps in the outline, unused colors and, for animations, frames where the support foot (`ground_kept`) moved. Fix what it reports. `analyze_sprite` lists what it `checked` and what it did `not_checked`: a problem that is not reported is only good news for the parts in `checked`.
 12. Try before you write. `auto_outline`, `auto_shade`, `transform_region`, `copy_region` and `apply_grid` take `dry_run` true: nothing is written and you get the counts, `warnings` and an image of what WOULD happen. Read the warnings (a thin part that turns into outline, lone shade pixels), then repeat the call without `dry_run`.
 
-Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`.
+Guides (`get_guide`, argument `topic`): `design`, `animation`, `animations-from-base`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`.
+
+Animation rules: draw the base frame first. Then make ONE named animation per action (idle, walk, attack) with `create_animation`, which copies the base for you, and change only what moves in those frames (`transform_region` or `copy_region` with `frames`, or `apply_grid` with a region). NEVER make pixels outside the app (scripts, image libraries) unless the person agrees. If the tools are not enough, say so first and ask.
 
 ## Worked example
 
@@ -114,6 +116,7 @@ frame 2
 
 For a game engine, a sprite can carry more than pixels:
 
+- Animations: `create_animation` makes a named animation from the base frame; `duplicate_animation`, `rename_animation`, `delete_animation` (`with_frames` also deletes its frames) and `move_frame` organize them. An animation never shares a frame with another one (`animation_overlap`). `set_part` names a rectangle (head, tail) and `transform_region` and `copy_region` accept it as `part`. Read the guide `animations-from-base`.
 - `set_frame_duration`: how long one frame lasts, in milliseconds (10 to 10000), or `null` to follow the animation speed. `get_sprite` lists them in `frame_durations` (`null` = follows the animation speed).
 - `set_anchor` and `remove_anchor`: named points such as feet or hand (`x`, `y`, and an optional `frame`). `get_sprite` lists the `anchors`. The `export` JSON gives them to the game.
 - `resize_sprite`: changes the canvas size (1 to 512 per side; `anchor` says where the drawing stays, `center` by default). Anchors move with the drawing; the ones that end outside are removed and listed in the answer.

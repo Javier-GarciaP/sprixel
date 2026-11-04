@@ -54,6 +54,7 @@ fn a_version_1_file_without_anchors_opens() {
     let sprite = session.project.find_sprite(&crate::document::SpriteRef::new(&[], "blob")).unwrap();
     assert_eq!(sprite.frame_durations, vec![100, 250]);
     assert!(sprite.anchors.is_empty());
+    assert!(sprite.parts.is_empty(), "parts are optional: old files have none");
 }
 
 // Checks that the listing (used by the project browser) also reads files

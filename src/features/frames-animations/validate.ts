@@ -49,3 +49,38 @@ export const draftOf = (tag: Tag): TagDraft => ({
   to: String(tag.to),
   fps: String(tag.fps),
 });
+
+export const MAX_NEW_FRAMES = 100;
+
+export type NewErrors = {
+  name?: "empty" | "taken";
+  count?: "range";
+  fps?: "range";
+};
+
+export type NewDraft = { name: string; count: string; fps: string };
+
+// Checks "New animation": a name that is free and a number of frames to copy.
+export function validateNew(draft: NewDraft, others: string[]): NewErrors {
+  const errors: NewErrors = {};
+  const name = draft.name.trim();
+  if (!name) errors.name = "empty";
+  else if (others.some((other) => other.toLowerCase() === name.toLowerCase())) {
+    errors.name = "taken";
+  }
+  const count = whole(draft.count);
+  const fps = whole(draft.fps);
+  if (!(count >= 1 && count <= MAX_NEW_FRAMES)) errors.count = "range";
+  if (!(fps >= 1 && fps <= 60)) errors.fps = "range";
+  return errors;
+}
+
+// "walk copy", "walk copy 2", ... the first name that no animation uses.
+export function copyName(name: string, others: string[]): string {
+  const used = new Set(others.map((other) => other.toLowerCase()));
+  let candidate = `${name} copy`;
+  for (let n = 2; used.has(candidate.toLowerCase()); n++) {
+    candidate = `${name} copy ${n}`;
+  }
+  return candidate;
+}

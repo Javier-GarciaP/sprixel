@@ -54,6 +54,53 @@ pub struct Sprite {
     pub tags: Vec<Tag>,
     /// Named points (`feet`, `hand`...) for a game engine.
     pub anchors: Vec<Anchor>,
+    /// Named rectangles (`head`, `tail`...) that the region tools can use by
+    /// name. Optional in the file: old projects have none.
+    pub parts: Vec<Part>,
+}
+
+/// The most parts a sprite may have.
+pub const MAX_PARTS: usize = 64;
+
+/// A named rectangle of a sprite, the same on every frame. A name is unique
+/// in the sprite (ignoring case).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Part {
+    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Part {
+    /// The rules that do not depend on the size of the sprite. A part is NOT
+    /// checked against the size when a file is read: a canvas change may leave
+    /// it outside, and the region tools say so (`region_out`) when it is used.
+    pub fn check_shape(&self) -> Result<(), DocError> {
+        if self.name.trim().is_empty() || self.name.chars().count() > 64 || self.name.chars().any(char::is_control) {
+            return Err(DocError::new("bad_part", "a part name has 1 to 64 characters and no control characters"));
+        }
+        if self.width == 0 || self.height == 0 {
+            return Err(DocError::new("bad_part", format!("part {:?} must be at least 1 pixel wide and high", self.name)));
+        }
+        Ok(())
+    }
+
+    /// Checks the part against a sprite with this size (used when it is set).
+    pub fn validate(&self, width: u32, height: u32) -> Result<(), DocError> {
+        self.check_shape()?;
+        if u64::from(self.x) + u64::from(self.width) > u64::from(width) || u64::from(self.y) + u64::from(self.height) > u64::from(height) {
+            return Err(DocError::new(
+                "region_out",
+                format!(
+                    "part {:?} ({}x{} at {}, {}) does not fit in the {width}x{height} sprite",
+                    self.name, self.width, self.height, self.x, self.y
+                ),
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// A named point inside a sprite. With `frame` it belongs to that frame
@@ -286,6 +333,7 @@ impl Sprite {
             }],
             tags: Vec::new(),
             anchors: Vec::new(),
+            parts: Vec::new(),
         })
     }
 
@@ -340,6 +388,15 @@ impl Sprite {
                     "bad_anchor",
                     format!("anchor {:?} is used twice", anchor.name),
                 ));
+            }
+        }
+        if self.parts.len() > MAX_PARTS {
+            return Err(DocError::new("too_many_parts", format!("a sprite has at most {MAX_PARTS} parts")));
+        }
+        for (i, part) in self.parts.iter().enumerate() {
+            part.check_shape()?;
+            if self.parts[..i].iter().any(|p| p.name.to_lowercase() == part.name.to_lowercase()) {
+                return Err(DocError::new("bad_part", format!("part {:?} is used twice", part.name)));
             }
         }
         for (i, tag) in self.tags.iter().enumerate() {

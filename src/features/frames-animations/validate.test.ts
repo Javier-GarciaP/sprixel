@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValid, validateTag } from "./validate";
+import { copyName, isValid, validateNew, validateTag } from "./validate";
 
 const draft = { name: "walk", from: "1", to: "4", fps: "12" };
 
@@ -40,5 +40,34 @@ describe("validateTag", () => {
     expect(validateTag({ ...draft, name: "  " }, 7, []).name).toBe("empty");
     expect(validateTag(draft, 7, ["Walk"]).name).toBe("taken");
     expect(validateTag(draft, 7, ["idle"]).name).toBeUndefined();
+  });
+});
+
+describe("validateNew", () => {
+  const draft = { name: "walk", count: "4", fps: "12" };
+
+  // A good draft has no errors; the name is compared ignoring case.
+  it("accepts a free name, frames and speed", () => {
+    expect(validateNew(draft, ["idle"])).toEqual({});
+    expect(validateNew({ ...draft, name: "IDLE" }, ["idle"]).name).toBe(
+      "taken",
+    );
+  });
+
+  // An empty name, 0 or too many frames and a speed outside 1-60 are refused.
+  it("refuses an empty name and numbers out of range", () => {
+    expect(validateNew({ ...draft, name: " " }, []).name).toBe("empty");
+    expect(validateNew({ ...draft, count: "0" }, []).count).toBe("range");
+    expect(validateNew({ ...draft, count: "101" }, []).count).toBe("range");
+    expect(validateNew({ ...draft, fps: "61" }, []).fps).toBe("range");
+  });
+});
+
+describe("copyName", () => {
+  // The copy of "walk" is "walk copy"; if that exists too, a number follows.
+  it("finds the first free name", () => {
+    expect(copyName("walk", [])).toBe("walk copy");
+    expect(copyName("walk", ["Walk Copy"])).toBe("walk copy 2");
+    expect(copyName("walk", ["walk copy", "walk copy 2"])).toBe("walk copy 3");
   });
 });

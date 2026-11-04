@@ -16,6 +16,25 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The frames strip is grouped by animation: a collapsible header for each one
+  (name, speed, how it ends, play and a menu to rename, duplicate or delete it
+  with or without its frames), a Base group first and a No animation group
+  last. "New animation…" copies the base frame. Groups start closed above 40
+  frames. Every action is one step of Undo.
+- Animations organized like in other tools: a base frame and one named animation
+  per action, with no shared frames. New AI tools `create_animation` (copies the
+  base frame, tags the copies, one Undo step), `duplicate_animation`,
+  `rename_animation`, `delete_animation` (with or without its frames) and
+  `move_frame`; `transform_region` and `copy_region` accept `frames` (a list or
+  a range like `"8-13"`) as one step. New guide `animations-from-base` and a
+  rule for agents: never make pixels outside the app (scripts, image libraries)
+  without the agreement of the person. New editor commands `animation_create`,
+  `animation_duplicate`, `animation_rename` and `animation_delete`. A new
+  animation that shares a frame with another one is refused (`animation_overlap`).
+- Named parts for the AI: `set_part` and `remove_part` name a rectangle of a sprite
+  (head, tail), and `transform_region` and `copy_region` accept it as `part`.
+  Stored in an optional `parts` list of the sprite file; old projects open as
+  before.
 - Power tools for people in the editor, the same ones the AI has: a selection
   bar (flip, rotate, mirror a half, move with the arrow keys and wrap), copy
   and paste between frames and sprites, a symmetry mode with the axis on the

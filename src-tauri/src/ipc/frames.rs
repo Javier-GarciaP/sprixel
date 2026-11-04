@@ -18,7 +18,7 @@ pub struct SpriteArg {
 }
 
 impl SpriteArg {
-    fn to_ref(&self) -> SpriteRef {
+    pub(super) fn to_ref(&self) -> SpriteRef {
         SpriteRef {
             folder: self.folder.clone(),
             name: self.name.clone(),
@@ -127,9 +127,7 @@ pub fn move_frame(
 
 pub fn add_tag(state: &ProjectState, sprite: &SpriteArg, tag: &TagArg) -> Result<ChangedEvent, CoreError> {
     let tag = tag.to_tag()?;
-    run(state, sprite, |target| {
-        vec![Operation::AddTag { sprite: target, tag, index: None }]
-    })
+    run_checked(state, sprite, &tag, None, |target| Operation::AddTag { sprite: target, tag: tag.clone(), index: None })
 }
 
 /// Replaces the animation called `name` (it can be renamed).
@@ -140,9 +138,7 @@ pub fn set_tag(
     tag: &TagArg,
 ) -> Result<ChangedEvent, CoreError> {
     let tag = tag.to_tag()?;
-    run(state, sprite, |target| {
-        vec![Operation::SetTag { sprite: target, name: name.to_string(), tag }]
-    })
+    run_checked(state, sprite, &tag, Some(name), |target| Operation::SetTag { sprite: target, name: name.to_string(), tag: tag.clone() })
 }
 
 pub fn remove_tag(state: &ProjectState, sprite: &SpriteArg, name: &str) -> Result<ChangedEvent, CoreError> {
@@ -152,7 +148,7 @@ pub fn remove_tag(state: &ProjectState, sprite: &SpriteArg, name: &str) -> Resul
 }
 
 // One user action on a sprite: the operations are one history entry.
-fn run(
+pub(super) fn run(
     state: &ProjectState,
     sprite: &SpriteArg,
     ops: impl FnOnce(SpriteRef) -> Vec<Operation>,
@@ -164,7 +160,26 @@ fn run(
     .map(|(_, event)| event)
 }
 
-fn announce(app: &tauri::AppHandle, event: ChangedEvent) {
+// Like `run`, for one operation that creates or changes an animation: the
+// animation must not overlap another one (the rule of the editor and of the
+// tools; the operations themselves accept old files). The check and the change
+// happen in the same lock of the project.
+fn run_checked(
+    state: &ProjectState,
+    sprite: &SpriteArg,
+    tag: &Tag,
+    replacing: Option<&str>,
+    op: impl FnOnce(SpriteRef) -> Operation,
+) -> Result<ChangedEvent, CoreError> {
+    browser::change(state, |session| {
+        session.project.check_new_animation(&sprite.to_ref(), tag, replacing)?;
+        let touched = session.apply(USER, vec![op(sprite.to_ref())])?;
+        Ok(((), touched))
+    })
+    .map(|(_, event)| event)
+}
+
+pub(super) fn announce(app: &tauri::AppHandle, event: ChangedEvent) {
     let _ = tauri::Emitter::emit(app, CHANGED_EVENT, event);
 }
 
@@ -247,12 +262,12 @@ pub fn tag_remove(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::document::{Color, Palette};
     use crate::ipc::browser::TargetInfo;
 
-    fn arg() -> SpriteArg {
+    pub(crate) fn arg() -> SpriteArg {
         SpriteArg { folder: vec![], name: "goblin".to_string() }
     }
 
@@ -261,7 +276,7 @@ mod tests {
     }
 
     /// An open project with a 2x1 sprite `goblin` of 4 frames.
-    fn open() -> (tempfile::TempDir, ProjectState) {
+    pub(crate) fn open() -> (tempfile::TempDir, ProjectState) {
         let parent = tempfile::tempdir().unwrap();
         let state = ProjectState::default();
         project::create_project(&state, parent.path(), "Kit").unwrap();
@@ -363,6 +378,24 @@ mod tests {
     }
 
     // Checks the wire format the UI reads.
+    // Checks that the editor refuses an animation that shares a frame with
+    // another one, and that nothing changes.
+    #[test]
+    fn the_editor_refuses_overlapping_animations() {
+        let (_dir, state) = open();
+        add_tag(&state, &arg(), &walk(1, 2)).unwrap();
+        let before = frames_info(&state, &arg()).unwrap().tags;
+        let jump = TagArg { name: "jump".into(), ..walk(2, 3) };
+        assert_eq!(add_tag(&state, &arg(), &jump).unwrap_err().code, "animation_overlap");
+        add_tag(&state, &arg(), &TagArg { name: "jump".into(), ..walk(3, 4) }).unwrap();
+        // Moving "jump" onto "walk" is refused; a new speed is not.
+        let moved = TagArg { name: "jump".into(), ..walk(2, 4) };
+        assert_eq!(set_tag(&state, &arg(), "jump", &moved).unwrap_err().code, "animation_overlap");
+        let faster = TagArg { name: "jump".into(), fps: 24, ..walk(3, 4) };
+        set_tag(&state, &arg(), "jump", &faster).unwrap();
+        assert_eq!(frames_info(&state, &arg()).unwrap().tags, vec![before[0].clone(), faster]);
+    }
+
     #[test]
     fn the_info_serializes_for_the_ui() {
         let (_dir, state) = open();

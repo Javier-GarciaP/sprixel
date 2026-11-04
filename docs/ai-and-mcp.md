@@ -116,7 +116,7 @@ description tells the AI the rules, so it does not need this page.
 | `render_tiled` | Returns a PNG of a frame repeated 3x3 on a checkerboard, to see the seams of a tile (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
 | `list_projects` | The recent projects (name and path) and the project that is open now. Needs no permission |
-| `get_guide` | Pixel art guidance for the AI, by `topic`: `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` or `tools` (a map of which tool to use for what). Needs no permission |
+| `get_guide` | Pixel art guidance for the AI, by `topic`: `design`, `animation`, `animations-from-base`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` or `tools` (a map of which tool to use for what). Needs no permission |
 
 **Open projects** (permission "Open projects")
 
@@ -141,15 +141,22 @@ description tells the AI the rules, so it does not need this page.
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
 | `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). With `inner` it warns about parts thinner than 3 pixels (`thin_regions`). Takes `dry_run`. Returns an image of the edited frame |
 | `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns `speckled_pixels` and a warning for lone shade pixels. Takes `dry_run`. Returns an image of the edited frame |
-| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. Takes `dry_run`. Returns an image of the edited frame |
-| `copy_region` | Copies a region inside a sprite, or to another frame or sprite (same palette), with an offset and `skip_transparent`. Takes `dry_run`. Returns an image of the edited frame |
+| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. With `frames` (a list like `[8, 9]` or a range as text like `"8-13"`) it does the same on many frames as ONE history entry. `part` (a name from `set_part`) replaces `region`. Takes `dry_run`. Returns an image of the edited frame |
+| `copy_region` | Copies a region inside a sprite, or to another frame, to many frames with `frames` (one history entry), or to another sprite (same palette), with an offset and `skip_transparent`; the source can be a `part`. Takes `dry_run`. Returns an image of the edited frame |
 | `import_reference` | Draws a PNG from the project folder `references/` into a frame, using the nearest colors of the palette (`width`, `height` scale it down, `max_colors` adds colors). Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
 | `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000, or `null` for the animation speed) |
 | `set_anchor` | Adds or moves a named point of a sprite (`feet`, `hand`...), for the whole sprite or one `frame` |
 | `remove_anchor` | Removes an anchor by name |
 | `resize_sprite` | Changes the canvas size (`width`, `height` 1 to 512, `anchor` for where the drawing stays). Anchors move with the drawing; those that end outside are removed and listed in `dropped_anchors`. Returns an image |
-| `create_tag` | Creates an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`) |
+| `create_animation` | Makes a named animation from the base frame in one call: copies `base_frame` (default 1) `frames` times at the end or at `at`, and tags the copies (`sprite`, `name`, `fps`, `mode`). One history entry, no pixels sent. Errors: `name_exists`, `animation_overlap`. Returns an image |
+| `duplicate_animation` | Copies an animation's frames to the end (or `at`) under `new_name`, with the same speed and mode |
+| `rename_animation` | Renames an animation (`name`, `new_name`); frames and speed stay |
+| `delete_animation` | Removes an animation; its frames stay unless `with_frames` is true |
+| `move_frame` | Moves frame `from` to position `to`; animations and anchors follow their frames. Returns an image |
+| `set_part` | Names a rectangle of a sprite (`sprite`, `name`, `x`, `y`, `width`, `height`), for example `head`; `transform_region` and `copy_region` accept it as `part`. At most 64 per sprite. `get_sprite` lists them |
+| `remove_part` | Removes a part by name |
+| `create_tag` | Names a range of frames you already drew as an animation (`sprite`, `name`, `from`, `to`, `fps`, `mode`). Frames of animations never overlap (`animation_overlap`) |
 | `set_palette_color` | Adds a palette color, or changes the name or hex of the color with a key |
 | `create_palette` | Creates a palette from a list of colors (a color without a key gets the next free key) |
 | `set_sprite_palette` | Makes a sprite use another palette; fails with `keys_missing` if the sprite uses a key the palette lacks |
@@ -233,9 +240,10 @@ The most common codes:
 | `not_a_project` | `open_project` got a folder that does not exist or has no `sprixel.json` |
 | `stopped_by_user` | The person pressed Stop; do not continue |
 | `stale_revision` | The project changed since `base_revision`; read it again |
-| `unknown_topic` | `get_guide` got a topic that is not one of the eight (the error lists them) |
+| `unknown_topic` | `get_guide` got a topic that is not one of the nine (the error lists them) |
 | `newer_changes` | `undo_last_ai_action` would hide a newer change |
 | `not_found`, `ambiguous_name`, `name_exists`, `invalid_name` | Sprite, folder and name problems |
+| `animation_overlap` | An animation would share a frame with another one (`create_tag`, `create_animation`, `duplicate_animation`) |
 | `palette_mismatch`, `palette_not_found` | The `palette:` line of a grid names a palette that is not the one of the sprite, or that does not exist (the message says how to fix it) |
 | `keys_missing` | `set_sprite_palette` to a palette that lacks a key the sprite uses |
 | `row_length`, `row_count`, `unknown_key`, `no_frame`, `bad_frame`, `region_out`, `too_big` | A text grid or a drawing that is not valid (all problems come together in `errors`) |
@@ -268,11 +276,16 @@ the tool `get_guide` serves the full guides, and the Claude Code skill has the
 same workflow, example and design rules. A test fails if the skill and the
 server differ. The guides are:
 
-Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`.
+Guides (`get_guide`, argument `topic`): `design`, `animation`, `animations-from-base`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`.
 
-Each guide besides the first three has a worked example with exact calls, and a
+Each guide besides `design`, `animation` and `palette` has a worked example with exact calls, and a
 test runs those calls through the real tools.
 
+- **Base first, then animations.** Draw the base frame, then make one named
+  animation per action with `create_animation` (it copies the base), and change
+  only what moves. An agent never makes pixels outside the app (scripts, image
+  libraries) without the agreement of the person; the server instructions, the
+  guide `animations-from-base` and the skill all say so, word for word.
 - **Small first.** Text grids work best up to about 32x32. Bigger sprites are
   allowed (up to 512x512) but the AI makes more counting mistakes; for them it
   works region by region with `x` and `y`.

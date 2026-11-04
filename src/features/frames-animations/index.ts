@@ -4,6 +4,7 @@ export { coreFramesApi } from "./api";
 export type {
   FramesApi,
   FramesInfo,
+  NewAnimation,
   RepeatMode,
   SpriteRef,
   Tag,

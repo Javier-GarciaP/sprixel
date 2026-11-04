@@ -1,4 +1,9 @@
-import type { FramesApi, FramesInfo, Tag } from "@/features/frames-animations";
+import type {
+  FramesApi,
+  FramesInfo,
+  NewAnimation,
+  Tag,
+} from "@/features/frames-animations";
 import type {
   ColorEdit,
   PaletteApi,
@@ -362,6 +367,72 @@ export class FakeEditorApi
 
   async removeTag(sprite: SpriteRef, name: string) {
     this.tags = this.tags.filter((t) => t.name !== name);
+    this.notify(sprite);
+  }
+
+  // The animation calls. The core tests the real rules; this fake keeps the
+  // ones the interface shows: a repeated name fails, frames follow tags.
+  animationCalls: string[] = [];
+
+  private free(name: string) {
+    if (this.tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
+      throw { code: "name_exists", message: `Name ${name} exists` };
+    }
+  }
+
+  async animationCreate(sprite: SpriteRef, a: NewAnimation) {
+    this.animationCalls.push(`create ${a.name} ${a.count} ${a.fps} ${a.mode}`);
+    this.free(a.name);
+    const from = this.frames.length + 1;
+    for (let i = 0; i < a.count; i++) this.frames.push(this.frames[0]);
+    this.tags.push({
+      name: a.name,
+      from,
+      to: from + a.count - 1,
+      fps: a.fps,
+      mode: a.mode,
+    });
+    this.revision++;
+    this.notify(sprite);
+  }
+
+  async animationDuplicate(sprite: SpriteRef, name: string, newName: string) {
+    this.animationCalls.push(`duplicate ${name} ${newName}`);
+    this.free(newName);
+    const tag = this.tags.find((t) => t.name === name)!;
+    const from = this.frames.length + 1;
+    this.frames.push(...this.frames.slice(tag.from - 1, tag.to));
+    this.tags.push({
+      ...tag,
+      name: newName,
+      from,
+      to: from + tag.to - tag.from,
+    });
+    this.revision++;
+    this.notify(sprite);
+  }
+
+  async animationRename(sprite: SpriteRef, name: string, newName: string) {
+    this.animationCalls.push(`rename ${name} ${newName}`);
+    if (name.toLowerCase() !== newName.toLowerCase()) this.free(newName);
+    this.tags = this.tags.map((t) =>
+      t.name === name ? { ...t, name: newName } : t,
+    );
+    this.notify(sprite);
+  }
+
+  async animationDelete(sprite: SpriteRef, name: string, withFrames: boolean) {
+    this.animationCalls.push(`delete ${name} ${withFrames}`);
+    const tag = this.tags.find((t) => t.name === name)!;
+    this.tags = this.tags.filter((t) => t !== tag);
+    if (withFrames) {
+      const size = tag.to - tag.from + 1;
+      this.frames.splice(tag.from - 1, size);
+      this.tags = this.tags.map((t) =>
+        t.from > tag.to ? { ...t, from: t.from - size, to: t.to - size } : t,
+      );
+    }
+    this.revision++;
     this.notify(sprite);
   }
 

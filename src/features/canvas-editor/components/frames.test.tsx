@@ -264,26 +264,17 @@ describe("Animation selector", () => {
     expect(frameButtons()).toHaveLength(7);
   });
 
-  // Checks the "Filter by animation" scenario: choosing "walk" (frames 1 to 4)
-  // on a sprite with 7 frames shows only frames 1 to 4 in the column, and
-  // "All" shows them all again.
-  it("shows only the frames of the chosen animation", async () => {
+  // Checks that choosing an animation does not hide frames any more: the strip
+  // shows every frame in groups, and the choice only sets what the preview plays.
+  it("keeps every frame in the strip when an animation is chosen", async () => {
     renderEditor(sevenFrames());
     const select = (await screen.findByRole("combobox", {
       name: "Animation",
     })) as HTMLSelectElement;
     await waitFor(() => expect(select.options).toHaveLength(3));
     fireEvent.change(select, { target: { value: "walk" } });
-    await waitFor(() =>
-      expect(frameButtons()).toEqual([
-        "Frame 1",
-        "Frame 2",
-        "Frame 3",
-        "Frame 4",
-      ]),
-    );
-    fireEvent.change(select, { target: { value: "" } });
-    await waitFor(() => expect(frameButtons()).toHaveLength(7));
+    await waitFor(() => expect(current()).toBe("Frame 1"));
+    expect(frameButtons()).toHaveLength(7);
   });
 
   // Checks that the current frame goes into the animation when it was outside
@@ -308,10 +299,8 @@ describe("Animation selector", () => {
     })) as HTMLSelectElement;
     await waitFor(() => expect(select.options).toHaveLength(3));
     fireEvent.change(select, { target: { value: "walk" } });
-    await waitFor(() => expect(frameButtons()).toHaveLength(4));
     await api.removeTag({ folder: ["Characters"], name: "goblin" }, "walk");
-    await waitFor(() => expect(frameButtons()).toHaveLength(7));
-    expect(select.value).toBe("");
+    await waitFor(() => expect(select.value).toBe(""));
   });
 });
 

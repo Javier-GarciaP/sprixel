@@ -623,5 +623,22 @@
   "toolbar.more": "More",
   "toolbar.wrap": "Wrap around when moving",
   "toolbar.nothingToUndo": "Nothing to undo",
-  "toolbar.nothingToRedo": "Nothing to redo"
+  "toolbar.nothingToRedo": "Nothing to redo",
+  "frames.groupBase": "Base",
+  "frames.groupNone": "No animation",
+  "frames.groupOpen": "Show the frames of {name}",
+  "frames.groupClose": "Hide the frames of {name}",
+  "frames.count": "{count} fr.",
+  "frames.overlap": "Some animations share frames. Each frame is shown once.",
+  "anim.playNamed": "Play {name}",
+  "anim.menuNamed": "Menu of {name}",
+  "anim.newOpen": "New animation…",
+  "anim.newHint": "The frames are copies of the first frame (the base). You can draw on them after.",
+  "anim.count": "Frames",
+  "anim.errorCount": "Use from 1 to {max} frames",
+  "anim.renameTitle": "Rename animation",
+  "anim.rename": "Rename…",
+  "anim.duplicate": "Duplicate",
+  "anim.deleteKeep": "Delete animation (keep frames)",
+  "anim.deleteFrames": "Delete animation and its frames"
 }

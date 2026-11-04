@@ -143,6 +143,17 @@ fn describe(tool: &str, args: &Value, answer: &Value) -> (String, Option<String>
         "remove_anchor" => format!("Removed the anchor {} from {name}", text(answer, "removed")),
         "resize_sprite" => format!("Changed the canvas of {name} to {}x{}", answer["width"], answer["height"]),
         "create_tag" => format!("Created the animation {} on {name}", text(answer, "animation")),
+        "create_animation" => format!(
+            "Created the animation {} on {name} ({} frames from the base)",
+            text(answer, "animation"),
+            answer["to"].as_u64().unwrap_or(0) + 1 - answer["from"].as_u64().unwrap_or(0)
+        ),
+        "duplicate_animation" => format!("Copied the animation {} to {} on {name}", text(answer, "copy_of"), text(answer, "animation")),
+        "rename_animation" => format!("Renamed the animation {} to {} on {name}", text(answer, "was"), text(answer, "animation")),
+        "delete_animation" => format!("Deleted the animation {} from {name}", text(answer, "deleted")),
+        "move_frame" => format!("Moved frame {} of {name} to {}", answer["moved_frame"], answer["to"]),
+        "set_part" => format!("Named the part {} on {name}", text(answer, "part")),
+        "remove_part" => format!("Removed the part {} from {name}", text(answer, "removed")),
         "set_palette_color" => format!(
             "{} the color {} in palette {}",
             if answer["action"] == "added" { "Added" } else { "Changed" },

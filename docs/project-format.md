@@ -19,6 +19,12 @@ files stay valid):
 
 - `anchors` in a sprite file (named points). A sprite without anchors does not
   write the field.
+- `parts` in a sprite file (named rectangles `{name, x, y, width, height}` that
+  the region tools use by name, at most 64, names unique ignoring case). A
+  sprite without parts does not write the field, so old files open unchanged
+  and stay byte for byte the same. A part is not checked against the size of
+  the sprite when the file is read (a canvas change can leave it outside); the
+  tools say `region_out` when such a part is used.
 - A sprite file without `frameDurations` (the very first files) is accepted:
   every frame lasts 100 ms.
 
@@ -64,4 +70,4 @@ A file that opens without a migration (no `formatVersion`, no
 | --- | --- |
 | `dungeon-kit` | The current format (also the sample of the docs tests). |
 | `old-kit-no-version` | Files with no `formatVersion`, no `frameDurations` and no `anchors`. |
-| `old-kit-v1-no-anchors` | Version 1 files written before anchors existed. |
+| `old-kit-v1-no-anchors` | Version 1 files written before anchors existed (they have no `parts` either). |

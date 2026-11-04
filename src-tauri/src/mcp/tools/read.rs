@@ -36,7 +36,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "get_sprite",
-            description: "Reads one sprite: size, palette name, animations, the duration of each frame (`frame_durations`, ms; `null` means it follows the animation speed), the anchors and its frames as a text grid. For a big sprite read one `frame` and a `region`, and send `include_palette` false after the first read.",
+            description: "Reads one sprite: size, palette name, animations, the duration of each frame (`frame_durations`, ms; `null` means it follows the animation speed), the anchors, the named parts (`parts`) and its frames as a text grid. For a big sprite read one `frame` and a `region`, and send `include_palette` false after the first read.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string", "description": "The sprite name, or a path like \"Characters/goblin\"." },
                 "folder": { "type": "string", "description": "The folder of the sprite, if two sprites share the name." },
@@ -206,6 +206,7 @@ fn get_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         // null: the frame follows the animation speed (the model stores 100 ms for it).
         summary["frame_durations"] = json!(sprite.frame_durations.iter().map(|&ms| (ms != crate::document::DEFAULT_FRAME_MS).then_some(ms)).collect::<Vec<_>>());
         summary["anchors"] = json!(sprite.anchors.iter().map(anchor_json).collect::<Vec<_>>());
+        summary["parts"] = json!(sprite.parts.iter().map(|p| json!({ "name": p.name, "x": p.x, "y": p.y, "width": p.width, "height": p.height })).collect::<Vec<_>>());
         summary["grid"] = json!(write_grid_part(sprite, palette, frame, region, legend));
         if let Some((x, y, width, height)) = region {
             summary["region"] = json!({ "x": x, "y": y, "width": width, "height": height });

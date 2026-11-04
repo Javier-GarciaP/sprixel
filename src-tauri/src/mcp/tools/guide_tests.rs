@@ -1,7 +1,7 @@
 //! Spec `agent-live-design`, task 2.1: the tool `get_guide` and the guides.
 
 use super::docs::{
-    ANIMATION_GUIDE, DESIGN_GUIDE, EXAMPLE, EXAMPLE_GRID, FACES_GUIDE, GAME_READY_GUIDE, GUIDE_LIST, GUIDE_TOPICS,
+    ANIMATIONS_FROM_BASE_GUIDE, ANIMATION_GUIDE, ANIMATION_RULES, DESIGN_GUIDE, EXAMPLE, EXAMPLE_GRID, FACES_GUIDE, GAME_READY_GUIDE, GUIDE_LIST, GUIDE_TOPICS,
     INSTRUCTIONS, LARGE_SPRITES_GUIDE, PALETTE_GUIDE, TOOLS_GUIDE, WALK_GUIDE, WORKFLOW,
 };
 use crate::mcp::testing::{call, core_with, open_demo_project, revision, setup};
@@ -33,13 +33,14 @@ fn each_topic_gives_its_guide() {
         ("walk-and-attack-cycles", WALK_GUIDE),
         ("game-ready", GAME_READY_GUIDE),
         ("tools", TOOLS_GUIDE),
+        ("animations-from-base", ANIMATIONS_FROM_BASE_GUIDE),
     ] {
         assert_eq!(call(&core, &session, "get_guide", json!({ "topic": topic })).unwrap()["guide"], text, "{topic}");
     }
 }
 
 // Checks the "Unknown topic" scenario: the error says what is wrong and lists
-// the eight valid topics, so the agent can pick one.
+// the nine valid topics, so the agent can pick one.
 #[test]
 fn an_unknown_topic_lists_the_valid_ones() {
     let (_host, core, session) = setup();
@@ -52,7 +53,7 @@ fn an_unknown_topic_lists_the_valid_ones() {
         assert!(message.contains(topic), "{message}");
     }
     assert_eq!(error["topics"], json!(GUIDE_TOPICS));
-    assert_eq!(GUIDE_TOPICS.len(), 8);
+    assert_eq!(GUIDE_TOPICS.len(), 9);
     assert_eq!(call(&core, &session, "get_guide", json!({})).unwrap_err()["code"], "bad_argument");
 }
 
@@ -176,6 +177,7 @@ fn every_name_in_the_guides_is_real() {
     for (name, text) in [
         ("the design guide", DESIGN_GUIDE),
         ("the animation guide", ANIMATION_GUIDE),
+        ("the animations from base guide", ANIMATIONS_FROM_BASE_GUIDE),
         ("the palette guide", PALETTE_GUIDE),
         ("the large sprites guide", LARGE_SPRITES_GUIDE),
         ("the faces and animals guide", FACES_GUIDE),
@@ -215,7 +217,7 @@ fn the_tools_guide_names_every_tool() {
 }
 
 // Checks the "Instructions, skill and docs agree" scenario: the same sentence
-// lists the topics in the three places, and it names all eight.
+// lists the topics in the three places, and it names all nine.
 #[test]
 fn the_instructions_the_skill_and_the_docs_list_the_same_guides() {
     for topic in GUIDE_TOPICS {
@@ -352,4 +354,22 @@ fn the_instructions_and_the_skill_explain_the_new_answers() {
     }
     assert!(INSTRUCTIONS.contains(super::docs::ANSWERS_NOTE), "the instructions");
     assert!(skill().contains(super::docs::ANSWERS_NOTE), "the skill");
+}
+
+// Checks the "Skill and server agree" scenario for animations: the rules (base
+// first, one named animation per action, no pixels outside the app without the
+// agreement of the person) are word for word in the server instructions, in the
+// guide `animations-from-base` and in the skill, and the guide teaches every
+// animation tool and the two error codes.
+#[test]
+fn the_animation_rules_are_the_same_everywhere() {
+    for part in ["base frame first", "ONE named animation per action", "`create_animation`", "NEVER make pixels outside the app", "unless the person agrees"] {
+        assert!(ANIMATION_RULES.contains(part), "the rules do not say {part:?}");
+    }
+    assert!(INSTRUCTIONS.contains(ANIMATION_RULES), "the instructions");
+    assert!(ANIMATIONS_FROM_BASE_GUIDE.contains(ANIMATION_RULES), "the guide");
+    assert!(skill().contains(ANIMATION_RULES), "the skill");
+    for part in ["create_animation", "duplicate_animation", "rename_animation", "delete_animation", "move_frame", "with_frames", "animation_overlap", "name_exists", "frames", "set_part"] {
+        assert!(ANIMATIONS_FROM_BASE_GUIDE.contains(part), "the guide does not say {part:?}");
+    }
 }

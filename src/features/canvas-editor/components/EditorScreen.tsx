@@ -319,6 +319,12 @@ function Ready(props: ReadyProps) {
       props.onFrame(range.from);
     }
   };
+  // Grows each time a group of the strip is played.
+  const [playToken, setPlayToken] = useState(0);
+  const playAnimation = (name: string) => {
+    chooseAnimation(name);
+    setPlayToken((n) => n + 1);
+  };
   const canvas = useCanvasView(info.width, info.height);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     null,
@@ -761,6 +767,7 @@ function Ready(props: ReadyProps) {
         tags={tags}
         animation={animation}
         onAnimation={chooseAnimation}
+        onPlay={playAnimation}
       />
       <section className="relative flex min-w-0 flex-1 flex-col">
         <CanvasBar
@@ -923,6 +930,7 @@ function Ready(props: ReadyProps) {
               tag={chosenTag(tags, animation)}
               clock={props.clock}
               background={background}
+              playToken={playToken}
             />
             <PreviewTools
               background={background}
