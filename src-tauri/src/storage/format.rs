@@ -1,4 +1,4 @@
-use crate::document::{Anchor, Color, Frame, Layer, Palette, Sprite, Tag, TagMode};
+use crate::document::{Anchor, Color, Frame, Layer, Palette, Part, Sprite, Tag, TagMode};
 use super::migrate::FileKind;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -73,6 +73,19 @@ struct SpriteFile {
     /// sprite with no anchors does not write it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     anchors: Vec<AnchorFile>,
+    /// Added after version 1 first shipped: named rectangles. Old files do not
+    /// have it, and a sprite with no parts does not write it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    parts: Vec<PartFile>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PartFile {
+    name: String,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -189,6 +202,11 @@ pub fn sprite_to_text(sprite: &Sprite) -> String {
             .iter()
             .map(|a| AnchorFile { name: a.name.clone(), x: a.x, y: a.y, frame: a.frame })
             .collect(),
+        parts: sprite
+            .parts
+            .iter()
+            .map(|p| PartFile { name: p.name.clone(), x: p.x, y: p.y, width: p.width, height: p.height })
+            .collect(),
     })
 }
 
@@ -238,6 +256,11 @@ pub fn sprite_from_text(name: &str, text: &str, palette: &Palette) -> Result<Spr
             .anchors
             .into_iter()
             .map(|a| Anchor { name: a.name, x: a.x, y: a.y, frame: a.frame })
+            .collect(),
+        parts: file
+            .parts
+            .into_iter()
+            .map(|p| Part { name: p.name, x: p.x, y: p.y, width: p.width, height: p.height })
             .collect(),
     };
     sprite.validate(palette).map_err(|e| e.to_string())?;

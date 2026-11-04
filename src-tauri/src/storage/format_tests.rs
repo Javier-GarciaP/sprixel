@@ -56,6 +56,7 @@ fn goblin() -> Sprite {
             mode: TagMode::Loop,
         }],
         anchors: Vec::new(),
+        parts: Vec::new(),
     }
 }
 
@@ -239,4 +240,23 @@ fn a_sprite_without_anchors_has_no_field() {
     assert!(!text.contains("anchors"));
     let old = testdata("sprites/Personajes/goblin.sprite.json");
     assert!(sprite_from_text("goblin", &old, &dungeon16()).unwrap().anchors.is_empty());
+}
+
+// Checks the "old projects open" rule for parts: a sprite with no parts does
+// not write the field (so old files stay the same byte for byte), a sprite with
+// parts writes them and reads them back, and a file with a part of size 0 is
+// refused.
+#[test]
+fn parts_are_optional_in_the_file() {
+    let palette = dungeon16();
+    let mut sprite = goblin();
+    assert!(!sprite_to_text(&sprite).contains("parts"));
+
+    sprite.parts = vec![crate::document::Part { name: "head".into(), x: 0, y: 1, width: 2, height: 2 }];
+    let text = sprite_to_text(&sprite);
+    assert!(text.contains("\"parts\""));
+    assert_eq!(sprite_from_text("goblin", &text, &palette).unwrap().parts, sprite.parts);
+
+    let broken = text.replace("\"width\": 2", "\"width\": 0");
+    assert!(sprite_from_text("goblin", &broken, &palette).is_err());
 }

@@ -1,5 +1,5 @@
 use super::error::DocError;
-use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, Palette, Project, Sprite, TRANSPARENT, Tag, check_size};
+use super::model::{Anchor, Color, Folder, Frame, MAX_COLORS, MAX_PARTS, Palette, Part, Project, Sprite, TRANSPARENT, Tag, check_size};
 use super::names::{same_name, validate_name};
 use super::resize::{ResizeAnchor, move_anchors, resize_pixels};
 
@@ -210,6 +210,18 @@ pub enum Operation {
         sprite: SpriteRef,
         name: String,
         frame: Option<u32>,
+    },
+    /// Adds a named part (a rectangle), or replaces the one with the same
+    /// name (it keeps its place). `index` is where a new one goes; `None` is
+    /// the end.
+    SetPart {
+        sprite: SpriteRef,
+        part: Part,
+        index: Option<usize>,
+    },
+    RemovePart {
+        sprite: SpriteRef,
+        name: String,
     },
     /// Crops or extends every frame of every layer to a new size, with
     /// transparent pixels. The old content stays at `anchor`. The anchors of
@@ -1122,6 +1134,42 @@ impl Project {
                         anchor,
                         index: Some(at),
                     },
+                    touched: vec![Target::Sprite(sprite_ref)],
+                })
+            }
+            Operation::SetPart { sprite, part, index } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                part.validate(target.width, target.height)?;
+                let sprite_ref = SpriteRef { folder, name: target.name.clone() };
+                let inverse = match target.parts.iter().position(|p| same_name(&p.name, &part.name)) {
+                    Some(at) => {
+                        let old = std::mem::replace(&mut target.parts[at], part.clone());
+                        Operation::SetPart { sprite: sprite_ref.clone(), part: old, index: None }
+                    }
+                    None => {
+                        if target.parts.len() >= MAX_PARTS {
+                            return Err(DocError::new("too_many_parts", format!("a sprite has at most {MAX_PARTS} parts")));
+                        }
+                        let at = index.unwrap_or(target.parts.len()).min(target.parts.len());
+                        target.parts.insert(at, part.clone());
+                        Operation::RemovePart { sprite: sprite_ref.clone(), name: part.name.clone() }
+                    }
+                };
+                Ok(Applied { inverse, touched: vec![Target::Sprite(sprite_ref)] })
+            }
+            Operation::RemovePart { sprite, name } => {
+                let (folder, sprite_index) = self.locate(sprite)?;
+                let target = &mut self.folder_mut(&folder).sprites[sprite_index];
+                let at = target
+                    .parts
+                    .iter()
+                    .position(|p| same_name(&p.name, name))
+                    .ok_or_else(|| not_found("part", name))?;
+                let part = target.parts.remove(at);
+                let sprite_ref = SpriteRef { folder, name: target.name.clone() };
+                Ok(Applied {
+                    inverse: Operation::SetPart { sprite: sprite_ref.clone(), part, index: Some(at) },
                     touched: vec![Target::Sprite(sprite_ref)],
                 })
             }
