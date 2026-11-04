@@ -366,7 +366,7 @@ impl Frame {
     }
 }
 
-fn check_size(width: u32, height: u32) -> Result<(), DocError> {
+pub(super) fn check_size(width: u32, height: u32) -> Result<(), DocError> {
     if width > MAX_SIZE || height > MAX_SIZE {
         return Err(DocError::new(
             "too_big",

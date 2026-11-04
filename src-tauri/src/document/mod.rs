@@ -70,3 +70,6 @@ mod ramp_tests;
 
 #[cfg(test)]
 mod resize_tests;
+
+#[cfg(test)]
+mod resize_op_tests;
