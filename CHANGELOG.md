@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The frames column is tidier: the groups are the only selector of the
+  animation (the dropdown is gone), only the chosen group is open and shows its
+  frames in two columns with their number and duration, each header keeps one
+  height with the frame count, play and menu, and the actions sit at the bottom
+  with tooltips. The preview has a list ("All frames" or one animation) and
+  plays only that range with its speed and mode.
 - The top bar of the editor no longer jumps when you select: every control stays
   in place (disabled when it does not apply), uses an icon with a tooltip that
   shows its name and shortcut, and the least used ones go to a "More" menu in
