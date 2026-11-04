@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Dialog, Field } from "@/shared/components";
 import { useT, type TranslationKey } from "@/shared/lib/i18n";
+import { ModePicker } from "./ModePicker";
 import type { RepeatMode, Tag } from "./types";
 import { draftOf, isValid, validateTag, type TagErrors } from "./validate";
 
@@ -14,12 +15,6 @@ type Props = {
   onSave: (tag: Tag) => Promise<unknown>;
   onClose: () => void;
 };
-
-const modes: { id: RepeatMode; labelKey: TranslationKey }[] = [
-  { id: "loop", labelKey: "anim.modeLoop" },
-  { id: "once", labelKey: "anim.modeOnce" },
-  { id: "pingpong", labelKey: "anim.modePingpong" },
-];
 
 const messages: Record<string, TranslationKey> = {
   empty: "anim.errorEmpty",
@@ -130,25 +125,7 @@ export function AnimationDialog({
             onChange={(event) => change("fps")(event.target.value)}
           />
         </div>
-        <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 text-xs text-text-muted">
-            {t("anim.mode")}
-          </legend>
-          <div className="flex gap-2">
-            {modes.map(({ id, labelKey }) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={mode === id}
-                onClick={() => setMode(id)}
-                className={`rounded-md border px-3 py-1.5 text-sm ${mode === id ? "border-amber bg-surface-2 font-semibold" : "border-border"}`}
-              >
-                {t(labelKey)}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <ModePicker value={mode} onChange={setMode} />
         {failure && (
           <p role="alert" className="text-xs text-error">
             {failure}

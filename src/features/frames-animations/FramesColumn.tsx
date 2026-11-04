@@ -7,9 +7,12 @@ import { chosenTag } from "./animation";
 import { DurationField } from "./DurationField";
 import { frameDurationMs, DEFAULT_FRAME_MS } from "./duration";
 import { FrameThumb } from "./FrameThumb";
+import { NewAnimationDialog } from "./NewAnimationDialog";
+import { RenameDialog } from "./RenameDialog";
 import { groupsOf } from "./groups";
 import type { FramesApi, SpriteRef, Tag } from "./types";
 import { useSpriteChanges } from "./useSpriteChanges";
+import { copyName } from "./validate";
 
 type Props = {
   api: FramesApi;
@@ -62,6 +65,18 @@ export function FramesColumn({
     y: number;
   } | null>(null);
   const dragged = useRef<number | null>(null);
+  // The menu of an animation header, and the dialog that is open.
+  const [groupMenu, setGroupMenu] = useState<{
+    name: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [dialog, setDialog] = useState<
+    { kind: "new" } | { kind: "rename"; name: string } | null
+  >(null);
+  const names = tags.map((tag) => tag.name);
+  const menuTag = tags.find((tag) => tag.name === groupMenu?.name);
+  const menuSize = menuTag ? menuTag.to - menuTag.from + 1 : 0;
 
   // A change that fails (the core knows better) just reads the sprite again.
   const run = (change: Promise<unknown>, select?: number) =>
@@ -192,7 +207,14 @@ export function FramesColumn({
               chosen={group.tag?.name === animation}
               onToggle={() => setClosed({ ...closed, [group.id]: open })}
               onPlay={() => group.tag && onAnimation(group.tag.name)}
-              onMenu={() => {}}
+              onMenu={(box) =>
+                group.tag &&
+                setGroupMenu({
+                  name: group.tag.name,
+                  x: box.left,
+                  y: box.bottom,
+                })
+              }
             />
             {open && group.frames.map(renderFrame)}
           </section>
@@ -223,6 +245,82 @@ export function FramesColumn({
           />
         </div>
       )}
+      {groupMenu && (
+        <div
+          className="fixed z-30"
+          style={{ left: groupMenu.x, top: groupMenu.y }}
+        >
+          <Menu
+            onClose={() => setGroupMenu(null)}
+            items={[
+              {
+                id: "rename",
+                label: t("anim.rename"),
+                onSelect: () =>
+                  setDialog({ kind: "rename", name: groupMenu.name }),
+              },
+              {
+                id: "duplicate",
+                label: t("anim.duplicate"),
+                onSelect: () =>
+                  void run(
+                    api.animationDuplicate(
+                      sprite,
+                      groupMenu.name,
+                      copyName(groupMenu.name, names),
+                    ),
+                  ),
+              },
+              {
+                id: "delete-keep",
+                label: t("anim.deleteKeep"),
+                separator: true,
+                onSelect: () =>
+                  void run(api.animationDelete(sprite, groupMenu.name, false)),
+              },
+              {
+                id: "delete-frames",
+                label: t("anim.deleteFrames"),
+                // The last frame stays: a sprite always has one.
+                disabled: menuSize >= frameCount,
+                onSelect: () =>
+                  void run(api.animationDelete(sprite, groupMenu.name, true)),
+              },
+            ]}
+          />
+        </div>
+      )}
+      {dialog?.kind === "new" && (
+        <NewAnimationDialog
+          others={names}
+          onClose={() => setDialog(null)}
+          onSave={(animation) =>
+            api
+              .animationCreate(sprite, animation)
+              // The first new frame is the one after the last frame.
+              .then(() => onChanged(frameCount + 1))
+          }
+        />
+      )}
+      {dialog?.kind === "rename" && (
+        <RenameDialog
+          name={dialog.name}
+          others={names.filter((n) => n !== dialog.name)}
+          onClose={() => setDialog(null)}
+          onSave={(newName) =>
+            api
+              .animationRename(sprite, dialog.name, newName)
+              .then(() => onChanged())
+          }
+        />
+      )}
+      <button
+        type="button"
+        className="h-7 w-28 rounded border border-border bg-surface text-xs text-text hover:bg-surface-2"
+        onClick={() => setDialog({ kind: "new" })}
+      >
+        {t("anim.newOpen")}
+      </button>
       <div className="flex w-20 gap-1">
         <button
           type="button"

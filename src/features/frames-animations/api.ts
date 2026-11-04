@@ -30,5 +30,13 @@ export const coreFramesApi: FramesApi = {
   addTag: (sprite, tag: Tag) => call<void>("tag_add", { sprite, tag }),
   setTag: (sprite, name, tag) => call<void>("tag_set", { sprite, name, tag }),
   removeTag: (sprite, name) => call<void>("tag_remove", { sprite, name }),
+  animationCreate: (sprite, animation) =>
+    call<void>("animation_create", { sprite, ...animation }),
+  animationDuplicate: (sprite, name, newName) =>
+    call<void>("animation_duplicate", { sprite, name, newName }),
+  animationRename: (sprite, name, newName) =>
+    call<void>("animation_rename", { sprite, name, newName }),
+  animationDelete: (sprite, name, withFrames) =>
+    call<void>("animation_delete", { sprite, name, withFrames }),
   onChanged: onProjectChanged,
 };

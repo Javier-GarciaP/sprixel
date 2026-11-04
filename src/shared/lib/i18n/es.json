@@ -631,5 +631,14 @@
   "frames.count": "{count} fr.",
   "frames.overlap": "Algunas animaciones comparten frames. Cada frame se muestra una vez.",
   "anim.playNamed": "Reproducir {name}",
-  "anim.menuNamed": "Menú de {name}"
+  "anim.menuNamed": "Menú de {name}",
+  "anim.newOpen": "Nueva animación…",
+  "anim.newHint": "Los frames son copias del primer frame (la base). Después puedes dibujar en ellos.",
+  "anim.count": "Frames",
+  "anim.errorCount": "Usa de 1 a {max} frames",
+  "anim.renameTitle": "Renombrar animación",
+  "anim.rename": "Renombrar…",
+  "anim.duplicate": "Duplicar",
+  "anim.deleteKeep": "Borrar animación (conservar frames)",
+  "anim.deleteFrames": "Borrar animación y sus frames"
 }

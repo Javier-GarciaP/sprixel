@@ -13,6 +13,14 @@ export type Tag = {
   mode: RepeatMode;
 };
 
+// What "New animation" asks for: it copies the base frame `count` times.
+export type NewAnimation = {
+  name: string;
+  count: number;
+  fps: number;
+  mode: RepeatMode;
+};
+
 export type FramesInfo = {
   frameCount: number;
   // One duration in milliseconds per frame. The default means "none of its own".
@@ -40,6 +48,24 @@ export interface FramesApi {
   addTag(sprite: SpriteRef, tag: Tag): Promise<void>;
   setTag(sprite: SpriteRef, name: string, tag: Tag): Promise<void>;
   removeTag(sprite: SpriteRef, name: string): Promise<void>;
+  // Each one is one undo step. A repeated name fails with `name_exists`.
+  animationCreate(sprite: SpriteRef, animation: NewAnimation): Promise<void>;
+  animationDuplicate(
+    sprite: SpriteRef,
+    name: string,
+    newName: string,
+  ): Promise<void>;
+  animationRename(
+    sprite: SpriteRef,
+    name: string,
+    newName: string,
+  ): Promise<void>;
+  // Without `withFrames` only the animation goes; its frames stay.
+  animationDelete(
+    sprite: SpriteRef,
+    name: string,
+    withFrames: boolean,
+  ): Promise<void>;
   // Calls back after every change of the project (`project://changed`).
   onChanged(listener: (event: ChangedEvent) => void): Promise<() => void>;
 }
