@@ -22,7 +22,7 @@
 
 ## 4. Game engines
 
-- [ ] 4.1 Write `docs/game-engines.md` and a test that checks the options and files it names
+- [x] 4.1 Write `docs/game-engines.md` and a test that checks the options and files it names
 
 ## 5. Finish
 

@@ -110,6 +110,9 @@ mod gamedata_tests;
 mod resize_tests;
 
 #[cfg(test)]
+mod engines_docs_tests;
+
+#[cfg(test)]
 mod analysis_tests;
 
 #[cfg(test)]
