@@ -18,6 +18,7 @@ type Props = {
   onOpen: (sprite: SpriteSummary) => void;
   onRename: (sprite: SpriteSummary) => void;
   onDuplicate: (sprite: SpriteSummary) => void;
+  onResize: (sprite: SpriteSummary) => void;
   onDelete: (sprite: SpriteSummary) => void;
   // The folders the sprite can move to.
   moveItems: MenuItem[];
@@ -42,6 +43,7 @@ export function DetailsPanel({
   onOpen,
   onRename,
   onDuplicate,
+  onResize,
   onDelete,
   moveItems,
   framesApi = coreFramesApi,
@@ -196,6 +198,9 @@ export function DetailsPanel({
           {t("command.sprite.delete")}
         </Button>
       </div>
+      <Button className="justify-center" onClick={() => onResize(sprite)}>
+        {t("command.sprite.resize")}
+      </Button>
       <div className="flex gap-2">
         <Button
           className="flex-1 justify-center"
