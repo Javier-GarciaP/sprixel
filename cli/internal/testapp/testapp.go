@@ -360,7 +360,11 @@ func (a *App) callTool(name string, args map[string]any, client string, approved
 		}
 		return text(map[string]any{"args": args}, false)
 	case "slow":
-		<-release
+		// A call that arrives after Stop sees a nil channel, which would wait
+		// forever. The app is already stopped, so it answers at once.
+		if release != nil {
+			<-release
+		}
 		return text(map[string]any{"code": "internal_error", "message": "the app stopped"}, true)
 	}
 	return text(map[string]any{"code": "unknown_tool", "message": fmt.Sprintf("there is no tool %q", name)}, true)
