@@ -296,3 +296,26 @@ fn analyze_sprite_cuts_long_lists() {
     assert_eq!(report["frame_reports"][0]["loose_pixels"]["count"], 64);
     assert_eq!(report["frame_reports"][0]["loose_pixels"]["at"].as_array().unwrap().len(), 50);
 }
+
+// Task 2.1: `inner` warns about a brim 2 rows high and gives its boxes; a
+// dry run gives the same warning and writes nothing; a thick shape and an
+// outside outline give no warning.
+#[test]
+fn inner_outline_warns_about_thin_parts() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let hat = "frame 1\n........\n..GGGG..\n..GGGG..\n..GGGG..\nGGGGGGGG\nGGGGGGGG\n........\n........\n";
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": hat })).unwrap();
+    let before = revision(&host);
+
+    let dry = call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R", "inner": true, "dry_run": true })).unwrap();
+    assert_eq!(dry["thin_regions"], json!([
+        { "x": 0, "y": 4, "width": 2, "height": 2 }, { "x": 6, "y": 4, "width": 2, "height": 2 }
+    ]));
+    let warning = dry["warnings"][0].as_str().unwrap();
+    assert!(warning.contains("2 part(s)") && warning.contains("x 0, y 4, 2x2"), "{warning}");
+    assert_eq!(revision(&host), before);
+
+    let outside = call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R", "dry_run": true })).unwrap();
+    assert!(outside.get("warnings").is_none() && outside.get("thin_regions").is_none());
+}

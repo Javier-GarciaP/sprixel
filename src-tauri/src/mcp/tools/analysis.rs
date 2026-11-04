@@ -17,7 +17,7 @@ pub fn tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "auto_outline",
-            description: concat!("Draws a one pixel outline with one palette key around the shape of a frame, so you do not draw it by hand. By default it draws on every transparent pixel that touches the shape (`connectivity` 8 also counts corners, 4 only the sides), holes included. `outside_only` true skips holes. `inner` true recolors the edge pixels of the shape instead of drawing around it. Outline pixels that fall outside the sprite are skipped and counted in `clipped`. Call it once, when the shape is done. Returns `pixels_changed` and an image of the frame.", write_note!()),
+            description: concat!("Draws a one pixel outline with one palette key around the shape of a frame, so you do not draw it by hand. By default it draws on every transparent pixel that touches the shape (`connectivity` 8 also counts corners, 4 only the sides), holes included. `outside_only` true skips holes. `inner` true recolors the edge pixels of the shape instead of drawing around it. Outline pixels that fall outside the sprite are skipped and counted in `clipped`. With `inner`, parts of the shape thinner than 3 pixels would turn entirely into outline: the answer then has `thin_regions` (boxes) and a `warnings` entry; try with `dry_run` first. Call it once, when the shape is done. Returns `pixels_changed` and an image of the frame.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "key"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -110,8 +110,22 @@ fn auto_outline(ctx: &Ctx, input: &Value) -> ToolResult {
         let key = opaque_key(&key_text, &valid_keys(project, sprite), "key")?;
         let outline = analysis::auto_outline(view_of(sprite, frame), &OutlineOptions { key, connectivity, outside_only, inner });
         let count = outline.changes.len();
+        let mut extra = json!({ "pixels_changed": count, "clipped": outline.clipped });
+        if inner {
+            let thin = analysis::thin_regions(view_of(sprite, frame), &outline.changes);
+            if !thin.is_empty() {
+                let boxes: Vec<String> =
+                    thin.iter().map(|r| format!("x {}, y {}, {}x{}", r.x, r.y, r.width, r.height)).collect();
+                extra["thin_regions"] = thin.iter().map(|r| json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })).collect();
+                extra["warnings"] = json!([format!(
+                    "{} part(s) of the shape are thinner than 3 pixels and turn entirely into outline: {}. Look at the image; draw them thicker, or outline outside (`inner` false)",
+                    thin.len(),
+                    boxes.join("; ")
+                )]);
+            }
+        }
         let ops = set_ops(&target, frame, outline.changes);
-        Ok(Plan::new(ops, json!({ "pixels_changed": count, "clipped": outline.clipped })).preview().busy(&target, frame))
+        Ok(Plan::new(ops, extra).preview().busy(&target, frame))
     })
 }
 

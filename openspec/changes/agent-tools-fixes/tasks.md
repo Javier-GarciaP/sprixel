@@ -6,7 +6,7 @@
 
 ## 2. Warnings
 
-- [ ] 2.1 Add `analysis::thin_regions` and the `inner` warning of `auto_outline`; verify a brim 2 rows high, a thick shape and no warning without `inner`
+- [x] 2.1 Add `analysis::thin_regions` and the `inner` warning of `auto_outline`; verify a brim 2 rows high, a thick shape and no warning without `inner`
 - [ ] 2.2 Add `analysis::isolated_changes` and the speckle warning of `auto_shade`; verify the 2x2 block and a clean shade
 
 ## 3. Analysis
