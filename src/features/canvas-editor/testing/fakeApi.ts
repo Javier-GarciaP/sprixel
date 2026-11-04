@@ -296,11 +296,22 @@ export class FakeEditorApi
     this.changed.forEach((listener) => listener(event));
   }
 
+  // The own duration of each frame (100 means none of its own).
+  durations: number[] = [];
+  durationCalls: { frame: number; ms: number }[] = [];
+
+  async setDuration(sprite: SpriteRef, frame: number, ms: number) {
+    this.durationCalls.push({ frame, ms });
+    this.durations[frame - 1] = ms;
+    this.revision++;
+    this.notify(sprite);
+  }
+
   async loadInfo(sprite: SpriteRef): Promise<FramesInfo> {
     void sprite;
     return {
       frameCount: this.frames.length,
-      durations: this.frames.map(() => 100),
+      durations: this.frames.map((_, i) => this.durations[i] ?? 100),
       defaultMs: 100,
       tags: this.tags.map((t) => ({ ...t })),
     };

@@ -275,6 +275,8 @@
   "frames.add": "Añadir un frame vacío después de este",
   "frames.addCopy": "Añadir una copia de este frame después",
   "frames.menu": "Menú del frame {n}",
+  "frames.duration": "Duración del frame {n} (ms)",
+  "frames.durationHint": "Milisegundos. Vacío: decide la velocidad de la animación.",
   "frames.duplicate": "Duplicar",
   "frames.delete": "Borrar",
   "anim.newTitle": "Nueva animación",

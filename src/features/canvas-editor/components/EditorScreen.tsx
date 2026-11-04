@@ -633,6 +633,7 @@ function Ready(props: ReadyProps) {
         onFrame={props.onFrame}
         onChanged={props.onFramesChanged}
         busyFrame={writing?.frame}
+        durations={framesInfo?.durations}
         tags={tags}
         animation={animation}
         onAnimation={chooseAnimation}

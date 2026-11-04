@@ -35,6 +35,8 @@ export interface FramesApi {
   ): Promise<number>;
   deleteFrame(sprite: SpriteRef, frame: number): Promise<void>;
   moveFrame(sprite: SpriteRef, from: number, to: number): Promise<void>;
+  // Gives one frame its own duration in milliseconds (10 to 10000).
+  setDuration(sprite: SpriteRef, frame: number, ms: number): Promise<void>;
   addTag(sprite: SpriteRef, tag: Tag): Promise<void>;
   setTag(sprite: SpriteRef, name: string, tag: Tag): Promise<void>;
   removeTag(sprite: SpriteRef, name: string): Promise<void>;
