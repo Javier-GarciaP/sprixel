@@ -175,7 +175,7 @@ fn the_walk_example_makes_a_three_frame_attack() {
     assert_eq!(rows(&host, &[], "walker", 7), rows(&host, &[], "walker", 1));
 
     let sprite = call(&core, &session, "get_sprite", json!({ "name": "walker", "frame": 7 })).unwrap();
-    assert_eq!(sprite["frame_durations"], json!([100, 100, 100, 100, 200, 60, 120]));
+    assert_eq!(sprite["frame_durations"], json!([null, null, null, null, 200, 60, 120]));
     assert_eq!(sprite["animations"][0]["mode"], "once", "{sprite}");
     let report = call(&core, &session, "analyze_sprite", json!({ "name": "walker", "outline_key": "K" })).unwrap();
     assert_eq!(report["frame_reports"][5]["loose_pixels"]["count"], 0, "{report}");

@@ -50,7 +50,7 @@ fn a_client_sees_every_tool_with_a_description_and_a_schema() {
         }
         // Every property is explained (a type, and a description or a name that says it).
         for (property, schema) in tool["inputSchema"]["properties"].as_object().unwrap() {
-            assert!(schema["type"].is_string(), "{name}.{property} has a type");
+            assert!(schema["type"].is_string() || schema["type"].is_array(), "{name}.{property} has a type");
         }
     }
 }

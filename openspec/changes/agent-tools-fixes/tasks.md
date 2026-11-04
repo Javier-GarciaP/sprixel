@@ -20,7 +20,7 @@
 
 ## 5. Frame durations
 
-- [ ] 5.1 Show `null` in `frame_durations` and accept `milliseconds: null`; verify default, own value, reset and an explicit 100 note
+- [x] 5.1 Show `null` in `frame_durations` and accept `milliseconds: null`; verify default, own value, reset and an explicit 100 note
 
 ## 6. Guides
 
