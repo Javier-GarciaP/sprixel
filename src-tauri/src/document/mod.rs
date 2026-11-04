@@ -4,6 +4,7 @@
 // Nothing outside the tests uses this module yet (IPC and MCP come later).
 #![allow(dead_code, unused_imports)]
 
+mod animation;
 mod error;
 mod external;
 mod grid;
@@ -17,6 +18,7 @@ mod ramp;
 mod resize;
 mod stroke;
 
+pub use animation::{create_animation, delete_animation, duplicate_animation, rename_animation};
 pub use error::DocError;
 pub use names::{copy_name, same_name, validate_name};
 pub use operation::{Applied, AppliedGroup, Operation, PixelBatch, PixelChange, SpriteRef, Target};

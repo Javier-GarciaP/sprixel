@@ -18,7 +18,7 @@ pub struct SpriteArg {
 }
 
 impl SpriteArg {
-    fn to_ref(&self) -> SpriteRef {
+    pub(super) fn to_ref(&self) -> SpriteRef {
         SpriteRef {
             folder: self.folder.clone(),
             name: self.name.clone(),
@@ -148,7 +148,7 @@ pub fn remove_tag(state: &ProjectState, sprite: &SpriteArg, name: &str) -> Resul
 }
 
 // One user action on a sprite: the operations are one history entry.
-fn run(
+pub(super) fn run(
     state: &ProjectState,
     sprite: &SpriteArg,
     ops: impl FnOnce(SpriteRef) -> Vec<Operation>,
@@ -179,7 +179,7 @@ fn run_checked(
     .map(|(_, event)| event)
 }
 
-fn announce(app: &tauri::AppHandle, event: ChangedEvent) {
+pub(super) fn announce(app: &tauri::AppHandle, event: ChangedEvent) {
     let _ = tauri::Emitter::emit(app, CHANGED_EVENT, event);
 }
 
@@ -262,12 +262,12 @@ pub fn tag_remove(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::document::{Color, Palette};
     use crate::ipc::browser::TargetInfo;
 
-    fn arg() -> SpriteArg {
+    pub(crate) fn arg() -> SpriteArg {
         SpriteArg { folder: vec![], name: "goblin".to_string() }
     }
 
@@ -276,7 +276,7 @@ mod tests {
     }
 
     /// An open project with a 2x1 sprite `goblin` of 4 frames.
-    fn open() -> (tempfile::TempDir, ProjectState) {
+    pub(crate) fn open() -> (tempfile::TempDir, ProjectState) {
         let parent = tempfile::tempdir().unwrap();
         let state = ProjectState::default();
         project::create_project(&state, parent.path(), "Kit").unwrap();
