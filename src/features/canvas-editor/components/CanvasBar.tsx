@@ -1,4 +1,5 @@
 import { useT } from "@/shared/lib/i18n";
+import { symmetryModes, type Symmetry } from "../tools/symmetry";
 import type { ToolId } from "../tools/tools";
 import { tools } from "../tools/tools";
 import { EditorIcon } from "./icons";
@@ -15,12 +16,31 @@ type Props = {
   // Rectangle and Ellipse can be outlined or filled.
   filled: boolean;
   onFilled: (filled: boolean) => void;
+  // Symmetry mode: what is drawn is also drawn mirrored.
+  symmetry: Symmetry;
+  onSymmetry: (symmetry: Symmetry) => void;
+  // The panels with a preview, and which one is open.
+  panel: "outline" | "shade" | "review" | null;
+  onPanel: (panel: "outline" | "shade" | "review" | null) => void;
   // An AI agent is drawing: what to say and what Stop does.
   agent?: { text: string; onStop: () => void } | null;
   // The Canvas and Text switch: the same place in both views.
   mode: "canvas" | "text";
   onMode: (mode: "canvas" | "text") => void;
 };
+
+const symmetryLabels = {
+  off: "editor.symmetryOff",
+  horizontal: "editor.symmetryHorizontal",
+  vertical: "editor.symmetryVertical",
+  both: "editor.symmetryBoth",
+} as const;
+
+const panelLabels = {
+  outline: "command.edit.outline",
+  shade: "command.edit.shade",
+  review: "command.view.review",
+} as const;
 
 const iconButton =
   "flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text disabled:cursor-not-allowed disabled:opacity-40";
@@ -39,6 +59,10 @@ export function CanvasBar({
   onRedo,
   filled,
   onFilled,
+  symmetry,
+  onSymmetry,
+  panel,
+  onPanel,
   agent,
   mode,
   onMode,
@@ -93,6 +117,36 @@ export function CanvasBar({
           ))}
         </div>
       )}
+      <div
+        role="group"
+        aria-label={t("editor.symmetry")}
+        className="flex rounded-md border border-border bg-surface p-0.5 text-xs"
+      >
+        {symmetryModes.map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={symmetry === mode}
+            onClick={() => onSymmetry(mode)}
+            className={`rounded px-2 py-1 ${symmetry === mode ? "bg-surface-2 font-semibold text-text" : "text-text-muted"}`}
+          >
+            {t(symmetryLabels[mode])}
+          </button>
+        ))}
+      </div>
+      <div role="group" aria-label={t("editor.finish")} className="flex gap-1">
+        {(["outline", "shade", "review"] as const).map((name) => (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={panel === name}
+            onClick={() => onPanel(panel === name ? null : name)}
+            className={`rounded-md border border-border px-2 py-1 text-xs ${panel === name ? "bg-surface-2 font-semibold text-text" : "bg-surface text-text-muted"}`}
+          >
+            {t(panelLabels[name])}
+          </button>
+        ))}
+      </div>
       {agent && (
         <div
           role="status"

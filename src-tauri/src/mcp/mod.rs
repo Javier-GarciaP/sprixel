@@ -18,10 +18,10 @@ mod server;
 mod sessions;
 mod token;
 mod tool;
-mod tools;
+pub(crate) mod tools;
 
 #[cfg(test)]
-mod testing;
+pub(crate) mod testing;
 
 pub use activity::{ACTIVITY_EVENT, Entry as ActivityEntry, Row as ActivityRow};
 pub use clients::{ClientInfo, Standing};

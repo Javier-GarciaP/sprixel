@@ -9,6 +9,7 @@ pub mod export;
 pub mod mcp;
 pub mod grid;
 pub mod palettes;
+pub mod power;
 
 use export::{FormatArg, OptionsArg, ScopeArg, SummaryInfo, WrittenInfo};
 use browser::{CHANGED_EVENT, CoreError, FrameInfo, SpriteTarget, TreeInfo};

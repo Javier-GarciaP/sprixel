@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 import { Menu } from "@/shared/components";
 import { useT } from "@/shared/lib/i18n";
 import { AnimationSelect } from "./AnimationSelect";
-import { rangeOf } from "./animation";
+import { chosenTag, rangeOf } from "./animation";
+import { DurationField } from "./DurationField";
+import { frameDurationMs, DEFAULT_FRAME_MS } from "./duration";
 import { FrameThumb } from "./FrameThumb";
 import type { FramesApi, SpriteRef, Tag } from "./types";
 import { useSpriteChanges } from "./useSpriteChanges";
@@ -23,6 +25,8 @@ type Props = {
   tags: Tag[];
   animation: string | null;
   onAnimation: (animation: string | null) => void;
+  // The own duration of each frame (the default means none of its own).
+  durations?: number[];
 };
 
 const button =
@@ -41,6 +45,7 @@ export function FramesColumn({
   tags,
   animation,
   onAnimation,
+  durations = [],
 }: Props) {
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
@@ -134,6 +139,24 @@ export function FramesColumn({
               />
             )}
           </button>
+          <div className="mt-0.5 flex justify-center">
+            <DurationField
+              frame={n}
+              own={
+                (durations[n - 1] ?? DEFAULT_FRAME_MS) === DEFAULT_FRAME_MS
+                  ? null
+                  : durations[n - 1]
+              }
+              fallback={frameDurationMs(
+                DEFAULT_FRAME_MS,
+                (
+                  chosenTag(tags, animation) ??
+                  tags.find((tag) => n >= tag.from && n <= tag.to)
+                )?.fps ?? 10,
+              )}
+              onSave={(ms) => void run(api.setDuration(sprite, n, ms))}
+            />
+          </div>
           <button
             type="button"
             aria-label={t("frames.menu", { n })}

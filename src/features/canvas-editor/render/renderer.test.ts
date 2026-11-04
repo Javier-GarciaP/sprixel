@@ -42,6 +42,120 @@ function paint(s: Scene, view: View, size = { width: 40, height: 40 }) {
   return { buffer, at };
 }
 
+describe("preview overlay", () => {
+  // Checks that a preview pixel is blended over the frame (here red over
+  // transparent gray), that the frame itself is not changed, and that a
+  // scene without overlay paints as before.
+  it("blends the preview color over the pixel and leaves the scene alone", () => {
+    const s = scene(["..", ".."], {
+      overlay: [{ x: 1, y: 0, code: code("R") }],
+    });
+    const before = [...s.pixels];
+    const { at } = paint(s, { zoom: 4, x: 0, y: 0 });
+    const [r, g, b, a] = at(5, 1);
+    expect(r).toBeGreaterThan(200);
+    expect(g).toBeLessThan(80);
+    expect(b).toBeLessThan(80);
+    expect(a).toBe(255);
+    expect([...s.pixels]).toEqual(before);
+    // The pixel next to it has no overlay: it is the checkerboard.
+    expect(at(1, 1)).toEqual(
+      paint(scene(["..", ".."]), { zoom: 4, x: 0, y: 0 }).at(1, 1),
+    );
+  });
+});
+
+describe("older onion frames", () => {
+  // Checks that the nearest frame wins where both have a pixel, that an older
+  // frame shows where the nearer one is empty, and that it is fainter.
+  it("shows the nearest frame first and older ones fainter", () => {
+    const view = { zoom: 4, x: 0, y: 0 };
+    const near = new Uint8Array(["R", ".", "."].map(code));
+    const old = new Uint8Array(["R", "R", "."].map(code));
+    const s = scene(["...", ""].slice(0, 1), {
+      onion: { pixels: near, opacity: 0.8 },
+      onionOlder: [{ pixels: old, opacity: 0.4 }],
+    });
+    const { at } = paint(s, view);
+    const blueness = (x: number) => at(x, 1)[2] - at(x, 1)[0];
+    // Pixel 0: both have it, the nearest (0.8) counts. Pixel 1: only the
+    // older one (0.4). Pixel 2: none, the checkerboard.
+    expect(blueness(0)).toBeGreaterThan(blueness(4));
+    expect(blueness(4)).toBeGreaterThan(blueness(8));
+  });
+});
+
+describe("anchors", () => {
+  // Checks that an anchor is a cross in the middle of its pixel (amber), that
+  // the selected one is white, and that nothing is drawn without anchors.
+  it("draws a cross in the middle of the pixel", () => {
+    const view = { zoom: 8, x: 0, y: 0 };
+    const rows = ["....", "...."];
+    const amber = paint(scene(rows, { anchors: [{ x: 1, y: 0 }] }), view);
+    // The middle of pixel (1, 0) is screen (12, 4).
+    expect(amber.at(12, 4)).toEqual([255, 176, 0, 255]);
+    expect(amber.at(12, 7)).toEqual([255, 176, 0, 255]);
+    const white = paint(
+      scene(rows, { anchors: [{ x: 1, y: 0, selected: true }] }),
+      view,
+    );
+    expect(white.at(12, 4)).toEqual([255, 255, 255, 255]);
+    const none = paint(scene(rows), view);
+    expect(none.at(12, 4)).not.toEqual([255, 176, 0, 255]);
+  });
+});
+
+describe("highlight", () => {
+  // Checks the box around a pixel: black just outside its edge, white one
+  // pixel further out, and nothing for a scene without highlight.
+  it("draws a black and white box around the pixel", () => {
+    const view = { zoom: 8, x: 4, y: 4 };
+    const { at } = paint(
+      scene(["..", ".."], { highlight: { x: 0, y: 0 } }),
+      view,
+    );
+    expect(at(3, 8)).toEqual([0, 0, 0, 255]);
+    expect(at(2, 8)).toEqual([255, 255, 255, 255]);
+    const plain = paint(scene(["..", ".."]), view);
+    expect(plain.at(3, 8)).not.toEqual([0, 0, 0, 255]);
+  });
+});
+
+describe("symmetry axis", () => {
+  // Checks that the vertical line is drawn on the screen column of the axis
+  // (x 2 of a 4 pixel wide sprite at 4x zoom is column 8) and that nothing is
+  // drawn when the line is off.
+  it("draws the mirror line only where it is on", () => {
+    const rows = ["....", "...."];
+    const view = { zoom: 4, x: 0, y: 0 };
+    const on = paint(scene(rows, { axis: { x: 2, y: null } }), view);
+    const lit = [0, 1, 2, 3, 4, 5, 6, 7].filter((sy) => {
+      const [r, g, b] = on.at(8, sy);
+      return r === 236 && g === 72 && b === 153;
+    });
+    expect(lit.length).toBeGreaterThan(0);
+    // The horizontal line is off: the row in the middle has no magenta.
+    const row = [0, 1, 2, 3, 5, 6, 7].map((sx) => on.at(sx, 4));
+    expect(row.some(([r, g, b]) => r === 236 && g === 72 && b === 153)).toBe(
+      false,
+    );
+    const off = paint(scene(rows, { axis: { x: null, y: null } }), view);
+    expect(off.at(8, 0)).toEqual(paint(scene(rows), view).at(8, 0));
+  });
+
+  // Checks that both lines cross and are clipped to the sprite.
+  it("draws the horizontal line across the sprite width only", () => {
+    const { at } = paint(scene(["....", "...."], { axis: { x: null, y: 1 } }), {
+      zoom: 4,
+      x: 0,
+      y: 0,
+    });
+    const lit = (sx: number) => at(sx, 4)[0] === 236 && at(sx, 4)[1] === 72;
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 8].some(lit)).toBe(true);
+    expect(at(16, 4)[3]).toBe(0);
+  });
+});
+
 describe("renderScene", () => {
   // Checks the "Zoomed in" scenario: at 800% every sprite pixel is an 8x8
   // block of one color, and the next block starts with no blending.

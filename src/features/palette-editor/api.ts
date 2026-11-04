@@ -40,4 +40,15 @@ export const corePaletteApi: PaletteApi = {
     return typeof chosen === "string" ? chosen : null;
   },
   importPalette: (name, path) => call<string>("palette_import", { name, path }),
+  rampPreview: (base, steps, hueShift) =>
+    call<string[]>("power_ramp_preview", { base, steps, hueShift }),
+  rampApply: (name, base, steps, hueShift) =>
+    call<{ keys: string[] }>("power_ramp_apply", {
+      palette: name,
+      base,
+      steps,
+      hueShift,
+    }),
+  removeUnused: (name) =>
+    call<string[]>("power_unused_remove", { palette: name }),
 };

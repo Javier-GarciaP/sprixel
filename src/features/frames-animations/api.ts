@@ -25,6 +25,8 @@ export const coreFramesApi: FramesApi = {
     call<void>("frames_delete", { sprite, frame }),
   moveFrame: (sprite, from, to) =>
     call<void>("frames_move", { sprite, from, to }),
+  setDuration: (sprite, frame, ms) =>
+    call<void>("power_duration_set", { sprite, frame, ms }),
   addTag: (sprite, tag: Tag) => call<void>("tag_add", { sprite, tag }),
   setTag: (sprite, name, tag) => call<void>("tag_set", { sprite, name, tag }),
   removeTag: (sprite, name) => call<void>("tag_remove", { sprite, name }),

@@ -8,6 +8,7 @@ import {
   snapLine,
   squareCorner,
 } from "../tools/shapes";
+import { mirrorPoints, type Symmetry } from "../tools/symmetry";
 import type { ToolId } from "../tools/tools";
 import { TRANSPARENT_CODE, type PaletteColor, type Rect } from "../types";
 import type { Point } from "../view/viewMath";
@@ -31,6 +32,8 @@ export type Events = {
   // The Eyedropper picked a color: the main one (left button) or the
   // secondary one (right button).
   onPick: (hex: string, button: Button) => void;
+  // The selection changed (or was cleared): the selection bar shows it.
+  onSelect?: (area: Rect | null) => void;
 };
 
 export type Modifiers = { shift: boolean };
@@ -49,6 +52,8 @@ export class DrawingController {
   private draft: Draft;
   // Rectangle and Ellipse can be outlined or filled.
   filled = false;
+  // Everything drawn is also drawn mirrored (not the Move tool).
+  symmetry: Symmetry = "off";
   private stroke: { code: number; last: Point } | null = null;
   // A shape being dragged: where it started and the color it is drawn with.
   private shape: { from: Point; code: number } | null = null;
@@ -111,7 +116,16 @@ export class DrawingController {
     }
     if (this.tool === "bucket") {
       // A fill is one click: it starts and ends here.
-      floodFill(this.draft, this.pixels, x, y, this.colors.codeFor(color));
+      const code = this.colors.codeFor(color);
+      for (const point of mirrorPoints(
+        x,
+        y,
+        this.width,
+        this.height,
+        this.symmetry,
+      )) {
+        floodFill(this.draft, this.pixels, point.x, point.y, code);
+      }
       this.flush();
       this.finish();
       return;
@@ -129,7 +143,7 @@ export class DrawingController {
       const code =
         this.tool === "eraser" ? TRANSPARENT_CODE : this.colors.codeFor(color);
       this.stroke = { code, last: { x, y } };
-      this.draft.set(x, y, code);
+      this.plot(x, y, code);
       this.flush();
     }
   }
@@ -154,7 +168,7 @@ export class DrawingController {
     if (!stroke) return;
     // Join the last position and this one, so a fast move leaves no gaps.
     for (const point of linePoints(stroke.last, { x, y })) {
-      this.draft.set(point.x, point.y, stroke.code);
+      this.plot(point.x, point.y, stroke.code);
     }
     stroke.last = { x, y };
     this.flush();
@@ -170,11 +184,17 @@ export class DrawingController {
     this.finish();
   }
 
+  // Selects an area from outside (after a paste, to move what was pasted).
+  select(area: Rect | null) {
+    this.setSelection(area);
+  }
+
   // Changes the selection and asks to repaint the old and the new area.
   private setSelection(next: Rect | null) {
     const old = this.selection;
     this.selection = next;
     for (const area of [old, next]) if (area) this.events.onDirty(area);
+    this.events.onSelect?.(next);
   }
 
   // The part of a rectangle that is inside the sprite, or null.
@@ -250,8 +270,21 @@ export class DrawingController {
           ? rectanglePoints(from, corner, this.filled)
           : ellipsePoints(from, corner, this.filled);
     }
-    for (const point of points) this.draft.set(point.x, point.y, shape.code);
+    for (const point of points) this.plot(point.x, point.y, shape.code);
     this.flush();
+  }
+
+  // Draws a pixel and, in symmetry mode, its mirrors.
+  private plot(x: number, y: number, code: number) {
+    for (const point of mirrorPoints(
+      x,
+      y,
+      this.width,
+      this.height,
+      this.symmetry,
+    )) {
+      this.draft.set(point.x, point.y, code);
+    }
   }
 
   private flush() {

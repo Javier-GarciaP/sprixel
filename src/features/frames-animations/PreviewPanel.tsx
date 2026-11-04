@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FrameData } from "@/shared/lib/core";
 import { useT } from "@/shared/lib/i18n";
 import { drawFrame } from "@/shared/lib/render";
+import { backgroundStyle, type PreviewBackground } from "./background";
 import { stepAt, stepsOf } from "./playback";
 import type { FramesApi, FramesInfo, SpriteRef, Tag } from "./types";
 import { useSpriteChanges } from "./useSpriteChanges";
@@ -31,6 +32,8 @@ type Props = {
   // The animation that is played, or null to play all the frames.
   tag: Tag | null;
   clock?: Clock;
+  // What shows behind the transparent pixels.
+  background?: PreviewBackground;
 };
 
 // A small canvas that plays the animation, or all the frames, with play and
@@ -42,6 +45,7 @@ export function PreviewPanel({
   info,
   tag,
   clock = screenClock,
+  background = "checker",
 }: Props) {
   const t = useT();
   const revision = useSpriteChanges(api, sprite);
@@ -117,8 +121,9 @@ export function PreviewPanel({
   return (
     <div data-testid="preview" data-frame={shown} data-ready={data.size > 0}>
       <div
-        className="flex items-center justify-center overflow-hidden rounded bg-surface-2"
-        style={{ height: BOX }}
+        data-testid="preview-surface"
+        className="flex items-center justify-center overflow-hidden rounded"
+        style={{ height: BOX, ...backgroundStyle(background) }}
       >
         <canvas
           ref={canvas}

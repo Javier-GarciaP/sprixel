@@ -12,7 +12,7 @@ import type { PaletteApi } from "@/features/palette-editor";
 import type { TextApi } from "@/features/text-view";
 import { EditorScreen } from "../components/EditorScreen";
 import type { CommandHandlers } from "../hooks/useEditorCommands";
-import type { EditorApi, SpriteRef } from "../api/types";
+import type { EditorApi, PowerApi, SpriteRef } from "../api/types";
 import { centeredView, fitZoom } from "../view/viewMath";
 
 // A clock the tests move by hand: `tick(ms)` passes that time and runs what was
@@ -118,6 +118,7 @@ function Host({
     <EditorScreen
       sprite={sprite}
       api={api}
+      powerApi={api as unknown as PowerApi}
       framesApi={api as unknown as FramesApi}
       paletteApi={api as unknown as PaletteApi}
       textApi={textApi}

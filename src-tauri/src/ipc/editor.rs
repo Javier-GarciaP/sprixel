@@ -20,7 +20,7 @@ pub struct SpriteArg {
 }
 
 impl SpriteArg {
-    fn to_ref(&self) -> SpriteRef {
+    pub(crate) fn to_ref(&self) -> SpriteRef {
         SpriteRef {
             folder: self.folder.clone(),
             name: self.name.clone(),
@@ -80,7 +80,7 @@ pub struct EditorError {
 }
 
 impl EditorError {
-    fn new(code: &str, message: &str) -> EditorError {
+    pub(crate) fn new(code: &str, message: &str) -> EditorError {
         EditorError {
             code: code.to_string(),
             message: message.to_string(),
@@ -207,7 +207,7 @@ fn same_sprite(a: &SpriteArg, b: &SpriteArg) -> bool {
         && a.name.eq_ignore_ascii_case(&b.name)
 }
 
-fn history_of(session: &crate::storage::Session) -> HistoryState {
+pub(crate) fn history_of(session: &crate::storage::Session) -> HistoryState {
     HistoryState {
         can_undo: !session.history.entries().is_empty(),
         can_redo: session.history.can_redo(),
@@ -215,7 +215,7 @@ fn history_of(session: &crate::storage::Session) -> HistoryState {
     }
 }
 
-fn palette_of(project: &Project, sprite: &SpriteRef) -> Vec<PaletteColor> {
+pub(crate) fn palette_of(project: &Project, sprite: &SpriteRef) -> Vec<PaletteColor> {
     project
         .find_sprite(sprite)
         .and_then(|s| project.palette(&s.palette))
@@ -231,7 +231,7 @@ fn palette_of(project: &Project, sprite: &SpriteRef) -> Vec<PaletteColor> {
         .unwrap_or_default()
 }
 
-fn not_found(sprite: &SpriteArg) -> EditorError {
+pub(crate) fn not_found(sprite: &SpriteArg) -> EditorError {
     EditorError::new("not_found", &format!("sprite {:?} does not exist", sprite.name))
 }
 

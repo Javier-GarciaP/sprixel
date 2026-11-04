@@ -154,3 +154,69 @@ describe("Onion skin", () => {
     );
   });
 });
+
+describe("Onion skin with more frames", () => {
+  // Four frames with a red pixel in frames 1, 2 and 3 at different places
+  // (x 1, 2 and 3 on row 1), and nothing in frame 4.
+  function fourFrames() {
+    const api = new FakeEditorApi(16, 16, 4, palette);
+    for (const frame of [1, 2, 3]) {
+      const rows = Array.from({ length: 16 }, () => ".".repeat(16));
+      rows[1] = ".".repeat(frame) + "R" + ".".repeat(15 - frame);
+      api.setFrame(frame, rows);
+    }
+    return api;
+  }
+  const frames = (n: number) =>
+    screen.getByRole("button", { name: `Previous frames: ${n}` });
+  const alpha = (x: number) => {
+    // How blue the pixel is: the more opaque the onion, the bluer.
+    const [r, , b] = colorOfPixel(16, 16, x, 1);
+    return b - r;
+  };
+
+  // Checks the "Three onion frames" scenario: on frame 4 with 3 frames, the
+  // pixels of frames 3, 2 and 1 show, older ones fainter. With 1 frame only
+  // frame 3 shows.
+  it("shows up to three previous frames, older ones fainter", async () => {
+    await openFrame(fourFrames(), 4);
+    await waitFor(() => expect(isBlue(colorOfPixel(16, 16, 3, 1))).toBe(true));
+    expect(isBlue(colorOfPixel(16, 16, 2, 1))).toBe(false);
+    expect(isBlue(colorOfPixel(16, 16, 1, 1))).toBe(false);
+
+    fireEvent.click(frames(3));
+    await waitFor(() => expect(isBlue(colorOfPixel(16, 16, 1, 1))).toBe(true));
+    expect(isBlue(colorOfPixel(16, 16, 2, 1))).toBe(true);
+    expect(alpha(3)).toBeGreaterThan(alpha(2));
+    expect(alpha(2)).toBeGreaterThan(alpha(1));
+
+    fireEvent.click(frames(2));
+    await waitFor(() => expect(isBlue(colorOfPixel(16, 16, 1, 1))).toBe(false));
+    expect(isBlue(colorOfPixel(16, 16, 2, 1))).toBe(true);
+  });
+
+  // Checks that near the start there are fewer frames: on frame 2 with 3
+  // frames only frame 1 shows, and the buttons are off while onion skin is off.
+  it("shows only the frames that exist and turns off with the switch", async () => {
+    const api = fourFrames();
+    await openFrame(api, 2);
+    fireEvent.click(frames(3));
+    await waitFor(() => expect(isBlue(colorOfPixel(16, 16, 1, 1))).toBe(true));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Show previous frame" }),
+    );
+    expect((frames(2) as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(isBlue(colorOfPixel(16, 16, 1, 1))).toBe(false));
+  });
+
+  // Checks the Shift+F key: 1, 2, 3 and back to 1.
+  it("goes through 1, 2 and 3 with Shift+F", async () => {
+    await openFrame(fourFrames(), 4);
+    for (const next of [2, 3, 1]) {
+      await waitFor(() => {
+        fireEvent.keyDown(window, { key: "F", shiftKey: true });
+        expect(frames(next).getAttribute("aria-pressed")).toBe("true");
+      });
+    }
+  });
+});

@@ -1,4 +1,4 @@
-import type { PaletteColor } from "../types";
+import type { PaletteColor, Rect } from "../types";
 
 // A sprite is found by its folder path and its name (see `SpriteRef` in the
 // core).
@@ -71,4 +71,144 @@ export interface EditorApi {
   onAgentOps(callback: (ops: AgentOps) => void): Promise<() => void>;
   // Tells the core that the replay of write `id` ended, so the frame is free.
   playbackDone(id: number): Promise<void>;
+}
+
+// ---- The power tools (see `power.rs` in the core) ----
+
+export type Direction =
+  "left_to_right" | "right_to_left" | "top_to_bottom" | "bottom_to_top";
+
+// A change of a region of one frame.
+export type RegionAction =
+  | { kind: "flip_horizontal" }
+  | { kind: "flip_vertical" }
+  | { kind: "rotate"; degrees: 90 | 180 | 270 }
+  | { kind: "move"; dx: number; dy: number; wrap: boolean }
+  | { kind: "mirror"; direction: Direction };
+
+// What a write of the power tools answers.
+export type Applied = HistoryState & { pixelsChanged: number };
+
+// A copied region: one key per pixel, and the palette they belong to.
+export type Clip = {
+  palette: string;
+  width: number;
+  height: number;
+  keys: string;
+};
+
+export type OutlineArgs = {
+  key: string;
+  connectivity: 4 | 8;
+  outsideOnly: boolean;
+  inner: boolean;
+};
+
+export type Light =
+  | "top-left"
+  | "top"
+  | "top-right"
+  | "left"
+  | "right"
+  | "bottom-left"
+  | "bottom"
+  | "bottom-right";
+
+export type ShadeArgs = {
+  light: Light;
+  base: string;
+  // The ramp from dark to light; it includes `base`.
+  keys: string[];
+  region: Rect | null;
+};
+
+// The pixels a preview would change: [x, y, key]. Nothing is written.
+export type Preview = { pixels: [number, number, string][] };
+
+export type FrameReview = {
+  frame: number;
+  loose: [number, number][];
+  gaps: [number, number][];
+};
+
+export type ChangeReview = {
+  from: number;
+  to: number;
+  changedPixels: number;
+  bbox: Rect | null;
+  groundKept: boolean;
+};
+
+export type Review = {
+  used: string[];
+  unused: string[];
+  frames: FrameReview[];
+  changes: ChangeReview[];
+};
+
+export type TileMismatch = {
+  edge: "left_right" | "top_bottom";
+  a: [number, number];
+  b: [number, number];
+};
+
+export type TileCheck = { seamless: boolean; mismatches: TileMismatch[] };
+
+// A named point of a sprite, or of one frame of it.
+export type Anchor = {
+  name: string;
+  x: number;
+  y: number;
+  frame: number | null;
+};
+
+// Which anchor a save replaces (a rename or a move).
+export type AnchorKey = { name: string; frame: number | null };
+
+// What the editor asks of the core for the power tools. The real calls are in
+// `power.ts`; the tests use the fake.
+export interface PowerApi {
+  region(
+    sprite: SpriteRef,
+    frame: number,
+    region: Rect | null,
+    action: RegionAction,
+  ): Promise<Applied>;
+  copy(sprite: SpriteRef, frame: number, region: Rect | null): Promise<Clip>;
+  paste(
+    sprite: SpriteRef,
+    frame: number,
+    clip: Clip,
+    at: { x: number; y: number },
+    skipTransparent: boolean,
+  ): Promise<Applied>;
+  outlinePreview(
+    sprite: SpriteRef,
+    frame: number,
+    args: OutlineArgs,
+  ): Promise<Preview>;
+  outlineApply(
+    sprite: SpriteRef,
+    frame: number,
+    args: OutlineArgs,
+  ): Promise<Applied>;
+  shadePreview(
+    sprite: SpriteRef,
+    frame: number,
+    args: ShadeArgs,
+  ): Promise<Preview>;
+  shadeApply(
+    sprite: SpriteRef,
+    frame: number,
+    args: ShadeArgs,
+  ): Promise<Applied>;
+  review(sprite: SpriteRef, outlineKey: string | null): Promise<Review>;
+  tileCheck(sprite: SpriteRef, frame: number): Promise<TileCheck>;
+  anchors(sprite: SpriteRef): Promise<Anchor[]>;
+  saveAnchor(
+    sprite: SpriteRef,
+    anchor: Anchor,
+    replaces: AnchorKey | null,
+  ): Promise<void>;
+  deleteAnchor(sprite: SpriteRef, key: AnchorKey): Promise<void>;
 }

@@ -10,9 +10,26 @@ export type Scene = {
   pixels: Uint8Array;
   colors: ColorTable;
   onion: { pixels: Uint8Array; opacity: number } | null;
+  // Older frames of the onion skin, nearest first, each fainter than the
+  // one before. A pixel shows the nearest frame that has something there.
+  onionOlder?: { pixels: Uint8Array; opacity: number }[];
   grid: boolean;
   selection: Rect | null;
+  // The mirror lines of the symmetry mode, in sprite pixels (see
+  // `axisLines`): `x` is the vertical line and `y` the horizontal one.
+  axis?: { x: number | null; y: number | null };
+  // Pixels that a dialog would write (Outline, Shade): shown over the frame
+  // in see-through colors, but not written. `code` is a palette key code.
+  overlay?: { x: number; y: number; code: number }[];
+  // A pixel to point at (the Review panel): a box around it.
+  highlight?: { x: number; y: number } | null;
+  // The anchors of the frame, drawn as a small cross (their names are shown
+  // by the editor over the canvas).
+  anchors?: { x: number; y: number; selected?: boolean }[];
 };
+
+// How much of the preview color shows over the pixel under it.
+export const OVERLAY_ALPHA = 0.75;
 
 // Where the sprite is on the screen: a whole-number zoom and the screen
 // position of its top left corner.
@@ -71,10 +88,11 @@ export function renderScene(
       const at = py * scene.width + px;
       const code = scene.pixels[at];
       const opaque = code !== TRANSPARENT_CODE && table[code * 4 + 3] === 255;
-      const onionOn =
-        !opaque &&
-        scene.onion !== null &&
-        scene.onion.pixels[at] !== TRANSPARENT_CODE;
+      const layer = opaque
+        ? undefined
+        : [scene.onion, ...(scene.onionOlder ?? [])].find(
+            (l) => l && l.pixels[at] !== TRANSPARENT_CODE,
+          );
       const x0 = view.x + px * zoom;
       const y0 = view.y + py * zoom;
       for (let ly = 0; ly < zoom; ly++) {
@@ -96,8 +114,8 @@ export function renderScene(
                 Math.floor((sy - view.y) / CHECKER_SIZE)) &
               1;
             [r, g, b] = cell === 0 ? CHECKER_LIGHT : CHECKER_DARK;
-            if (onionOn) {
-              const a = scene.onion!.opacity;
+            if (layer) {
+              const a = layer.opacity;
               r = Math.round(r + (ONION_BLUE[0] - r) * a);
               g = Math.round(g + (ONION_BLUE[1] - g) * a);
               b = Math.round(b + (ONION_BLUE[2] - b) * a);
@@ -120,8 +138,165 @@ export function renderScene(
       }
     }
   }
+  if (scene.overlay) {
+    drawOverlay(buffer, viewWidth, viewHeight, scene, view, {
+      first,
+      last,
+      top,
+      bottom,
+    });
+  }
   if (scene.selection) {
     drawSelection(buffer, viewWidth, viewHeight, scene.selection, view);
+  }
+  if (scene.anchors)
+    drawAnchors(buffer, viewWidth, viewHeight, scene.anchors, view);
+  if (scene.highlight)
+    drawHighlight(buffer, viewWidth, viewHeight, scene.highlight, view);
+  if (scene.axis) drawAxis(buffer, viewWidth, viewHeight, scene, view);
+}
+
+// The preview pixels that are inside the painted area, blended over it.
+function drawOverlay(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  scene: Scene,
+  view: View,
+  area: { first: number; last: number; top: number; bottom: number },
+) {
+  const table = scene.colors;
+  for (const { x, y, code } of scene.overlay!) {
+    if (x < area.first || x > area.last || y < area.top || y > area.bottom) {
+      continue;
+    }
+    const color = [table[code * 4], table[code * 4 + 1], table[code * 4 + 2]];
+    for (let ly = 0; ly < view.zoom; ly++) {
+      const sy = view.y + y * view.zoom + ly;
+      if (sy < 0 || sy >= viewHeight) continue;
+      for (let lx = 0; lx < view.zoom; lx++) {
+        const sx = view.x + x * view.zoom + lx;
+        if (sx < 0 || sx >= viewWidth) continue;
+        const o = (sy * viewWidth + sx) * 4;
+        for (let c = 0; c < 3; c++) {
+          buffer[o + c] = Math.round(
+            buffer[o + c] + (color[c] - buffer[o + c]) * OVERLAY_ALPHA,
+          );
+        }
+        buffer[o + 3] = 255;
+      }
+    }
+  }
+}
+
+// A cross in the middle of the anchor pixel: amber with a black edge so it
+// shows on any color. The selected anchor is white.
+export const ANCHOR_COLOR = [255, 176, 0] as const;
+
+const AROUND = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+];
+
+function drawAnchors(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  anchors: NonNullable<Scene["anchors"]>,
+  view: View,
+) {
+  const put = (sx: number, sy: number, color: readonly number[]) => {
+    if (sx < 0 || sy < 0 || sx >= viewWidth || sy >= viewHeight) return;
+    const o = (sy * viewWidth + sx) * 4;
+    [buffer[o], buffer[o + 1], buffer[o + 2]] = color;
+    buffer[o + 3] = 255;
+  };
+  const arm = Math.max(3, Math.round(view.zoom * 0.9));
+  for (const { x, y, selected } of anchors) {
+    const cx = Math.floor(view.x + (x + 0.5) * view.zoom);
+    const cy = Math.floor(view.y + (y + 0.5) * view.zoom);
+    const color = selected ? [255, 255, 255] : ANCHOR_COLOR;
+    for (let d = -arm; d <= arm; d++) {
+      for (const [ox, oy] of AROUND) {
+        put(cx + d + ox, cy + oy, [0, 0, 0]);
+        put(cx + ox, cy + d + oy, [0, 0, 0]);
+      }
+    }
+    for (let d = -arm; d <= arm; d++) {
+      put(cx + d, cy, color);
+      put(cx, cy + d, color);
+    }
+  }
+}
+
+// A black box with a white box around it: seen on any color.
+function drawHighlight(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  pixel: { x: number; y: number },
+  view: View,
+) {
+  const box = (grow: number, value: number) => {
+    const left = view.x + pixel.x * view.zoom - grow;
+    const top = view.y + pixel.y * view.zoom - grow;
+    const right = view.x + (pixel.x + 1) * view.zoom - 1 + grow;
+    const bottom = view.y + (pixel.y + 1) * view.zoom - 1 + grow;
+    const put = (sx: number, sy: number) => {
+      if (sx < 0 || sy < 0 || sx >= viewWidth || sy >= viewHeight) return;
+      const o = (sy * viewWidth + sx) * 4;
+      buffer[o] = buffer[o + 1] = buffer[o + 2] = value;
+      buffer[o + 3] = 255;
+    };
+    for (let sx = left; sx <= right; sx++) {
+      put(sx, top);
+      put(sx, bottom);
+    }
+    for (let sy = top; sy <= bottom; sy++) {
+      put(left, sy);
+      put(right, sy);
+    }
+  };
+  box(2, 255);
+  box(1, 0);
+}
+
+// Magenta stands out on the gray checkerboard and on most palettes.
+export const AXIS_COLOR = [236, 72, 153] as const;
+
+// A dashed line over the sprite for each mirror line that is on. It is
+// painted last, so it is on top of the pixels and of the selection.
+function drawAxis(
+  buffer: Uint8ClampedArray,
+  viewWidth: number,
+  viewHeight: number,
+  scene: Scene,
+  view: View,
+) {
+  const put = (sx: number, sy: number) => {
+    if (sx < 0 || sy < 0 || sx >= viewWidth || sy >= viewHeight) return;
+    const o = (sy * viewWidth + sx) * 4;
+    [buffer[o], buffer[o + 1], buffer[o + 2]] = AXIS_COLOR;
+    buffer[o + 3] = 255;
+  };
+  const { x, y } = scene.axis!;
+  const left = view.x;
+  const top = view.y;
+  const right = left + scene.width * view.zoom;
+  const bottom = top + scene.height * view.zoom;
+  if (x !== null) {
+    const sx = Math.round(view.x + x * view.zoom);
+    for (let sy = top; sy < bottom; sy++) if ((sy >> 2) % 2 === 0) put(sx, sy);
+  }
+  if (y !== null) {
+    const sy = Math.round(view.y + y * view.zoom);
+    for (let sx = left; sx < right; sx++) if ((sx >> 2) % 2 === 0) put(sx, sy);
   }
 }
 

@@ -16,9 +16,35 @@ const paths: Record<string, string> = {
   undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
   redo: "M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3",
   swap: "M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7",
+  anchor:
+    "M12 4a2 2 0 100 4 2 2 0 000-4zM12 8v12M7 14c0 3 2.5 6 5 6s5-3 5-6M4 14h3M17 14h3",
+  flipHorizontal: "M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z",
+  flipVertical: "M3 12h18M7 8l5-5 5 5zM7 16l5 5 5-5z",
+  rotateRight: "M20 12a8 8 0 11-3-6.2M20 4v5h-5",
+  rotateLeft: "M4 12a8 8 0 103-6.2M4 4v5h5",
+  rotate180: "M4 12a8 8 0 0114-5M18 3v4h-4M20 12a8 8 0 01-14 5M6 21v-4h4",
+  mirrorLeftToRight: "M12 3v18M3 12h6M6 9l3 3-3 3",
+  mirrorRightToLeft: "M12 3v18M21 12h-6M18 9l-3 3 3 3",
+  mirrorTopToBottom: "M3 12h18M12 3v6M9 6l3 3 3-3",
+  mirrorBottomToTop: "M3 12h18M12 21v-6M9 18l3-3 3 3",
+  paste: "M9 4h6v3H9zM7 5H5v15h14V5h-2M9 12h6M9 16h6",
 };
 
-export type EditorIconName = ToolId | "undo" | "redo" | "swap";
+export type EditorIconName =
+  | ToolId
+  | "undo"
+  | "redo"
+  | "swap"
+  | "flipHorizontal"
+  | "flipVertical"
+  | "rotateRight"
+  | "rotateLeft"
+  | "rotate180"
+  | "mirrorLeftToRight"
+  | "mirrorRightToLeft"
+  | "mirrorTopToBottom"
+  | "mirrorBottomToTop"
+  | "paste";
 
 export function EditorIcon({
   name,

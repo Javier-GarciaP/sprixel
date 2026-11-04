@@ -81,6 +81,7 @@ describe("shortcutGroups", () => {
       "C",
       "M",
       "V",
+      "A",
     ]);
     expect(editor.rows.find((r) => r.id === "edit.undo")?.keys).toEqual([
       "Ctrl",
