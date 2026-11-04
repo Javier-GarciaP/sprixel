@@ -2,7 +2,7 @@
 
 ## 1. Format versions
 
-- [ ] 1.1 Treat a file with no `formatVersion` as version 1 and open sprite files with no `frameDurations`; verify with fixture projects of old versions
+- [x] 1.1 Treat a file with no `formatVersion` as version 1 and open sprite files with no `frameDurations`; verify with fixture projects of old versions
 - [ ] 1.2 Verify a newer project is refused and nothing is written, and a multi-step migration chain with a backup; write `docs/project-format.md`
 
 ## 2. Export JSON

@@ -38,6 +38,9 @@ mod format_tests;
 mod migrate_tests;
 
 #[cfg(test)]
+mod compat_tests;
+
+#[cfg(test)]
 mod atomic_tests;
 
 #[cfg(test)]

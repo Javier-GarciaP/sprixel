@@ -170,6 +170,8 @@ fn reading_a_file_with_another_version_explains_why() {
     assert!(newer.contains("newer Sprixel"), "{newer}");
     let older = manifest_from_text(MANIFEST_V0).unwrap_err();
     assert!(older.contains("migration"), "{older}");
-    let none = manifest_from_text(r##"{ "name": "x" }"##).unwrap_err();
-    assert!(none.contains("formatVersion"), "{none}");
+    // A file with no version is version 1 (the first files), so it reads.
+    assert!(manifest_from_text(r##"{ "name": "x" }"##).is_ok());
+    let text = manifest_from_text(r##"{ "formatVersion": "1", "name": "x" }"##).unwrap_err();
+    assert!(text.contains("formatVersion"), "{text}");
 }
