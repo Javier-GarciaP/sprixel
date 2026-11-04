@@ -10,7 +10,7 @@
 
 ## 2. Interface (agent B)
 
-- [ ] 2.1 Group the frames strip by animation (collapsible header with name, fps, loop, play; Base first, No animation last); verify with a sprite of two animations
+- [x] 2.1 Group the frames strip by animation (collapsible header with name, fps, loop, play; Base first, No animation last); verify with a sprite of two animations
 - [ ] 2.2 Add "New animation..." (copy the base) and the header menu (rename, duplicate, delete with or without frames), each one undo step; verify
 - [ ] 2.3 Play a single group, collapse long lists above 40 frames, and update `docs/editor-tools-test.md`; verify
 

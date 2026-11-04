@@ -18,6 +18,9 @@ async function open() {
   const api = new FakeEditorApi(8, 8, 3);
   api.tags = [{ name: "walk", from: 1, to: 2, fps: 8, mode: "loop" }];
   renderEditor(api);
+  // The animations load after the frames; the boxes are used once the strip
+  // has its groups (the frames move into them).
+  await screen.findByRole("region", { name: "walk" });
   await screen.findByLabelText("Duration of frame 3 (ms)");
   return api;
 }

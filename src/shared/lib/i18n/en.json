@@ -623,5 +623,13 @@
   "toolbar.more": "More",
   "toolbar.wrap": "Wrap around when moving",
   "toolbar.nothingToUndo": "Nothing to undo",
-  "toolbar.nothingToRedo": "Nothing to redo"
+  "toolbar.nothingToRedo": "Nothing to redo",
+  "frames.groupBase": "Base",
+  "frames.groupNone": "No animation",
+  "frames.groupOpen": "Show the frames of {name}",
+  "frames.groupClose": "Hide the frames of {name}",
+  "frames.count": "{count} fr.",
+  "frames.overlap": "Some animations share frames. Each frame is shown once.",
+  "anim.playNamed": "Play {name}",
+  "anim.menuNamed": "Menu of {name}"
 }
