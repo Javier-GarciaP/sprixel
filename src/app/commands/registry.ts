@@ -316,6 +316,12 @@ commands.push(
     group: "editor",
     shortcut: "T",
   },
+  {
+    id: "view.onionFrames",
+    labelKey: "command.view.onionFrames",
+    group: "editor",
+    shortcut: "Shift+F",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);

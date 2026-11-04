@@ -45,7 +45,7 @@
 
 - [x] 9.1 Add the preview background selector and verify the three backgrounds
 - [x] 9.2 Add the 3x3 tile preview with the seam warning and verify seamless and mismatch cases
-- [ ] 9.3 Add the onion skin with 1 to 3 frames and verify the frames shown and the fading
+- [x] 9.3 Add the onion skin with 1 to 3 frames and verify the frames shown and the fading
 
 ## 10. Manual test page and end
 

@@ -10,6 +10,9 @@ export type Scene = {
   pixels: Uint8Array;
   colors: ColorTable;
   onion: { pixels: Uint8Array; opacity: number } | null;
+  // Older frames of the onion skin, nearest first, each fainter than the
+  // one before. A pixel shows the nearest frame that has something there.
+  onionOlder?: { pixels: Uint8Array; opacity: number }[];
   grid: boolean;
   selection: Rect | null;
   // The mirror lines of the symmetry mode, in sprite pixels (see
@@ -85,10 +88,11 @@ export function renderScene(
       const at = py * scene.width + px;
       const code = scene.pixels[at];
       const opaque = code !== TRANSPARENT_CODE && table[code * 4 + 3] === 255;
-      const onionOn =
-        !opaque &&
-        scene.onion !== null &&
-        scene.onion.pixels[at] !== TRANSPARENT_CODE;
+      const layer = opaque
+        ? undefined
+        : [scene.onion, ...(scene.onionOlder ?? [])].find(
+            (l) => l && l.pixels[at] !== TRANSPARENT_CODE,
+          );
       const x0 = view.x + px * zoom;
       const y0 = view.y + py * zoom;
       for (let ly = 0; ly < zoom; ly++) {
@@ -110,8 +114,8 @@ export function renderScene(
                 Math.floor((sy - view.y) / CHECKER_SIZE)) &
               1;
             [r, g, b] = cell === 0 ? CHECKER_LIGHT : CHECKER_DARK;
-            if (onionOn) {
-              const a = scene.onion!.opacity;
+            if (layer) {
+              const a = layer.opacity;
               r = Math.round(r + (ONION_BLUE[0] - r) * a);
               g = Math.round(g + (ONION_BLUE[1] - g) * a);
               b = Math.round(b + (ONION_BLUE[2] - b) * a);

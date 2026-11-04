@@ -65,6 +65,26 @@ describe("preview overlay", () => {
   });
 });
 
+describe("older onion frames", () => {
+  // Checks that the nearest frame wins where both have a pixel, that an older
+  // frame shows where the nearer one is empty, and that it is fainter.
+  it("shows the nearest frame first and older ones fainter", () => {
+    const view = { zoom: 4, x: 0, y: 0 };
+    const near = new Uint8Array(["R", ".", "."].map(code));
+    const old = new Uint8Array(["R", "R", "."].map(code));
+    const s = scene(["...", ""].slice(0, 1), {
+      onion: { pixels: near, opacity: 0.8 },
+      onionOlder: [{ pixels: old, opacity: 0.4 }],
+    });
+    const { at } = paint(s, view);
+    const blueness = (x: number) => at(x, 1)[2] - at(x, 1)[0];
+    // Pixel 0: both have it, the nearest (0.8) counts. Pixel 1: only the
+    // older one (0.4). Pixel 2: none, the checkerboard.
+    expect(blueness(0)).toBeGreaterThan(blueness(4));
+    expect(blueness(4)).toBeGreaterThan(blueness(8));
+  });
+});
+
 describe("anchors", () => {
   // Checks that an anchor is a cross in the middle of its pixel (amber), that
   // the selected one is white, and that nothing is drawn without anchors.

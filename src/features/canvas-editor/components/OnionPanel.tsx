@@ -11,10 +11,20 @@ type Props = {
   // Percent, from 10 to 80.
   opacity: number;
   onOpacity: (percent: number) => void;
+  // How many previous frames show, from 1 to 3.
+  frames: number;
+  onFrames: (frames: number) => void;
 };
 
 // The onion skin options: the switch and the opacity of the previous frame.
-export function OnionPanel({ on, onToggle, opacity, onOpacity }: Props) {
+export function OnionPanel({
+  on,
+  onToggle,
+  opacity,
+  onOpacity,
+  frames,
+  onFrames,
+}: Props) {
   const t = useT();
   return (
     <div className="flex flex-col gap-2 text-xs text-text">
@@ -25,6 +35,28 @@ export function OnionPanel({ on, onToggle, opacity, onOpacity }: Props) {
           onChange={onToggle}
           label={t("editor.onionShow")}
         />
+      </div>
+      <div
+        role="group"
+        aria-label={t("editor.onionFrames")}
+        className="flex items-center justify-between gap-2 text-text-muted"
+      >
+        {t("editor.onionFrames")}
+        <div className="flex rounded-md border border-border bg-bg p-0.5">
+          {[1, 2, 3].map((n) => (
+            <button
+              key={n}
+              type="button"
+              disabled={!on}
+              aria-pressed={frames === n}
+              aria-label={t("editor.onionFramesN", { n })}
+              onClick={() => onFrames(n)}
+              className={`rounded px-2 py-0.5 disabled:opacity-40 ${frames === n ? "bg-surface-2 font-semibold text-text" : ""}`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
       <label className="flex items-center justify-between gap-2 text-text-muted">
         {t("editor.onionOpacity")}

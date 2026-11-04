@@ -28,7 +28,8 @@ export function useSpriteData(
   api: EditorApi,
   sprite: SpriteRef | null,
   frame: number,
-  withPrevious: boolean,
+  // How many previous frames onion skin shows (0 is off).
+  count: number,
 ) {
   const [data, setData] = useState<SpriteData>({ status: "loading" });
   const [version, setVersion] = useState(0);
@@ -61,28 +62,32 @@ export function useSpriteData(
     // `key` stands for `sprite`.
   }, [api, key, frame, version]);
 
-  // The previous frame for onion skin. It is only a picture to look at: it
-  // is read on its own, so turning onion skin on or off does not reload the
-  // frame that is being drawn. There is none for frame 1.
-  const [previous, setPrevious] = useState<Uint8Array | null>(null);
+  // The previous frames for onion skin, nearest first (`count` of them, 0
+  // when it is off). They are only pictures to look at: they are read on
+  // their own, so turning onion skin on or off does not reload the frame that
+  // is being drawn. Frame 1 has none; frame 2 has one.
+  const [previous, setPrevious] = useState<Uint8Array[]>([]);
   useEffect(() => {
-    if (!sprite || !withPrevious || frame < 2) {
-      setPrevious(null);
+    const wanted = Array.from(
+      { length: Math.min(count, Math.max(0, frame - 1)) },
+      (_, i) => frame - 1 - i,
+    );
+    if (!sprite || wanted.length === 0) {
+      setPrevious([]);
       return;
     }
     let stale = false;
-    api
-      .loadFrame(sprite, frame - 1)
-      .then((keys) => {
-        if (!stale) setPrevious(keysToCodes(keys));
+    Promise.all(wanted.map((n) => api.loadFrame(sprite, n)))
+      .then((list) => {
+        if (!stale) setPrevious(list.map(keysToCodes));
       })
       .catch(() => {
-        if (!stale) setPrevious(null);
+        if (!stale) setPrevious([]);
       });
     return () => {
       stale = true;
     };
-  }, [api, key, frame, withPrevious, version]);
+  }, [api, key, frame, count, version]);
 
   return {
     data: sprite ? data : ({ status: "loading" } as SpriteData),

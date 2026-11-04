@@ -188,12 +188,16 @@ function OpenSprite({
   const [secondary, setSecondary] = useState("#FFFFFF");
   const [filled, setFilled] = useState(false);
   const [symmetry, setSymmetry] = useState<Symmetry>("off");
-  const [onion, setOnion] = useState({ on: true, opacity: DEFAULT_OPACITY });
+  const [onion, setOnion] = useState({
+    on: true,
+    opacity: DEFAULT_OPACITY,
+    frames: 1,
+  });
   const { data, previous, reload } = useSpriteData(
     api,
     sprite,
     frame,
-    onion.on,
+    onion.on ? onion.frames : 0,
   );
 
   // A frame that no longer exists (after an undo, for example) goes to the
@@ -272,7 +276,7 @@ type ReadyProps = {
   sprite: SpriteRef;
   info: SpriteInfo;
   pixels: Uint8Array;
-  previous: Uint8Array | null;
+  previous: Uint8Array[];
   frame: number;
   onFrame: (frame: number) => void;
   tool: ToolId;
@@ -286,8 +290,8 @@ type ReadyProps = {
   onFilled: (filled: boolean) => void;
   symmetry: Symmetry;
   onSymmetry: (symmetry: Symmetry) => void;
-  onion: { on: boolean; opacity: number };
-  onOnion: (onion: { on: boolean; opacity: number }) => void;
+  onion: { on: boolean; opacity: number; frames: number };
+  onOnion: (onion: { on: boolean; opacity: number; frames: number }) => void;
   pixelGrid: boolean;
 };
 
@@ -655,6 +659,8 @@ function Ready(props: ReadyProps) {
       setPanel((now) => (now === "review" ? null : "review")),
     "edit.copy": copy,
     "edit.paste": paste,
+    "view.onionFrames": () =>
+      props.onOnion({ ...props.onion, frames: (props.onion.frames % 3) + 1 }),
     "view.onionSkin": () =>
       props.onOnion({ ...props.onion, on: !props.onion.on }),
     "view.zoomIn": () => canvas.zoomIn(),
@@ -672,9 +678,15 @@ function Ready(props: ReadyProps) {
       height: info.height,
       pixels,
       colors: controller.colors.table,
+      onionOlder: props.onion.on
+        ? props.previous.slice(1).map((pixels, i) => ({
+            pixels,
+            opacity: props.onion.opacity / 100 / (i + 2),
+          }))
+        : [],
       onion:
-        props.onion.on && props.previous
-          ? { pixels: props.previous, opacity: props.onion.opacity / 100 }
+        props.onion.on && props.previous[0]
+          ? { pixels: props.previous[0], opacity: props.onion.opacity / 100 }
           : null,
       grid: props.pixelGrid,
       anchors: shownAnchors.map((a) => ({
@@ -944,6 +956,8 @@ function Ready(props: ReadyProps) {
             onToggle={(on) => props.onOnion({ ...props.onion, on })}
             opacity={props.onion.opacity}
             onOpacity={(opacity) => props.onOnion({ ...props.onion, opacity })}
+            frames={props.onion.frames}
+            onFrames={(frames) => props.onOnion({ ...props.onion, frames })}
           />
         }
       />
