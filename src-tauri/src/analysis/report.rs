@@ -104,3 +104,9 @@ pub fn detect_outline_key(frames: &[View]) -> Option<char> {
     let total: usize = counts.values().sum();
     counts.into_iter().find(|(_, n)| n * 2 > total).map(|(key, _)| key as char)
 }
+
+/// The lowest row (counting from 0 at the top) that has an opaque pixel, or
+/// `None` for an empty frame. It is where the sprite stands.
+pub fn lowest_row(view: View) -> Option<u32> {
+    (0..view.height as i64).rev().find(|&y| (0..view.width as i64).any(|x| view.is_opaque(x, y))).map(|y| y as u32)
+}

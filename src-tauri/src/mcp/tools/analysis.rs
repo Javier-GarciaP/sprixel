@@ -56,7 +56,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: "analyze_sprite",
-            description: "Checks a sprite and reports what is wrong, as JSON. `checked` and `not_checked` say what was looked at (`colors`, `loose_pixels`, `outline`, `frame_changes`, `ground`): a problem that is not reported is only good news for what is in `checked`. `colors` has the number of colors used and the palette keys that no frame uses. For each frame, `loose_pixels` are pixels that touch no other pixel and, if there is an outline key (you give `outline_key`, or it is detected as the key of most of the silhouette edge and returned as `outline_key_used`; when it cannot decide, `outline` is in `not_checked`), `outline_gaps` are shape pixels that are open to the outside because the outline is missing there (holes do not need an outline). Each list has `count` and `at` (a list of [x, y], at most 50). With more than one frame, `changes` compares each frame with the next: `changed_pixels`, `bbox` of the change and `ground_kept` (the bottom `ground_rows` rows are equal, so the feet did not move). It changes nothing and needs no permission.",
+            description: "Checks a sprite and reports what is wrong, as JSON. `checked` and `not_checked` say what was looked at (`colors`, `loose_pixels`, `outline`, `frame_changes`, `ground`): a problem that is not reported is only good news for what is in `checked`. `colors` has the number of colors used and the palette keys that no frame uses. For each frame, `loose_pixels` are pixels that touch no other pixel and, if there is an outline key (you give `outline_key`, or it is detected as the key of most of the silhouette edge and returned as `outline_key_used`; when it cannot decide, `outline` is in `not_checked`), `outline_gaps` are shape pixels that are open to the outside because the outline is missing there (holes do not need an outline). Each list has `count` and `at` (a list of [x, y], at most 50). With more than one frame, `changes` compares each frame with the next: `changed_pixels`, `bbox` of the change and `ground_kept` (the SUPPORT did not move: if the sprite has an anchor named `feet`, its y is the same in both frames; otherwise the lowest row with a pixel is the same in both frames; a lifted foot does not change it; `ground_rule` says which rule was used, `feet_anchor` or `lowest_row`), and `bottom_rows_equal` (the old measure: the bottom `ground_rows` rows are identical). It changes nothing and needs no permission.",
             schema: json!({ "type": "object", "required": ["name"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
@@ -213,6 +213,14 @@ fn auto_shade(ctx: &Ctx, input: &Value) -> ToolResult {
     })
 }
 
+/// The `y` of the anchor `feet` in a frame (from 1): the anchor of that frame,
+/// or else the one of the whole sprite. `None` if there is none.
+fn feet_y(sprite: &Sprite, frame: u32) -> Option<u32> {
+    let named = |a: &&crate::document::Anchor| a.name.eq_ignore_ascii_case("feet");
+    let own = sprite.anchors.iter().filter(named).find(|a| a.frame == Some(frame));
+    own.or_else(|| sprite.anchors.iter().filter(named).find(|a| a.frame.is_none())).map(|a| a.y)
+}
+
 /// The most coordinates a list of the report has.
 const MAX_LISTED: usize = 50;
 
@@ -274,6 +282,7 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
         }
         answer["checked"] = json!(checked);
         answer["not_checked"] = json!(not_checked);
+        let has_feet = sprite.anchors.iter().any(|a| a.name.eq_ignore_ascii_case("feet"));
         if frames.len() > 1 {
             answer["changes"] = frames
                 .windows(2)
@@ -281,7 +290,14 @@ fn analyze_sprite(ctx: &Ctx, input: &Value) -> ToolResult {
                 .map(|(i, pair)| {
                     let change = analysis::compare(pair[0], pair[1], ground_rows as usize);
                     let bbox = change.bbox.map(|b| json!({ "x": b.x, "y": b.y, "width": b.width, "height": b.height }));
-                    json!({ "from": i + 1, "to": i + 2, "changed_pixels": change.changed_pixels, "bbox": bbox, "ground_kept": change.ground_kept })
+                    let (rule, kept) = match has_feet {
+                        true => ("feet_anchor", feet_y(sprite, i as u32 + 1) == feet_y(sprite, i as u32 + 2)),
+                        false => ("lowest_row", analysis::lowest_row(pair[0]) == analysis::lowest_row(pair[1])),
+                    };
+                    json!({
+                        "from": i + 1, "to": i + 2, "changed_pixels": change.changed_pixels, "bbox": bbox,
+                        "ground_kept": kept, "ground_rule": rule, "bottom_rows_equal": change.ground_kept,
+                    })
                 })
                 .collect();
         }

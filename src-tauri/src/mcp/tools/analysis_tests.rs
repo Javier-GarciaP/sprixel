@@ -254,7 +254,9 @@ fn analyze_sprite_reports_loose_pixels_colors_and_changes() {
     assert_eq!((change["from"].as_u64(), change["to"].as_u64()), (Some(1), Some(2)));
     assert_eq!(change["changed_pixels"], 6);
     assert_eq!(change["bbox"], json!({ "x": 0, "y": 0, "width": 4, "height": 4 }));
-    assert_eq!(change["ground_kept"], false, "the bottom rows changed");
+    // Both frames stand on row 3, so the support did not move; the old measure sees the changed bottom rows.
+    assert_eq!((change["ground_kept"].as_bool(), change["ground_rule"].as_str()), (Some(true), Some("lowest_row")));
+    assert_eq!(change["bottom_rows_equal"], false, "the bottom rows changed");
     assert_eq!((revision(&host), core.activity().len()), before);
     assert_eq!(entries(&host), 0);
 }
@@ -375,4 +377,49 @@ fn analyze_sprite_says_when_it_cannot_find_the_outline() {
     let tie = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
     assert_eq!(tie["not_checked"], json!(["outline", "frame_changes", "ground"]));
     assert!(tie["frame_reports"][0].get("outline_gaps").is_none());
+}
+
+/// A walker 8x8 with two frames: both feet on row 7 in frame 1, and in frame 2
+/// the right foot is lifted to row 6.
+fn walker(core: &crate::mcp::Core, session: &str) {
+    call(core, session, "create_sprite", json!({ "name": "walker", "width": 8, "height": 8 })).unwrap();
+    call(core, session, "add_frame", json!({ "name": "walker" })).unwrap();
+    let body = "..GGGG..\n..GGGG..\n..GGGG..\n..GGGG..\n..GGGG..\n..GGGG..\n";
+    let grid = format!("frame 1\n{body}..G..G..\n..G..G..\nframe 2\n{body}..G..G..\n..G.....\n");
+    call(core, session, "apply_grid", json!({ "name": "walker", "grid": grid })).unwrap();
+}
+
+// Task 3.2: a walk with a lifted foot. The lowest row is 7 in both frames, so
+// `ground_kept` is true; the old measure (bottom 2 rows equal) is false.
+#[test]
+fn a_lifted_foot_does_not_break_ground_kept() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    walker(&core, &session);
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "walker" })).unwrap();
+
+    let change = &report["changes"][0];
+    assert_eq!((change["ground_kept"].as_bool(), change["ground_rule"].as_str()), (Some(true), Some("lowest_row")));
+    assert_eq!(change["bottom_rows_equal"], false);
+    assert_eq!(change["changed_pixels"], 1);
+}
+
+// Task 3.2: with a `feet` anchor the anchor decides. Same y in both frames:
+// true. The support foot moves up in frame 2: false, even if some pixel is on
+// the lowest row. The anchor of a frame wins over the one of the whole sprite,
+// and the name ignores case.
+#[test]
+fn ground_kept_follows_the_feet_anchor() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    walker(&core, &session);
+    call(&core, &session, "set_anchor", json!({ "sprite": "walker", "name": "Feet", "x": 2, "y": 7 })).unwrap();
+
+    let same = call(&core, &session, "analyze_sprite", json!({ "name": "walker" })).unwrap();
+    assert_eq!((same["changes"][0]["ground_kept"].as_bool(), same["changes"][0]["ground_rule"].as_str()), (Some(true), Some("feet_anchor")));
+
+    call(&core, &session, "set_anchor", json!({ "sprite": "walker", "name": "feet", "x": 2, "y": 6, "frame": 2 })).unwrap();
+    let moved = call(&core, &session, "analyze_sprite", json!({ "name": "walker" })).unwrap();
+    assert_eq!((moved["changes"][0]["ground_kept"].as_bool(), moved["changes"][0]["ground_rule"].as_str()), (Some(false), Some("feet_anchor")));
 }

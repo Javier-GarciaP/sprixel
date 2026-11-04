@@ -107,3 +107,15 @@ fn the_outline_key_is_the_most_common_edge_key() {
     let half = frame(&["....", ".KKK", ".GGG", "...."]);
     assert_eq!(super::detect_outline_key(&[view(&half)]), None);
 }
+
+// Task 3.2: `lowest_row` is the row where the sprite stands. A lifted foot
+// does not change it while the other foot stays down.
+#[test]
+fn the_lowest_row_ignores_a_lifted_foot() {
+    use super::support_tests::{frame, view};
+    let both = frame(&["..B..B..", "..B..B..", "..B..B.."]);
+    let lifted = frame(&["..B..B..", "..B..B..", "..B....."]);
+    assert_eq!(super::lowest_row(view(&both)), Some(2));
+    assert_eq!(super::lowest_row(view(&lifted)), Some(2));
+    assert_eq!(super::lowest_row(view(&frame(&["...", "..."]))), None);
+}

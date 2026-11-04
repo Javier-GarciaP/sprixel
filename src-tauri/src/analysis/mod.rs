@@ -9,7 +9,7 @@ mod report;
 mod shade;
 
 pub use outline::{OutlineOptions, auto_outline, thin_regions};
-pub use report::{FrameChange, colors, compare, detect_outline_key, loose_pixels, outline_gaps};
+pub use report::{FrameChange, colors, compare, detect_outline_key, loose_pixels, lowest_row, outline_gaps};
 pub use shade::{Light, Region, ShadeOptions, auto_shade, isolated_changes};
 
 use crate::document::TRANSPARENT;
