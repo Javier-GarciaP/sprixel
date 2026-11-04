@@ -14,6 +14,7 @@ mod operation;
 mod palette;
 mod presets;
 mod ramp;
+mod resize;
 mod stroke;
 
 pub use error::DocError;
@@ -22,6 +23,7 @@ pub use operation::{Applied, AppliedGroup, Operation, PixelBatch, PixelChange, S
 pub use import::{ImportFormat, palette_from_file};
 pub use presets::{PRESETS, Preset};
 pub use ramp::ramp;
+pub use resize::{ResizeAnchor, move_anchors, resize_pixels};
 pub use palette::{ColorEdit, check_colors};
 pub use grid::{Grid, GridError, GridOptions, GridPlan, Remap, write_grid, write_grid_part};
 pub use stroke::ColorChange;
@@ -65,3 +67,6 @@ mod anchor_tests;
 
 #[cfg(test)]
 mod ramp_tests;
+
+#[cfg(test)]
+mod resize_tests;

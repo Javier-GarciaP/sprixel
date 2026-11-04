@@ -14,7 +14,7 @@
 
 ## 3. Change the canvas
 
-- [ ] 3.1 Add the pure resize functions (pixels and anchors) for the 9 anchors; verify crop, extend and anchor movement
+- [x] 3.1 Add the pure resize functions (pixels and anchors) for the 9 anchors; verify crop, extend and anchor movement
 - [ ] 3.2 Add `ResizeSprite` and `RestoreCanvas` with undo; verify limits, tags, durations and exact undo
 - [ ] 3.3 Add the tool `resize_sprite`; verify permission, errors, warnings, one history entry and the activity log
 - [ ] 3.4 Add the dialog "Change canvas" to the sprite details panel; verify it with UI tests
