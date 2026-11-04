@@ -9,8 +9,9 @@ use super::browser::{CHANGED_EVENT, ChangedEvent, TargetInfo};
 use super::editor::{EditorError, EditorState, HistoryState, SpriteArg, history_of};
 use super::project::{self, ProjectState};
 use crate::analysis::{self, Connectivity, Light, OutlineOptions, Region, ShadeOptions, View};
-use crate::document::{Operation, PixelChange, Sprite};
+use crate::document::{Anchor, ColorEdit, Operation, PixelChange, Sprite};
 use crate::mcp::tools::gamedata::flat_keys;
+use crate::mcp::tools::palettes::{RampArgs, add_ramp};
 use crate::mcp::tools::region::{self, Direction, Rect as Box4, changes, cut};
 use serde::{Deserialize, Serialize};
 
@@ -414,6 +415,141 @@ pub fn tile_check(state: &ProjectState, target: &SpriteArg, frame: u32) -> Resul
     .ok_or_else(|| fail("no_project", "no project is open"))?
 }
 
+/// The tones a ramp would add, as `#RRGGBB`, dark to light (nothing is written).
+pub fn ramp_preview(base: &str, steps: usize, hue_shift: f64) -> Result<Vec<String>, Failure> {
+    crate::document::ramp(&base.to_ascii_uppercase(), steps, hue_shift).map_err(Failure::from)
+}
+
+/// The keys of the tones that Generate ramp added or reused.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct RampAdded {
+    pub keys: Vec<String>,
+}
+
+/// Adds the tones of a ramp to a palette, as `generate_ramp` does: a tone that
+/// the palette already has reuses its key. One history entry.
+pub fn ramp_apply(
+    state: &ProjectState,
+    palette: &str,
+    base: &str,
+    steps: usize,
+    hue_shift: f64,
+) -> Result<(RampAdded, ChangedEvent), Failure> {
+    project::edit(state, |session| {
+        let old = session
+            .project
+            .palette(palette)
+            .ok_or_else(|| fail("not_found", format!("palette {palette:?} does not exist")))?;
+        let mut grown = old.clone();
+        let ramp = RampArgs { base: base.to_ascii_uppercase(), steps, hue_shift, name: None };
+        let tones = add_ramp(&mut grown, &ramp).map_err(|e| fail(&e.code, &e.message))?;
+        let edits: Vec<ColorEdit> = grown
+            .colors
+            .iter()
+            .map(|c| ColorEdit { from: old.colors.iter().any(|o| o.key == c.key).then_some(c.key), color: c.clone() })
+            .collect();
+        let ops = session.project.palette_edit_operations(&old.name, &edits, &[])?;
+        let touched = session.apply(USER, ops)?;
+        let event = ChangedEvent { revision: session.project.revision, touched: touched.iter().map(TargetInfo::from).collect() };
+        Ok((RampAdded { keys: tones.iter().map(|c| c.key.to_string()).collect() }, event))
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
+/// Removes the colors of a palette that no sprite uses, as
+/// `remove_unused_colors` does. Returns the removed keys. One history entry.
+/// (The dialog lists them first with the `used` flags of `palette_info`.)
+pub fn unused_remove(state: &ProjectState, palette: &str) -> Result<(Vec<String>, ChangedEvent), Failure> {
+    project::edit(state, |session| {
+        let found = session
+            .project
+            .palette(palette)
+            .ok_or_else(|| fail("not_found", format!("palette {palette:?} does not exist")))?;
+        let used = session.project.used_keys(&found.name);
+        let (keep, drop): (Vec<_>, Vec<_>) = found.colors.iter().partition(|c| used.contains(&c.key));
+        let edits: Vec<ColorEdit> = keep.iter().map(|c| ColorEdit { from: Some(c.key), color: (*c).clone() }).collect();
+        let ops = session.project.palette_edit_operations(&found.name, &edits, &[])?;
+        let removed = drop.iter().map(|c| c.key.to_string()).collect();
+        let touched = if drop.is_empty() { Vec::new() } else { session.apply(USER, ops)? };
+        let event = ChangedEvent { revision: session.project.revision, touched: touched.iter().map(TargetInfo::from).collect() };
+        Ok((removed, event))
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
+/// Gives one frame its own duration in milliseconds (10 to 10000).
+pub fn duration_set(state: &ProjectState, target: &SpriteArg, frame: u32, ms: u32) -> Result<ChangedEvent, Failure> {
+    if !(10..=10000).contains(&ms) {
+        return Err(fail("bad_argument", "the duration must be from 10 to 10000 milliseconds"));
+    }
+    one_entry(state, target, |sprite| {
+        check_frame(sprite, frame)?;
+        Ok(vec![Operation::SetFrameDuration { sprite: target.to_ref(), frame, duration_ms: ms }])
+    })
+}
+
+/// A named point of a sprite, or of one frame of it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnchorArg {
+    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub frame: Option<u32>,
+}
+
+/// Which anchor a save replaces (a rename or a move of an existing anchor).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnchorKey {
+    pub name: String,
+    pub frame: Option<u32>,
+}
+
+pub fn anchors_of(state: &ProjectState, target: &SpriteArg) -> Result<Vec<AnchorArg>, Failure> {
+    project::read(state, |session| {
+        let sprite = sprite_of(session, target)?;
+        Ok(sprite.anchors.iter().map(|a| AnchorArg { name: a.name.clone(), x: a.x, y: a.y, frame: a.frame }).collect())
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
+/// Creates an anchor, or with `replaces` renames or moves that one: the old
+/// one is removed and the new one set, in ONE history entry.
+pub fn anchor_save(state: &ProjectState, target: &SpriteArg, anchor: &AnchorArg, replaces: Option<&AnchorKey>) -> Result<ChangedEvent, Failure> {
+    one_entry(state, target, |sprite| {
+        let name = anchor.name.trim().to_string();
+        let new = Anchor { name, x: anchor.x, y: anchor.y, frame: anchor.frame };
+        new.validate(sprite.width, sprite.height, sprite.frame_count()).map_err(Failure::from)?;
+        let mut ops = Vec::new();
+        if let Some(old) = replaces {
+            if !old.name.eq_ignore_ascii_case(&new.name) || old.frame != new.frame {
+                ops.push(Operation::RemoveAnchor { sprite: target.to_ref(), name: old.name.clone(), frame: old.frame });
+            }
+        }
+        ops.push(Operation::SetAnchor { sprite: target.to_ref(), anchor: new, index: None });
+        Ok(ops)
+    })
+}
+
+pub fn anchor_delete(state: &ProjectState, target: &SpriteArg, key: &AnchorKey) -> Result<ChangedEvent, Failure> {
+    one_entry(state, target, |_| {
+        Ok(vec![Operation::RemoveAnchor { sprite: target.to_ref(), name: key.name.clone(), frame: key.frame }])
+    })
+}
+
+/// Applies the operations `make` gives as one history entry by the user.
+fn one_entry(
+    state: &ProjectState,
+    target: &SpriteArg,
+    make: impl FnOnce(&Sprite) -> Result<Vec<Operation>, Failure>,
+) -> Result<ChangedEvent, Failure> {
+    project::edit(state, |session| {
+        let ops = make(sprite_of(session, target)?)?;
+        let touched = session.apply(USER, ops)?;
+        Ok(ChangedEvent { revision: session.project.revision, touched: touched.iter().map(TargetInfo::from).collect() })
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
 fn announce(app: &tauri::AppHandle, event: ChangedEvent) {
     let _ = tauri::Emitter::emit(app, CHANGED_EVENT, event);
 }
@@ -507,6 +643,61 @@ pub fn power_review(state: tauri::State<ProjectState>, sprite: SpriteArg, outlin
 #[tauri::command]
 pub fn power_tile_check(state: tauri::State<ProjectState>, sprite: SpriteArg, frame: u32) -> Result<TileCheck, Failure> {
     tile_check(&state, &sprite, frame)
+}
+
+#[tauri::command]
+pub fn power_ramp_preview(base: String, steps: usize, hue_shift: f64) -> Result<Vec<String>, Failure> {
+    ramp_preview(&base, steps, hue_shift)
+}
+
+#[tauri::command]
+pub fn power_ramp_apply(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    palette: String,
+    base: String,
+    steps: usize,
+    hue_shift: f64,
+) -> Result<RampAdded, Failure> {
+    let (added, event) = ramp_apply(&state, &palette, &base, steps, hue_shift)?;
+    announce(&app, event);
+    Ok(added)
+}
+
+#[tauri::command]
+pub fn power_unused_remove(app: tauri::AppHandle, state: tauri::State<ProjectState>, palette: String) -> Result<Vec<String>, Failure> {
+    let (removed, event) = unused_remove(&state, &palette)?;
+    announce(&app, event);
+    Ok(removed)
+}
+
+#[tauri::command]
+pub fn power_duration_set(app: tauri::AppHandle, state: tauri::State<ProjectState>, sprite: SpriteArg, frame: u32, ms: u32) -> Result<(), Failure> {
+    announce(&app, duration_set(&state, &sprite, frame, ms)?);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn power_anchors(state: tauri::State<ProjectState>, sprite: SpriteArg) -> Result<Vec<AnchorArg>, Failure> {
+    anchors_of(&state, &sprite)
+}
+
+#[tauri::command]
+pub fn power_anchor_save(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    sprite: SpriteArg,
+    anchor: AnchorArg,
+    replaces: Option<AnchorKey>,
+) -> Result<(), Failure> {
+    announce(&app, anchor_save(&state, &sprite, &anchor, replaces.as_ref())?);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn power_anchor_delete(app: tauri::AppHandle, state: tauri::State<ProjectState>, sprite: SpriteArg, key: AnchorKey) -> Result<(), Failure> {
+    announce(&app, anchor_delete(&state, &sprite, &key)?);
+    Ok(())
 }
 
 #[cfg(test)]

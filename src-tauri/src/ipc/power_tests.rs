@@ -271,3 +271,106 @@ fn tile_check_equals_check_tile() {
     assert_eq!(mine.mismatches.len() as u64, theirs["mismatch_count"].as_u64().unwrap());
     assert!(!mine.seamless, "the demo picture has different edges");
 }
+
+// ---- palette, durations, anchors ----
+
+fn main_colors(host: &TestHost) -> Vec<crate::document::Color> {
+    project::read(&host.project, |s| s.project.palette("main").unwrap().colors.clone()).unwrap()
+}
+
+// Checks that Generate ramp adds the tones `generate_ramp` adds, that the
+// preview gives the same hex values, and that it is one entry.
+#[test]
+fn ramp_equals_generate_ramp() {
+    let (host, core, session) = drawn();
+    let before = entries(&host);
+    let tones = ramp_preview("#3366CC", 5, 20.0).unwrap();
+    assert_eq!(tones.len(), 5);
+    ramp_apply(&host.project, "main", "#3366cc", 5, 20.0).unwrap();
+    assert_eq!(entries(&host), before + 1);
+    let by_person = main_colors(&host);
+    assert!(tones.iter().all(|t| by_person.iter().any(|c| &c.hex == t)), "the preview shows the added tones");
+    browser::undo(&host.project).unwrap();
+    call(&core, &session, "generate_ramp", json!({ "palette": "main", "base": "#3366CC", "steps": 5, "hue_shift": 20 })).unwrap();
+    assert_eq!(by_person, main_colors(&host));
+}
+
+// Checks that a tone the palette already has is reused, not added twice, and
+// that bad arguments are refused.
+#[test]
+fn ramp_reuses_tones_and_checks_arguments() {
+    let (host, _core, _session) = drawn();
+    ramp_apply(&host.project, "main", "#3366CC", 5, 0.0).unwrap();
+    let count = main_colors(&host).len();
+    ramp_apply(&host.project, "main", "#3366CC", 5, 0.0).unwrap();
+    assert_eq!(main_colors(&host).len(), count);
+    assert_eq!(ramp_preview("#3366CC", 2, 0.0).unwrap_err().code, "bad_argument");
+    assert_eq!(ramp_apply(&host.project, "nope", "#3366CC", 5, 0.0).unwrap_err().code, "not_found");
+}
+
+// Checks Remove unused colors against `remove_unused_colors`, and that a
+// palette with nothing unused makes no entry.
+#[test]
+fn unused_colors_are_removed_like_the_agent_tool() {
+    let (host, core, session) = drawn();
+    let original = main_colors(&host);
+    let (none, _) = unused_remove(&host.project, "main").unwrap();
+    assert!(none.is_empty());
+    ramp_apply(&host.project, "main", "#3366CC", 5, 0.0).unwrap();
+    let before = entries(&host);
+    let (removed, _) = unused_remove(&host.project, "main").unwrap();
+    assert_eq!(removed.len(), 5);
+    assert_eq!(entries(&host), before + 1);
+    assert_eq!(main_colors(&host), original);
+    browser::undo(&host.project).unwrap();
+    call(&core, &session, "remove_unused_colors", json!({ "palette": "main" })).unwrap();
+    assert_eq!(main_colors(&host), original);
+}
+
+// Checks the frame duration against `set_frame_duration`, and its limits.
+#[test]
+fn duration_equals_set_frame_duration() {
+    let (host, core, session) = drawn();
+    open_demo_project_frame_two(&host);
+    let read = |host: &TestHost| project::read(&host.project, |s| s.project.find_sprite(&slime().to_ref()).unwrap().frame_durations.clone()).unwrap();
+    duration_set(&host.project, &slime(), 2, 200).unwrap();
+    let by_person = read(&host);
+    assert_eq!(by_person[1], 200);
+    browser::undo(&host.project).unwrap();
+    call(&core, &session, "set_frame_duration", json!({ "name": "slime", "frame": 2, "milliseconds": 200 })).unwrap();
+    assert_eq!(by_person, read(&host));
+    assert_eq!(duration_set(&host.project, &slime(), 2, 5).unwrap_err().code, "bad_argument");
+    assert_eq!(duration_set(&host.project, &slime(), 9, 200).unwrap_err().code, "bad_frame");
+}
+
+// Checks anchors: create, move, rename (one entry for a rename) and delete,
+// and that a point outside the sprite is refused.
+#[test]
+fn anchors_are_created_moved_renamed_and_deleted() {
+    let (host, core, session) = drawn();
+    let feet = AnchorArg { name: "feet".into(), x: 3, y: 7, frame: None };
+    anchor_save(&host.project, &slime(), &feet, None).unwrap();
+    let by_person = anchors_of(&host.project, &slime()).unwrap();
+    assert_eq!(by_person, vec![feet.clone()]);
+    browser::undo(&host.project).unwrap();
+    call(&core, &session, "set_anchor", json!({ "sprite": "slime", "name": "feet", "x": 3, "y": 7 })).unwrap();
+    assert_eq!(by_person, anchors_of(&host.project, &slime()).unwrap());
+
+    let key = AnchorKey { name: "feet".into(), frame: None };
+    let moved = AnchorArg { x: 4, ..feet.clone() };
+    anchor_save(&host.project, &slime(), &moved, Some(&key)).unwrap();
+    assert_eq!(anchors_of(&host.project, &slime()).unwrap(), vec![moved.clone()]);
+
+    let before = entries(&host);
+    let renamed = AnchorArg { name: "hand".into(), ..moved };
+    anchor_save(&host.project, &slime(), &renamed, Some(&key)).unwrap();
+    assert_eq!(entries(&host), before + 1, "a rename is one entry");
+    assert_eq!(anchors_of(&host.project, &slime()).unwrap(), vec![renamed.clone()]);
+    browser::undo(&host.project).unwrap();
+    assert_eq!(anchors_of(&host.project, &slime()).unwrap()[0].name, "feet");
+
+    let out = AnchorArg { x: 99, ..feet };
+    assert_eq!(anchor_save(&host.project, &slime(), &out, None).unwrap_err().code, "bad_anchor");
+    anchor_delete(&host.project, &slime(), &key).unwrap();
+    assert!(anchors_of(&host.project, &slime()).unwrap().is_empty());
+}
