@@ -45,6 +45,9 @@ mod operation_tests;
 mod frame_tests;
 
 #[cfg(test)]
+mod animation_tests;
+
+#[cfg(test)]
 mod stroke_tests;
 
 #[cfg(test)]

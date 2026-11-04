@@ -1205,6 +1205,44 @@ impl Project {
         Some(&self.folder(&folder).sprites[index])
     }
 
+    /// Checks an animation that a person or a tool wants to create (or, with
+    /// `replacing`, to change): the same checks as `AddTag` and `SetTag`, and
+    /// then the animation must not share a frame with another one
+    /// (`animation_overlap`). The operations themselves accept overlaps, so old
+    /// files and the undo of a delete keep working. A change that keeps the
+    /// frames of the animation (a rename, a new speed) is always allowed.
+    pub fn check_new_animation(&self, sprite: &SpriteRef, tag: &Tag, replacing: Option<&str>) -> Result<(), DocError> {
+        let target = self.find_sprite(sprite).ok_or_else(|| not_found("sprite", &sprite.name))?;
+        let old = match replacing {
+            Some(name) => Some(
+                target
+                    .tags
+                    .iter()
+                    .find(|t| same_name(&t.name, name))
+                    .ok_or_else(|| not_found("tag", name))?,
+            ),
+            None => None,
+        };
+        tag.validate(target.frame_count())?;
+        let others = || target.tags.iter().filter(|t| !old.is_some_and(|o| std::ptr::eq(*t, o)));
+        if others().any(|t| same_name(&t.name, &tag.name)) {
+            return Err(DocError::new("tag_exists", format!("tag {:?} already exists", tag.name)));
+        }
+        if old.is_some_and(|o| o.from == tag.from && o.to == tag.to) {
+            return Ok(());
+        }
+        if let Some(other) = others().find(|t| t.from <= tag.to && tag.from <= t.to) {
+            return Err(DocError::new(
+                "animation_overlap",
+                format!(
+                    "frames {} to {} share frames with the animation {:?} (frames {} to {}); use frames that belong to no animation",
+                    tag.from, tag.to, other.name, other.from, other.to
+                ),
+            ));
+        }
+        Ok(())
+    }
+
     /// Finds a folder by its path, ignoring case in names. An empty path is the root.
     pub fn find_folder(&self, path: &[String]) -> Option<&Folder> {
         let real = self.canonical_folder(path).ok()?;
