@@ -40,6 +40,7 @@ import { OutlinePanel } from "./OutlinePanel";
 import { ShadePanel } from "./ShadePanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { PreviewTools } from "./PreviewTools";
+import { TilePreview } from "./TilePreview";
 import { AnchorLabels } from "./AnchorLabels";
 import { AnchorPanel, type AnchorTarget } from "./AnchorPanel";
 import { anchorAt, effectiveAnchors, keyOf, sameKey } from "../tools/anchors";
@@ -322,6 +323,9 @@ function Ready(props: ReadyProps) {
   const [wrap, setWrap] = useState(false);
   // What shows behind the transparent pixels of the preview.
   const [background, setBackground] = useState<PreviewBackground>("checker");
+  // The 3 x 3 tile preview, and a number that grows with every stroke.
+  const [tiles, setTiles] = useState(false);
+  const [drawn, setDrawn] = useState(0);
   // The panel with a preview that is open, and the pixels it shows.
   const [panel, setPanel] = useState<"outline" | "shade" | "review" | null>(
     null,
@@ -501,6 +505,7 @@ function Ready(props: ReadyProps) {
         controller.settle(result.palette);
         setPalette(result.palette);
         setHistory(result);
+        setDrawn((n) => n + 1);
       })
       .catch((error: { code?: string; message?: string }) => {
         // The core knows the frame is busy before the screen does: keep the
@@ -640,6 +645,7 @@ function Ready(props: ReadyProps) {
     "selection.moveUp": () => nudge(0, -1),
     "selection.moveDown": () => nudge(0, 1),
     "selection.wrap": () => setWrap((on) => !on),
+    "view.tilePreview": () => setTiles((on) => !on),
     "view.background": () => setBackground(nextBackground),
     "draw.symmetry": () => props.onSymmetry(nextSymmetry(props.symmetry)),
     "edit.outline": () =>
@@ -903,7 +909,22 @@ function Ready(props: ReadyProps) {
             <PreviewTools
               background={background}
               onBackground={setBackground}
+              tiles={tiles}
+              onTiles={setTiles}
             />
+            {tiles && (
+              <TilePreview
+                api={props.powerApi}
+                sprite={sprite}
+                frame={props.frame}
+                pixels={pixels}
+                width={info.width}
+                height={info.height}
+                colors={controller.colors.table}
+                background={background}
+                version={drawn + info.revision}
+              />
+            )}
           </>
         }
         agent={writing ? agentText : null}

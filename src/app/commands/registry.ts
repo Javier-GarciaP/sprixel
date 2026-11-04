@@ -310,6 +310,12 @@ commands.push(
     group: "editor",
     shortcut: "Shift+B",
   },
+  {
+    id: "view.tilePreview",
+    labelKey: "command.view.tilePreview",
+    group: "editor",
+    shortcut: "T",
+  },
 );
 
 export const projectMenuCommands = commands.filter((c) => c.inProjectMenu);
