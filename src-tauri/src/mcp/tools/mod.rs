@@ -116,6 +116,12 @@ mod engines_docs_tests;
 mod analysis_tests;
 
 #[cfg(test)]
+mod dryrun_tests;
+
+#[cfg(test)]
+mod erase_tests;
+
+#[cfg(test)]
 mod background_tests;
 
 #[cfg(test)]

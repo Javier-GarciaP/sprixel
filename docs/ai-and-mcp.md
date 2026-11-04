@@ -111,7 +111,7 @@ description tells the AI the rules, so it does not need this page.
 | `render_preview` | A PNG image of a frame, so the AI can see its work (at most 1024 pixels on a side). `background`: `checker` (default, gray checkerboard), `light`, `dark` or `transparent`; the images of `apply_grid`, `set_pixels` and `draw_shape` take it too |
 | `render_frames` | One PNG with several frames in a grid (`from`, `to`, `columns`, `scale`, `labels`, `background`), at most 1024 pixels on a side |
 | `render_onion` | One PNG with several frames drawn over each other (`frames`, `scale`, `background`): earlier frames are tinted and see-through, the last one is normal |
-| `analyze_sprite` | Checks a sprite: loose pixels, gaps in the outline (`outline_key`), unused colors, and how each frame differs from the next (`changed_pixels`, `bbox`, `ground_kept`). Changes nothing |
+| `analyze_sprite` | Checks a sprite: loose pixels, gaps in the outline (`outline_key`), unused colors, and how each frame differs from the next (`changed_pixels`, `bbox`, `ground_kept`, which follows the support foot: the `feet` anchor, or the lowest row with a pixel). It lists what it `checked` and `not_checked` and detects the outline key when you give none (`outline_key_used`). Changes nothing |
 | `check_tile` | Checks if a frame repeats without seams: compares opposite edges and lists the pixels that differ |
 | `render_tiled` | Returns a PNG of a frame repeated 3x3 on a checkerboard, to see the seams of a tile (at most 1024 pixels on a side) |
 | `open_sprite` | Asks the editor to show a sprite, so you see what it works on |
@@ -136,16 +136,16 @@ description tells the AI the rules, so it does not need this page.
 
 | Tool | What it does |
 | --- | --- |
-| `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet. Returns an image of the edited frame |
+| `apply_grid` | Writes a text grid into a frame (all of it, or at an `x`,`y` position). A `legend` line with a `#hex` adds a color that is not in the palette yet. In a region (`x`,`y`) a `.` keeps the pixel under it unless `skip_transparent` is false. Takes `dry_run`. Returns an image of the edited frame |
 | `set_pixels` | Sets individual pixels (`x`, `y`, `key`). Returns an image of the edited frame |
 | `draw_shape` | Draws a line, rectangle, ellipse or fill with a palette key. Returns an image of the edited frame |
-| `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). Returns an image of the edited frame |
-| `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns an image of the edited frame |
-| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. Returns an image of the edited frame |
-| `copy_region` | Copies a region inside a sprite, or to another frame or sprite (same palette), with an offset and `skip_transparent`. Returns an image of the edited frame |
+| `auto_outline` | Draws a one pixel outline around the shape of a frame (`key`, `connectivity` 4 or 8, `outside_only`, `inner`). With `inner` it warns about parts thinner than 3 pixels (`thin_regions`). Takes `dry_run`. Returns an image of the edited frame |
+| `auto_shade` | Shades the pixels of one key with a ramp of tones for a `light` direction (`base`, `keys` from dark to light, optional `region`). Returns `speckled_pixels` and a warning for lone shade pixels. Takes `dry_run`. Returns an image of the edited frame |
+| `transform_region` | Flips, mirrors, moves (with `wrap`) or rotates a region of a frame in one step. Takes `dry_run`. Returns an image of the edited frame |
+| `copy_region` | Copies a region inside a sprite, or to another frame or sprite (same palette), with an offset and `skip_transparent`. Takes `dry_run`. Returns an image of the edited frame |
 | `import_reference` | Draws a PNG from the project folder `references/` into a frame, using the nearest colors of the palette (`width`, `height` scale it down, `max_colors` adds colors). Returns an image of the edited frame |
 | `delete_frame` | Removes a frame (a sprite keeps at least one) |
-| `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000) |
+| `set_frame_duration` | Sets how long a frame lasts (`frame`, `milliseconds` 10 to 10000, or `null` for the animation speed) |
 | `set_anchor` | Adds or moves a named point of a sprite (`feet`, `hand`...), for the whole sprite or one `frame` |
 | `remove_anchor` | Removes an anchor by name |
 | `resize_sprite` | Changes the canvas size (`width`, `height` 1 to 512, `anchor` for where the drawing stays). Anchors move with the drawing; those that end outside are removed and listed in `dropped_anchors`. Returns an image |
@@ -198,6 +198,27 @@ through) a symbolic link, must end with `.png`, and is limited to 2 MB and 512
 pixels on a side. Colors become the nearest palette color; alpha under 128 is
 transparent; `max_colors` allows new colors to be added to the palette, and
 `width` and `height` scale the picture down.
+
+### Dry runs, warnings and `erased`
+
+`auto_outline`, `auto_shade`, `transform_region`, `copy_region` and
+`apply_grid` take `dry_run` (default false). With `true` nothing is written:
+there is no new revision, no history entry and no replay in the editor. The
+answer has the same counts as a real call, `dry_run: true`, `would_change` and
+an image of what the frame would look like. Warnings come in `warnings`:
+`auto_outline` with `inner` (also `thin_regions`, the boxes of parts thinner
+than 3 pixels that turn entirely into outline), `auto_shade` (`speckled_pixels`)
+and `apply_grid` (a region grid that erased with `skip_transparent` false).
+Every write that erased opaque pixels has `erased`.
+
+`analyze_sprite` returns `checked` and `not_checked`. Without `outline_key` it
+uses the key of most of the silhouette edge (`outline_key_used`); if there is
+no clear one, `outline` is in `not_checked`. `ground_kept` compares the `y` of
+the `feet` anchor of two frames, or the lowest row with a pixel if the sprite
+has no such anchor (`ground_rule`); `bottom_rows_equal` is the old check.
+`get_sprite` shows `null` in `frame_durations` for a frame that follows the
+animation speed; `set_frame_duration` takes `milliseconds: null` for that. An
+explicit 100 ms cannot be told from the default (the file stores 100 for both).
 
 ### Errors
 

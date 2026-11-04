@@ -23,6 +23,15 @@ and the project follows [Semantic Versioning](https://semver.org/).
   with an anchor, move its anchors and undo exactly. The sprite size is now
   changed only by this explicit action.
 - `docs/game-engines.md`: from a drawing to Godot 4 and Unity, step by step.
+- Safer AI tools: `dry_run` on `auto_outline`, `auto_shade`, `transform_region`,
+  `copy_region` and `apply_grid` shows the result without writing; warnings for
+  thin parts under `inner` outlines and for lone shade pixels; `analyze_sprite`
+  returns `checked` and `not_checked` and detects the outline key; `ground_kept`
+  follows the support foot (the `feet` anchor or the lowest row); every write
+  reports `erased`; `frame_durations` uses `null` for the animation speed.
+  Region grids of `apply_grid` no longer erase with `.` unless
+  `skip_transparent` is false. The guides teach the walk rules and every tool
+  has an example call.
 - Richer guides for the AI: `get_guide` has five new topics (`large-sprites`,
   `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`, a
   map of which tool to use for what). Each one has a worked example, and the

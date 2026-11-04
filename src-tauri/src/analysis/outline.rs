@@ -65,3 +65,36 @@ fn clipped(view: View, connectivity: Connectivity) -> usize {
     }
     places.len()
 }
+
+/// The parts of the shape that `inner` turns entirely into outline: changed
+/// pixels that are not part of any 3x3 square of opaque pixels (the shape is
+/// thinner than 3 pixels there). They are grouped by their 8 neighbors and each
+/// group gives its bounding box, in reading order of the first pixel.
+pub fn thin_regions(view: View, changes: &[PixelChange]) -> Vec<super::Region> {
+    let covered = |x: i64, y: i64| {
+        // Some 3x3 square that has (x, y) is all opaque.
+        (y - 2..=y).any(|top| {
+            (x - 2..=x).any(|left| (0..3).all(|dy| (0..3).all(|dx| view.is_opaque(left + dx, top + dy))))
+        })
+    };
+    let mut thin: Vec<(i64, i64)> =
+        changes.iter().map(|c| (c.x as i64, c.y as i64)).filter(|&(x, y)| !covered(x, y)).collect();
+    thin.sort_by_key(|&(x, y)| (y, x));
+    let mut regions = Vec::new();
+    while let Some(start) = thin.first().copied() {
+        let mut group = vec![start];
+        thin.retain(|p| *p != start);
+        let mut next = 0;
+        while next < group.len() {
+            let (gx, gy) = group[next];
+            next += 1;
+            let (near, rest): (Vec<_>, Vec<_>) = thin.iter().partition(|&&(x, y)| (x - gx).abs() <= 1 && (y - gy).abs() <= 1);
+            thin = rest;
+            group.extend(near);
+        }
+        let (x0, x1) = (group.iter().map(|p| p.0).min().unwrap(), group.iter().map(|p| p.0).max().unwrap());
+        let (y0, y1) = (group.iter().map(|p| p.1).min().unwrap(), group.iter().map(|p| p.1).max().unwrap());
+        regions.push(super::Region { x: x0 as u32, y: y0 as u32, width: (x1 - x0 + 1) as u32, height: (y1 - y0 + 1) as u32 });
+    }
+    regions
+}

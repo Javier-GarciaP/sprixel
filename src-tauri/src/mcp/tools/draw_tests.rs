@@ -95,21 +95,21 @@ fn every_error_is_listed_and_unknown_keys_list_the_valid_keys() {
     assert_eq!(error["valid_keys"], json!(["R", "G", "."]));
 }
 
-// Checks writing a region: it can be smaller, `.` erases unless
-// `skip_transparent` is set, and a region that does not fit is `region_out`.
+// Checks writing a region: it can be smaller, `.` erases only with
+// `skip_transparent` false (in a region it keeps by default, see erase_tests), and a region that does not fit is `region_out`.
 #[test]
 fn apply_grid_writes_regions() {
     let (host, core, session) = setup();
     open_demo_project(&host);
     call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": GRID8 })).unwrap();
 
-    call(&core, &session, "apply_grid", json!({ "name": "slime", "x": 2, "y": 2, "grid": "frame 1\nG.\n.G\n" })).unwrap();
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "x": 2, "y": 2, "skip_transparent": false, "grid": "frame 1\nG.\n.G\n" })).unwrap();
     let now = rows(&host, &[], "slime", 1);
     let all: Vec<&str> = now.split('/').collect();
     assert_eq!((all[2], all[3]), ("RRG.....", "RR.G...."), "`.` erased the pixels under it");
     call(&core, &session, "apply_grid", json!({ "name": "slime", "x": 0, "y": 0, "skip_transparent": true, "grid": "frame 1\n.G\n" })).unwrap();
     assert!(rows(&host, &[], "slime", 1).starts_with("RG"), "{}", rows(&host, &[], "slime", 1));
-    call(&core, &session, "apply_grid", json!({ "name": "slime", "x": 0, "y": 0, "grid": "frame 1\n..\n" })).unwrap();
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "x": 0, "y": 0, "skip_transparent": false, "grid": "frame 1\n..\n" })).unwrap();
     assert!(rows(&host, &[], "slime", 1).starts_with(".."));
 
     let out = call(&core, &session, "apply_grid", json!({ "name": "slime", "x": 7, "y": 7, "grid": "frame 1\nRR\nRR\n" })).unwrap_err();

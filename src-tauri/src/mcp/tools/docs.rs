@@ -21,13 +21,13 @@ frame 1                  (frame numbers start at 1)\n\
 \n\
 Rules: all rows have the same length (the width) and their number is the height. Without `x` and `y` the grid is a whole frame and must be \
 exactly the size of the sprite. With `x` and `y` it is a region written at that top left position, and it may be smaller. \
-A `.` erases the pixel unless `skip_transparent` is true. Keys are case sensitive. If you only have rows, pass `frame`.\n\
+In a whole frame a `.` erases the pixel. In a region (`x` and `y`) a `.` keeps the pixel that is there (`skip_transparent` defaults to true); send `skip_transparent` false to erase with it, and the answer then has `erased` and a warning. Every write that erased opaque pixels reports `erased`. Keys are case sensitive. If you only have rows, pass `frame`.\n\
 \n\
 It is atomic: if anything is wrong nothing changes, and `errors` lists every problem with its `line`, `row` and `column` \
 (codes: row_length, row_count, unknown_key, no_frame, bad_frame, too_big, region_out, palette_full, bad_legend). \
 A `palette:` line is never ignored: another existing palette is `palette_mismatch` (use `set_sprite_palette` or drop the line) and an unknown one is `palette_not_found`. \
 If a legend line gives an existing key a different color, the old color stays, the pixels move to a free key and the answer has `remapped` and `warnings`. \
-The answer has the new `revision`; pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. The person can undo the call. The answer has an image of the edited frame: LOOK at it and fix what is wrong (send `preview` false to skip it).";
+The answer has the new `revision`; pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. With `dry_run` true nothing is written: you get the counts and an image of what WOULD happen. The person can undo the call. The answer has an image of the edited frame: LOOK at it and fix what is wrong (send `preview` false to skip it).";
 
 /// The steps every agent follows. The same text is in the server instructions
 /// and in the Claude Code skill (a test checks both). A macro, so `concat!`
@@ -52,6 +52,21 @@ macro_rules! guide_list {
         "Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`."
     };
 }
+
+/// What the answers of the tools tell you. The same text is in the server
+/// instructions and in the Claude Code skill (a test checks both). A macro, so
+/// `concat!` can use it.
+macro_rules! answers_note {
+    () => {
+        "\
+Read the answers: `dry_run` true on `auto_outline`, `auto_shade`, `transform_region`, `copy_region` and `apply_grid` writes nothing and shows what WOULD happen (counts, `warnings` and an image), so try first. \
+`analyze_sprite` lists what it `checked` and what it did `not_checked`; a problem that is not reported is only good news for the parts in `checked`. \
+A region `apply_grid` (with `x` and `y`) keeps the pixels under a `.` unless you send `skip_transparent` false, and every write that erased opaque pixels reports `erased`; read `warnings` too."
+    };
+}
+
+/// The note about the answers (see `answers_note!`).
+pub const ANSWERS_NOTE: &str = answers_note!();
 
 /// The grid of the worked example: a 16x16 slime, an idle frame and a jump
 /// frame, with the colors in a `legend`.
@@ -147,6 +162,9 @@ Workflow:\n",
 Pixels: x and y count from 0 at the top left; frames count from 1; a color is a one-character palette key; `.` is always transparent. \
 A text grid is one character per pixel, one row per line; the exact format is in the description of `apply_grid`. \
 Small sprites (up to about 32x32) are drawn most reliably. Every pixel write returns an image of the edited frame; send `preview` false to skip it.\n\
+\n",
+    answers_note!(),
+    "\n\
 \n\
 Every write returns the new `revision`. Pass it back as `base_revision` and the call fails with `stale_revision` if the project changed. \
 Every error has a `code` and a `message` that says how to fix it, and each call is applied whole or not at all. \
@@ -176,7 +194,8 @@ Design guide: how to make a sprite that looks good\n\
 8. Look at the result. Every pixel write (`apply_grid`, `set_pixels`, `draw_shape`) returns an image of the edited frame. LOOK at it; if you have no image, call `render_preview`. If something looks wrong, fix it and look again. Do not say you are done before you have seen the image and it looks right.\n\
 9. Big sprites (more than 32x32): work region by region. Write one part at a time (head, body, legs) with `apply_grid` and `x` and `y`, look at the image after each part, then go on. Read a part with `get_sprite` (`frame`, `region`, `include_palette` false) instead of the whole sprite.\n\
 10. Edit without redrawing. `transform_region` flips, mirrors, moves or rotates a region; `copy_region` copies a region to another place, frame or sprite; `symmetry` on `set_pixels`, `draw_shape` and `apply_grid` draws both sides at once; `only_over` changes only the pixels that have one key (shade a color without touching the outline). `import_reference` draws a PNG from the folder `references/` of the project, reduced to the palette.\n\
-11. Let the server finish the sprite. When the shape is done, call `auto_outline` (the outline) and `auto_shade` (lit and shadow tones from one light direction), then `analyze_sprite` to find loose pixels, gaps in the outline, unused colors and, for animations, frames where the feet (`ground_kept`) moved. Fix what it reports.";
+11. Let the server finish the sprite. When the shape is done, call `auto_outline` (the outline) and `auto_shade` (lit and shadow tones from one light direction), then `analyze_sprite` to find loose pixels, gaps in the outline, unused colors and, for animations, frames where the support foot (`ground_kept`) moved. Fix what it reports. `analyze_sprite` lists what it `checked` and what it did `not_checked`: a problem that is not reported is only good news for the parts in `checked`.\n\
+12. Try before you write. `auto_outline`, `auto_shade`, `transform_region`, `copy_region` and `apply_grid` take `dry_run` true: nothing is written and you get the counts, `warnings` and an image of what WOULD happen. Read the warnings (a thin part that turns into outline, lone shade pixels), then repeat the call without `dry_run`.";
 
 /// How to animate. Also available as the topic `animation`.
 pub const ANIMATION_GUIDE: &str = "\
@@ -188,7 +207,10 @@ Animation guide: how to make a sprite move\n\
 4. Change little. Start a new frame with `add_frame` and `copy_of`, then change only what moves, with `set_pixels` or `apply_grid` and `x` and `y`.\n\
 5. The loop closes. The last frame must lead back to the first without a jump. Then make the animation with `create_tag` (mode loop, 6 to 12 fps).\n\
 6. Look at the whole animation with `render_frames` (all frames in one image, `labels` true shows the numbers) and at the movement with `render_onion` (earlier frames tinted red under the last one). Fix what looks wrong before you say you are done. All previews take a `background` (checker, light, dark or transparent).\n\
-7. Game data. Give a frame its own time with `set_frame_duration` (milliseconds) when it must last longer, like a hit or a pause. Mark the points the game needs (feet, hand) with `set_anchor`, and keep them on the same pixel when the pose does not move.";
+7. Game data. Give a frame its own time with `set_frame_duration` (milliseconds) when it must last longer, like a hit or a pause (`milliseconds` null goes back to the animation speed; `get_sprite` shows `null` in `frame_durations` for those frames). Mark the points the game needs (feet, hand) with `set_anchor`, and keep them on the same pixel when the pose does not move.\n\
+8. Support foot. Put the anchor `feet` on the foot that carries the weight and keep it on the same pixel in every frame where that foot stays down. `analyze_sprite` then follows it: `ground_kept` is true when the `feet` anchor has the same y in the next frame (without the anchor it compares the lowest row with a pixel). A lifted foot does not make it false; a support foot that moves does.\n\
+9. A body that moves has a bob. In a walk or run the body goes 1 pixel up and down (the passing pose is the high one), the arms swing opposite to the legs, and the head follows the body. A body that stays at one height looks stiff.\n\
+10. Actions touch what they hit. A peck, a stomp or a hit reaches the row where it lands (a peck reaches the ground row); do not stop one pixel short. Check it in the frame of the strike with `render_preview`.";
 
 /// How to choose and build the colors. Also available as the topic `palette`.
 pub const PALETTE_GUIDE: &str = "\
@@ -393,17 +415,17 @@ pub const WALKER_GRID: &str = walker_grid!();
 pub const WALK_GUIDE: &str = concat!("\
 Walk and attack cycles guide: frames that move well\n\
 \n\
-1. Walk: 4 frames is the minimum: contact, passing, contact (the other leg), passing. 6 or 8 frames are smoother. Make the key poses first, as whole frames.\n\
-2. Contact: the legs are far apart and the body is at its lowest. Passing: the legs are close and the body is 1 pixel higher. The body goes up and down by 1 pixel at 16x16 and by 2 at 32x32.\n\
-3. Ground contact. The lowest row of the feet must be the same row in every frame, or the character floats. `analyze_sprite` compares each frame with the next: `ground_kept` true means the bottom rows did not change. That is right for an idle, but in a walk a foot moves, so false is normal; look at the frames with `render_frames` (`labels` true) to check the feet.\n\
+1. Walk: use 6 or 8 frames. 4 frames (contact, passing, contact with the other leg, passing) is the least that works and looks stiff; 6 or 8 add the down and up poses between them. Make the key poses first, as whole frames.\n\
+2. Body bob. Contact: the legs are far apart and the body is at its lowest. Passing: the legs are close and the body is 1 pixel higher. The body MUST go up and down: 1 pixel at 16x16 and 2 at 32x32. The arms swing the OPPOSITE way to the legs (left leg forward, right arm forward).\n\
+3. Ground contact and the support foot. The foot that carries the weight stays on the same pixel while it is down, and the lowest row of the feet is the same row in every frame, or the character floats. Mark that foot with `set_anchor` named `feet` (on each frame, or once for the sprite). `analyze_sprite` compares each frame with the next: `ground_kept` FOLLOWS THE SUPPORT FOOT (the `feet` anchor, or the lowest row with a pixel if there is no anchor), so a lifted foot does not make it false but a support foot that slides does. `ground_rule` says which rule was used and `bottom_rows_equal` is the old, stricter check. Look at the frames with `render_frames` (`labels` true) too.\n\
 4. Time. Give each frame its time with `set_frame_duration` (milliseconds). A walk: contact 100 to 140, passing 60 to 100. Without it, a frame lasts 1000 divided by the fps of the animation (8 to 12 fps is good for a walk).\n\
-5. Start a new frame with `add_frame` and `copy_of`, then change only what moves. Arms swing the opposite way to the legs. Do not add colors for one frame.\n\
-6. Attack has three phases. Anticipation: pull back, slow (150 to 250 ms). Strike: the biggest pose, fast (40 to 80 ms, 1 or 2 frames). Recovery: come back to the first idle pose (100 to 150 ms). A long wind-up and a short strike feel powerful.\n\
+5. Start a new frame with `add_frame` and `copy_of`, then change only what moves. Keep the arms opposite to the legs. Do not add colors for one frame.\n\
+6. Attack has three phases. Anticipation: pull back, slow (150 to 250 ms). Strike: the biggest pose, fast (40 to 80 ms, 1 or 2 frames). Recovery: come back to the first idle pose (100 to 150 ms). A long wind-up and a short strike feel powerful. The strike touches its target: a peck reaches the ground row, a punch reaches the other character. Do not stop one pixel short.\n\
 7. Move a body part without redrawing it: `transform_region` with the operation move and a `region` around the body, so the feet stay in place.\n\
 8. The loop closes. A walk goes back to its first frame: `create_tag` with mode loop. An attack is not a loop: use mode once and end on the idle pose, so the game can go back to idle without a jump.\n\
 9. Look at the whole animation with `render_frames` and at the movement with `render_onion`. If the body grows, shrinks or jumps by accident, fix that frame.\n\
 \n\
-Worked example: a 12x10 walker with a 4 frame walk and a 3 frame attack. The body is B, the eye E, the back leg H and the front leg F; frame 1 and 3 are the contact poses (the body is low and the legs are on the ground), frames 2 and 4 are the passing poses (the body is 1 pixel higher and one foot is lifted).\n\
+Worked example: a 12x10 walker with a 3 frame attack and a walk of 4 frames (the short version, to keep the example small; make yours with 6 or 8). The body is B, the eye E, the back leg H and the front leg F; frame 1 and 3 are the contact poses (the body is low and the legs are on the ground), frames 2 and 4 are the passing poses (the body is 1 pixel higher and one foot is lifted).\n\
 1. `create_sprite` with name walker, width 12 and height 10.\n\
 2. `add_frame` with name walker three times (now it has 4 frames).\n\
 3. `apply_grid` with name walker and this grid:\n\
@@ -413,7 +435,7 @@ Worked example: a 12x10 walker with a 4 frame walk and a 3 frame attack. The bod
 LOOK at the frames with `render_frames` (name walker, `labels` true). The lowest row of the feet is row 9 in all of them.\n\
 4. `set_frame_duration` with name walker: frame 1 and 3 with `milliseconds` 120, frame 2 and 4 with 80.\n\
 5. `create_tag` with sprite walker, name walk, from 1, to 4, fps 10, mode loop.\n\
-6. `analyze_sprite` with name walker and `outline_key` K: no loose pixels and no gaps in the 4 frames. `ground_kept` is false between the frames, because a foot moves; this is right for a walk.\n\
+6. `analyze_sprite` with name walker and `outline_key` K: no loose pixels and no gaps in the 4 frames. `ground_kept` is true between the frames: the lowest row is row 9 in all of them, even when a foot moves. If a frame lifts the support foot or the body sinks, it turns false.\n\
 7. The attack: `add_frame` with name walker and `copy_of` 1, three times (frames 5, 6 and 7).\n\
 8. `transform_region` with name walker, `frame` 5, operation move, `dx` -1, `dy` 0 and `region` {x: 0, y: 1, width: 12, height: 7}: the body leans back (anticipation). The same on `frame` 6 with `dx` 2 and `dy` 0: the body lunges forward (strike). Frame 7 stays as the first frame (recovery). The legs do not move.\n\
 9. `set_frame_duration`: frame 5 with 200, frame 6 with 60, frame 7 with 120.\n\
@@ -510,6 +532,47 @@ Tools guide: which tool for which job\n\
 10. Mistakes: `undo_last_ai_action` takes back your last action, if nothing happened after it.\n\
 Pick the smallest tool: one pixel is `set_pixels`; a shape or a part is `apply_grid`; a copy is `copy_region`; both sides at once is `symmetry`; an outline or shading is `auto_outline` or `auto_shade`; a move or a flip is `transform_region`. Never redraw a whole frame to move or flip something.\n\
 When a call fails read its `message`. Common codes: `unknown_key` (the key is not in the palette), `out_of_range` and `region_out` (outside the sprite), `stale_revision` (read again), `permission_denied` (ask the person).\n\
+\n\
+Example calls (the tool, then its arguments as JSON; change the names and numbers to yours):\n\
+`get_project` {}\n\
+`list_sprites` {\"folder\":\"Enemies\"}\n\
+`get_sprite` {\"name\":\"slime\",\"frame\":1,\"region\":{\"x\":0,\"y\":0,\"width\":8,\"height\":8},\"include_palette\":false}\n\
+`get_palette` {}\n\
+`list_projects` {}\n\
+`open_project` {\"path\":\"/home/me/sprites/my-game\"}\n\
+`get_guide` {\"topic\":\"animation\"}\n\
+`render_preview` {\"name\":\"slime\",\"frame\":1,\"scale\":8}\n\
+`render_frames` {\"name\":\"walker\",\"labels\":true}\n\
+`render_onion` {\"name\":\"walker\",\"frames\":[1,2,3]}\n\
+`render_tiled` {\"name\":\"grass\"}\n\
+`open_sprite` {\"name\":\"slime\"}\n\
+`create_folder` {\"name\":\"Enemies\"}\n\
+`create_sprite` {\"name\":\"slime\",\"width\":16,\"height\":16}\n\
+`resize_sprite` {\"name\":\"slime\",\"width\":20,\"height\":16,\"anchor\":\"center\"}\n\
+`add_frame` {\"name\":\"slime\",\"copy_of\":1}\n\
+`delete_frame` {\"name\":\"slime\",\"frame\":2}\n\
+`delete_sprite` {\"name\":\"old-slime\"}\n\
+`apply_grid` {\"name\":\"slime\",\"x\":4,\"y\":2,\"grid\":\"frame 1\\nBB\\nBB\\n\"}\n\
+`set_pixels` {\"name\":\"slime\",\"pixels\":[{\"x\":3,\"y\":4,\"key\":\"K\"}]}\n\
+`draw_shape` {\"name\":\"slime\",\"shape\":\"rectangle\",\"key\":\"B\",\"x\":2,\"y\":2,\"width\":4,\"height\":3,\"filled\":true}\n\
+`transform_region` {\"name\":\"walker\",\"frame\":5,\"operation\":\"move\",\"dx\":-1,\"dy\":0,\"region\":{\"x\":0,\"y\":1,\"width\":12,\"height\":7}}\n\
+`copy_region` {\"name\":\"walker\",\"frame\":1,\"region\":{\"x\":0,\"y\":0,\"width\":6,\"height\":6},\"to_frame\":2}\n\
+`import_reference` {\"name\":\"slime\",\"file\":\"references/slime.png\",\"max_colors\":8}\n\
+`auto_outline` {\"name\":\"slime\",\"key\":\"K\",\"dry_run\":true}\n\
+`auto_shade` {\"name\":\"slime\",\"light\":\"top-left\",\"base\":\"B\",\"keys\":[\"D\",\"B\",\"L\"],\"dry_run\":true}\n\
+`analyze_sprite` {\"name\":\"walker\",\"outline_key\":\"K\"}\n\
+`check_tile` {\"name\":\"grass\"}\n\
+`set_palette_color` {\"palette\":\"main\",\"key\":\"B\",\"hex\":\"#5CC85C\"}\n\
+`generate_ramp` {\"palette\":\"main\",\"base\":\"#6FD36B\",\"steps\":3,\"name\":\"leaf\"}\n\
+`create_palette` {\"name\":\"forest\",\"colors\":[{\"key\":\"B\",\"name\":\"base\",\"hex\":\"#6FD36B\"}]}\n\
+`set_sprite_palette` {\"name\":\"slime\",\"palette\":\"forest\"}\n\
+`remove_unused_colors` {\"palette\":\"main\"}\n\
+`create_tag` {\"sprite\":\"walker\",\"name\":\"walk\",\"from\":1,\"to\":4,\"fps\":10,\"mode\":\"loop\"}\n\
+`set_frame_duration` {\"name\":\"walker\",\"frame\":2,\"milliseconds\":80}\n\
+`set_anchor` {\"sprite\":\"walker\",\"name\":\"feet\",\"x\":4,\"y\":9}\n\
+`remove_anchor` {\"sprite\":\"walker\",\"name\":\"feet\",\"frame\":2}\n\
+`export` {\"format\":\"sheet\",\"scale\":2}\n\
+`undo_last_ai_action` {}\n\
 \n\
 Worked example: find and fix a gap in an outline (an 8x8 gem).\n\
 1. `create_sprite` with name gem, width 8 and height 8.\n\

@@ -119,3 +119,18 @@ pub fn auto_shade(view: View, options: &ShadeOptions) -> Shade {
 fn key_is_lighter(keys: &[char], key: char, base_index: usize) -> bool {
     keys.iter().position(|k| *k == key).is_some_and(|i| i > base_index)
 }
+
+/// How many of the changed pixels have no side neighbor with the same new key
+/// (after the changes): single dots of shade, which look like noise.
+pub fn isolated_changes(view: View, changes: &[PixelChange]) -> usize {
+    let new_key = |x: i64, y: i64| {
+        changes.iter().find(|c| c.x as i64 == x && c.y as i64 == y).map(|c| c.key as u8).or_else(|| view.get(x, y))
+    };
+    changes
+        .iter()
+        .filter(|c| {
+            let (x, y) = (c.x as i64, c.y as i64);
+            ![(0, -1), (-1, 0), (1, 0), (0, 1)].iter().any(|(dx, dy)| new_key(x + dx, y + dy) == Some(c.key as u8))
+        })
+        .count()
+}
