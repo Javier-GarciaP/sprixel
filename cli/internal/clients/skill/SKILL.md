@@ -38,6 +38,8 @@ image of a write.
 
 Small sprites (up to about 32x32) are drawn most reliably.
 
+Read the answers: `dry_run` true on `auto_outline`, `auto_shade`, `transform_region`, `copy_region` and `apply_grid` writes nothing and shows what WOULD happen (counts, `warnings` and an image), so try first. `analyze_sprite` lists what it `checked` and what it did `not_checked`; a problem that is not reported is only good news for the parts in `checked`. A region `apply_grid` (with `x` and `y`) keeps the pixels under a `.` unless you send `skip_transparent` false, and every write that erased opaque pixels reports `erased`; read `warnings` too.
+
 ## Design rules
 
 Design guide: how to make a sprite that looks good
@@ -112,7 +114,7 @@ frame 2
 
 For a game engine, a sprite can carry more than pixels:
 
-- `set_frame_duration`: how long one frame lasts, in milliseconds (10 to 10000). `get_sprite` lists them in `frame_durations`.
+- `set_frame_duration`: how long one frame lasts, in milliseconds (10 to 10000), or `null` to follow the animation speed. `get_sprite` lists them in `frame_durations` (`null` = follows the animation speed).
 - `set_anchor` and `remove_anchor`: named points such as feet or hand (`x`, `y`, and an optional `frame`). `get_sprite` lists the `anchors`. The `export` JSON gives them to the game.
 - `check_tile`: for a tile, tells if the opposite edges match and lists the pixels that do not. `render_tiled` shows the tile repeated 3x3 so you can see the seams.
 

@@ -342,3 +342,14 @@ fn the_tools_guide_has_a_valid_example_call_for_every_tool() {
         assert!(seen.contains(tool.name), "the tools guide has no example call for {}", tool.name);
     }
 }
+
+// Task 6.3: the note about the answers (`dry_run`, `checked`/`not_checked`,
+// `erased`) is in the server instructions and in the skill, word for word.
+#[test]
+fn the_instructions_and_the_skill_explain_the_new_answers() {
+    for part in ["dry_run", "checked", "not_checked", "erased", "warnings"] {
+        assert!(super::docs::ANSWERS_NOTE.contains(part), "the note does not say {part}");
+    }
+    assert!(INSTRUCTIONS.contains(super::docs::ANSWERS_NOTE), "the instructions");
+    assert!(skill().contains(super::docs::ANSWERS_NOTE), "the skill");
+}

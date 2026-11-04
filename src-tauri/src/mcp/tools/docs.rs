@@ -53,6 +53,21 @@ macro_rules! guide_list {
     };
 }
 
+/// What the answers of the tools tell you. The same text is in the server
+/// instructions and in the Claude Code skill (a test checks both). A macro, so
+/// `concat!` can use it.
+macro_rules! answers_note {
+    () => {
+        "\
+Read the answers: `dry_run` true on `auto_outline`, `auto_shade`, `transform_region`, `copy_region` and `apply_grid` writes nothing and shows what WOULD happen (counts, `warnings` and an image), so try first. \
+`analyze_sprite` lists what it `checked` and what it did `not_checked`; a problem that is not reported is only good news for the parts in `checked`. \
+A region `apply_grid` (with `x` and `y`) keeps the pixels under a `.` unless you send `skip_transparent` false, and every write that erased opaque pixels reports `erased`; read `warnings` too."
+    };
+}
+
+/// The note about the answers (see `answers_note!`).
+pub const ANSWERS_NOTE: &str = answers_note!();
+
 /// The grid of the worked example: a 16x16 slime, an idle frame and a jump
 /// frame, with the colors in a `legend`.
 macro_rules! example_grid {
@@ -147,6 +162,9 @@ Workflow:\n",
 Pixels: x and y count from 0 at the top left; frames count from 1; a color is a one-character palette key; `.` is always transparent. \
 A text grid is one character per pixel, one row per line; the exact format is in the description of `apply_grid`. \
 Small sprites (up to about 32x32) are drawn most reliably. Every pixel write returns an image of the edited frame; send `preview` false to skip it.\n\
+\n",
+    answers_note!(),
+    "\n\
 \n\
 Every write returns the new `revision`. Pass it back as `base_revision` and the call fails with `stale_revision` if the project changed. \
 Every error has a `code` and a `message` that says how to fix it, and each call is applied whole or not at all. \
