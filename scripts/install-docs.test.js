@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { SHARED_FILES } from "./release-files.mjs";
+import { SHARED_FILES, TARGETS, appName, cliName } from "./release-files.mjs";
 
 // The install commands in the documentation must match the real scripts. If a
 // script changes (a flag, a folder, a file name), these tests point at the
@@ -9,6 +9,7 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const readme = read("README.md");
 // Prettier may wrap a line of the docs, so spaces and line breaks are equal.
 const usage = read("docs/usage.md").replace(/\s+/g, " ");
+const guide = read("docs/guide.md");
 const contributing = read("CONTRIBUTING.md");
 const sh = read("install.sh");
 const ps1 = read("install.ps1");
@@ -36,9 +37,9 @@ describe("install documentation", () => {
   });
 
   it("the documented way to pick a version exists in both scripts", () => {
-    expect(readme).toContain("sh -s -- --version 0.2.0");
+    expect(guide).toContain("sh -s -- --version 0.1.0");
     expect(sh).toContain("--version)");
-    expect(readme).toContain('$env:SPRIXEL_VERSION = "0.2.0"');
+    expect(guide).toContain('$env:SPRIXEL_VERSION = "0.1.0"');
     expect(ps1).toContain("$env:SPRIXEL_VERSION");
   });
 
@@ -83,8 +84,13 @@ describe("install documentation", () => {
     }
   });
 
-  it("the README says the first release is not published until it is", () => {
-    // Remove this note and this test in task 5.2, when 0.1.0 is published.
-    expect(readme).toContain("is not published yet");
+  // The manual download in the guide names the files of a release. If a file
+  // is renamed in release-files.mjs, this test points at the guide to fix.
+  it("the guide names every app and command file of a release", () => {
+    for (const target of TARGETS) {
+      expect(guide, appName(target)).toContain(appName(target));
+      expect(guide, cliName(target)).toContain(cliName(target));
+    }
+    expect(guide).toContain("checksums.txt");
   });
 });

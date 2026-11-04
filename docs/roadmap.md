@@ -45,7 +45,7 @@ is archived when version 1 is done.
 | 10 | demo polish | `docs/demo.md`, an example project, an end to end test | |
 
 `install-and-release` is not part of the demo. The demo runs from the source
-code (see the [README](../README.md#try-it-from-the-source-code)).
+code (see the [README](../README.md#build-from-source)).
 
 ### The color model
 
