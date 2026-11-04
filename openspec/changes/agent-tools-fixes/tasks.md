@@ -16,7 +16,7 @@
 
 ## 4. Erase safety
 
-- [ ] 4.1 Make region `apply_grid` skip `.` by default and add `erased` and its warning to every write; verify region, whole frame, explicit false and `transform_region`
+- [x] 4.1 Make region `apply_grid` skip `.` by default and add `erased` and its warning to every write; verify region, whole frame, explicit false and `transform_region`
 
 ## 5. Frame durations
 

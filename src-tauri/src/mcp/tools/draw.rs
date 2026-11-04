@@ -201,7 +201,11 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
     let text = args::required_str(input, "grid")?.to_string();
     let frame = args::optional_u32(input, "frame")?;
     let (x, y) = (args::optional_u32(input, "x")?, args::optional_u32(input, "y")?);
-    let skip_transparent = args::optional_bool(input, "skip_transparent")?.unwrap_or(false);
+    // A region (`x` or `y`) keeps what is under a `.` unless the call says
+    // `skip_transparent: false`; a whole frame erases, as always.
+    let region_form = x.is_some() || y.is_some();
+    let explicit_skip = args::optional_bool(input, "skip_transparent")?;
+    let skip_transparent = explicit_skip.unwrap_or(region_form);
     write(ctx, input, |session| {
         let project = &session.project;
         let target = args::sprite(project, input)?;
@@ -260,6 +264,14 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
                 remap.keys.iter().map(|(from, to)| (from.to_string(), to.to_string().into())).collect();
             extra["remapped"] = moved.into();
             extra["warnings"] = remap.warnings.into();
+        }
+        let erased = super::write::count_erased(project, &ops);
+        if region_form && explicit_skip == Some(false) && erased > 0 {
+            let warning = format!("{erased} opaque pixel(s) were erased by a `.` of the region grid (`skip_transparent` is false). Send `skip_transparent` true to keep what is under a `.`");
+            match extra["warnings"].as_array_mut() {
+                Some(list) => list.push(warning.into()),
+                None => extra["warnings"] = json!([warning]),
+            }
         }
         let plan = Plan::new(ops, extra).preview();
         Ok(match busy {

@@ -111,6 +111,9 @@ mod analysis_tests;
 mod dryrun_tests;
 
 #[cfg(test)]
+mod erase_tests;
+
+#[cfg(test)]
 mod background_tests;
 
 #[cfg(test)]

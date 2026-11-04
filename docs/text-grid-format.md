@@ -105,8 +105,11 @@ Q.
 
 A grid can be written at a position inside a bigger sprite. The tool
 `apply_grid` takes `x` and `y` (default `0`, `0`). The region must fit inside
-the sprite. Use `.` for transparent pixels you want to **erase**; use the
-option `skip_transparent` to leave existing pixels instead.
+the sprite. Use `.` for transparent pixels you want to **erase** when you write a whole
+frame. When you write a region (the AI tool `apply_grid` with `x` and `y`), a
+`.` **keeps** the pixel that is there by default (`skip_transparent` is true);
+send `skip_transparent: false` to erase with it. Every AI write that erased
+opaque pixels reports how many in `erased`.
 
 Without `x` and `y` the grid is a **whole frame**: it must have the size of
 the sprite. With `x` and `y` (even `0` and `0`) it is a region, so it can be

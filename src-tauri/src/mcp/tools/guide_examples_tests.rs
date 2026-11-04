@@ -107,7 +107,7 @@ fn make_walker(core: &crate::mcp::Core, session: &str) {
 // Checks the walk of the example: 4 different frames, the body 1 pixel higher
 // in the passing frames, the lowest row of the feet is row 9 in every frame,
 // the durations and the tag are saved, and `analyze_sprite` finds nothing
-// wrong. `ground_kept` is false between frames because a foot moves.
+// wrong. `ground_kept` is true between frames: the lowest row stays on row 9 even if a foot moves.
 #[test]
 fn the_walk_example_makes_a_four_frame_walk() {
     let (host, core, session) = setup();
@@ -140,7 +140,7 @@ fn the_walk_example_makes_a_four_frame_walk() {
     }
     let changes = report["changes"].as_array().unwrap();
     assert_eq!(changes.len(), 3, "{report}");
-    assert!(changes.iter().all(|change| change["ground_kept"] == false), "{report}");
+    assert!(changes.iter().all(|change| change["ground_kept"] == true && change["ground_rule"] == "lowest_row"), "{report}");
 }
 
 // Checks the attack of the example: frames 5 to 7 are copies of frame 1; the

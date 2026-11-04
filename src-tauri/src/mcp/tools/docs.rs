@@ -21,7 +21,7 @@ frame 1                  (frame numbers start at 1)\n\
 \n\
 Rules: all rows have the same length (the width) and their number is the height. Without `x` and `y` the grid is a whole frame and must be \
 exactly the size of the sprite. With `x` and `y` it is a region written at that top left position, and it may be smaller. \
-A `.` erases the pixel unless `skip_transparent` is true. Keys are case sensitive. If you only have rows, pass `frame`.\n\
+In a whole frame a `.` erases the pixel. In a region (`x` and `y`) a `.` keeps the pixel that is there (`skip_transparent` defaults to true); send `skip_transparent` false to erase with it, and the answer then has `erased` and a warning. Every write that erased opaque pixels reports `erased`. Keys are case sensitive. If you only have rows, pass `frame`.\n\
 \n\
 It is atomic: if anything is wrong nothing changes, and `errors` lists every problem with its `line`, `row` and `column` \
 (codes: row_length, row_count, unknown_key, no_frame, bad_frame, too_big, region_out, palette_full, bad_legend). \

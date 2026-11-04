@@ -122,6 +122,25 @@ fn ordered_pixels(ops: &[Operation], frame: u32) -> Vec<Value> {
     out
 }
 
+/// How many opaque pixels the operations set to `.` (erase), looking at the
+/// project as it is now.
+pub(super) fn count_erased(project: &crate::document::Project, ops: &[Operation]) -> usize {
+    let mut erased = 0;
+    for op in ops {
+        let Operation::SetPixels { sprite, layer, frame, pixels } = op else { continue };
+        let Some(current) = project.find_sprite(sprite).and_then(|s| s.layers.get(*layer)).and_then(|l| l.frames.get(*frame as usize - 1))
+        else {
+            continue;
+        };
+        let width = project.find_sprite(sprite).map_or(0, |s| s.width as usize);
+        erased += pixels
+            .iter()
+            .filter(|p| p.key == crate::document::TRANSPARENT && current.pixels[p.y as usize * width + p.x as usize] != crate::document::TRANSPARENT as u8)
+            .count();
+    }
+    erased
+}
+
 impl Drop for Busy<'_> {
     fn drop(&mut self) {
         self.ctx.core.host.agents().end();
@@ -160,6 +179,7 @@ fn dry_run_answer(
     background: crate::render::Background,
 ) -> Result<(Map<String, Value>, ChangedEvent, bool, Option<Value>, Option<(SpriteRef, u32, crate::render::Image)>), ToolError> {
     let would_change = !plan.ops.is_empty();
+    let erased = count_erased(project, &plan.ops);
     let mut copy = project.clone();
     if would_change {
         copy.apply_group(&plan.ops)?;
@@ -173,6 +193,9 @@ fn dry_run_answer(
     }
     answer.insert("revision".into(), project.revision.into());
     answer.insert("changed".into(), false.into());
+    if erased > 0 {
+        answer.insert("erased".into(), erased.into());
+    }
     answer.insert("dry_run".into(), true.into());
     answer.insert("would_change".into(), would_change.into());
     let image = match (&plan.busy, plan.preview && want_preview) {
@@ -245,6 +268,7 @@ pub fn write(
             _ => None,
         };
         let sprite = plan.sprite;
+        let erased = count_erased(&session.project, &plan.ops);
         let touched = if changed { session.apply(ctx.client, plan.ops)? } else { Vec::new() };
         let mut answer = match plan.extra {
             Value::Object(map) => map,
@@ -256,6 +280,9 @@ pub fn write(
         }
         answer.insert("revision".into(), session.project.revision.into());
         answer.insert("changed".into(), changed.into());
+        if erased > 0 {
+            answer.insert("erased".into(), erased.into());
+        }
         let event = ChangedEvent {
             revision: session.project.revision,
             touched: touched.iter().map(TargetInfo::from).collect(),
