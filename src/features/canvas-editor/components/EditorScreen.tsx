@@ -21,7 +21,15 @@ import { TextView, coreTextApi, type TextApi } from "@/features/text-view";
 import { useT } from "@/shared/lib/i18n";
 import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
-import type { EditorApi, SpriteRef } from "../api/types";
+import { corePowerApi } from "../api/power";
+import type {
+  EditorApi,
+  PowerApi,
+  RegionAction,
+  SpriteRef,
+} from "../api/types";
+import { powerErrorText } from "../powerError";
+import { SelectionBar } from "./SelectionBar";
 import {
   useEditorCommands,
   type CommandHandlers,
@@ -36,6 +44,7 @@ import { ColorBook } from "../controller/colorBook";
 import { DrawingController } from "../controller/DrawingController";
 import type { Scene } from "../render/renderer";
 import type { ToolId } from "../tools/tools";
+import type { Rect } from "../types";
 import { useCanvasView } from "../view/useCanvasView";
 import { AgentCursor } from "./AgentCursor";
 import { CanvasArea } from "./CanvasArea";
@@ -52,6 +61,8 @@ type Props = {
   sprite: SpriteRef | null;
   // The calls to the core. The tests give a fake one.
   api?: EditorApi;
+  // The calls of the power tools. The tests give a fake one.
+  powerApi?: PowerApi;
   // Gives the app what the editor commands do (the app owns the keys).
   // The calls for frames and animations. The tests give a fake one.
   framesApi?: FramesApi;
@@ -73,6 +84,7 @@ type Props = {
 export function EditorScreen({
   sprite,
   api = coreEditorApi,
+  powerApi = corePowerApi,
   framesApi = coreFramesApi,
   paletteApi = corePaletteApi,
   textApi = coreTextApi,
@@ -109,6 +121,7 @@ export function EditorScreen({
       key={JSON.stringify(sprite)}
       sprite={sprite}
       api={api}
+      powerApi={powerApi}
       framesApi={framesApi}
       paletteApi={paletteApi}
       textApi={textApi}
@@ -123,6 +136,7 @@ export function EditorScreen({
 function OpenSprite({
   sprite,
   api,
+  powerApi,
   framesApi,
   paletteApi,
   textApi,
@@ -134,6 +148,7 @@ function OpenSprite({
   startFrame?: number;
   sprite: SpriteRef;
   api: EditorApi;
+  powerApi: PowerApi;
   framesApi: FramesApi;
   paletteApi: PaletteApi;
   textApi: TextApi;
@@ -174,6 +189,7 @@ function OpenSprite({
   return (
     <Ready
       api={api}
+      powerApi={powerApi}
       framesApi={framesApi}
       paletteApi={paletteApi}
       textApi={textApi}
@@ -212,6 +228,7 @@ function OpenSprite({
 
 type ReadyProps = {
   api: EditorApi;
+  powerApi: PowerApi;
   clock?: Clock;
   framesApi: FramesApi;
   paletteApi: PaletteApi;
@@ -265,23 +282,33 @@ function Ready(props: ReadyProps) {
   // frame lasts. A new copy from the core makes a new controller.
   const canvasRef = useRef<PixelCanvasHandle>(null);
   const send = useRef<(changes: PixelChange[]) => void>(() => {});
-  const controller = useMemo(
-    () =>
-      new DrawingController(
-        info.width,
-        info.height,
-        pixels,
-        new ColorBook(info.palette),
-        {
-          onDirty: (area) => canvasRef.current?.invalidate(area),
-          onCommit: (changes) => send.current(changes),
-          onPick: (hex, button) =>
-            button === 2 ? props.onSecondary(hex) : props.onMain(hex),
+  // The selected rectangle. The controller draws and edits it; the bar and
+  // the actions read this copy. A new controller (a new copy of the pixels
+  // from the core) starts with the same selection.
+  const [selection, setSelection] = useState<Rect | null>(null);
+  const selectionRef = useRef<Rect | null>(null);
+  const [wrap, setWrap] = useState(false);
+  const controller = useMemo(() => {
+    const made = new DrawingController(
+      info.width,
+      info.height,
+      pixels,
+      new ColorBook(info.palette),
+      {
+        onDirty: (area) => canvasRef.current?.invalidate(area),
+        onCommit: (changes) => send.current(changes),
+        onPick: (hex, button) =>
+          button === 2 ? props.onSecondary(hex) : props.onMain(hex),
+        onSelect: (area) => {
+          selectionRef.current = area;
+          setSelection(area);
         },
-      ),
+      },
+    );
+    made.selection = selectionRef.current;
+    return made;
     // A new copy of the pixels is a new controller.
-    [pixels],
-  );
+  }, [pixels]);
   // The palette of the sprite as the core has it. A stroke can add colors.
   const [palette, setPalette] = useState(info.palette);
   const [history, setHistory] = useState({
@@ -396,6 +423,23 @@ function Ready(props: ReadyProps) {
   const undo = () => step(() => props.api.undo());
   const redo = () => step(() => props.api.redo());
 
+  // An action of the power tools on the selection (the whole frame when
+  // nothing is selected). The core does it as one step of Undo; then the
+  // screen reads the sprite again.
+  const runRegion = (action: RegionAction) => {
+    if (busyRef.current)
+      return setNotice(powerErrorText(t, { code: "frame_busy" }));
+    props.powerApi
+      .region(sprite, props.frame, selectionRef.current, action)
+      .then((result) => {
+        setHistory(result);
+        props.reload();
+      })
+      .catch((error) => setNotice(powerErrorText(t, error)));
+  };
+  const nudge = (dx: number, dy: number) =>
+    runRegion({ kind: "move", dx, dy, wrap });
+
   useEditorCommands(props.onCommands, {
     "edit.undo": undo,
     "edit.redo": redo,
@@ -406,6 +450,24 @@ function Ready(props: ReadyProps) {
     "frame.next": () =>
       props.onFrame(Math.min(info.frameCount, props.frame + 1)),
     "colors.swap": props.onSwap,
+    "selection.flipHorizontal": () => runRegion({ kind: "flip_horizontal" }),
+    "selection.flipVertical": () => runRegion({ kind: "flip_vertical" }),
+    "selection.rotate90": () => runRegion({ kind: "rotate", degrees: 90 }),
+    "selection.rotate180": () => runRegion({ kind: "rotate", degrees: 180 }),
+    "selection.rotate270": () => runRegion({ kind: "rotate", degrees: 270 }),
+    "selection.mirrorLeftToRight": () =>
+      runRegion({ kind: "mirror", direction: "left_to_right" }),
+    "selection.mirrorRightToLeft": () =>
+      runRegion({ kind: "mirror", direction: "right_to_left" }),
+    "selection.mirrorTopToBottom": () =>
+      runRegion({ kind: "mirror", direction: "top_to_bottom" }),
+    "selection.mirrorBottomToTop": () =>
+      runRegion({ kind: "mirror", direction: "bottom_to_top" }),
+    "selection.moveLeft": () => nudge(-1, 0),
+    "selection.moveRight": () => nudge(1, 0),
+    "selection.moveUp": () => nudge(0, -1),
+    "selection.moveDown": () => nudge(0, 1),
+    "selection.wrap": () => setWrap((on) => !on),
     "view.onionSkin": () =>
       props.onOnion({ ...props.onion, on: !props.onion.on }),
     "view.zoomIn": () => canvas.zoomIn(),
@@ -489,6 +551,14 @@ function Ready(props: ReadyProps) {
           mode={mode}
           onMode={setMode}
         />
+        {mode === "canvas" && selection && (
+          <SelectionBar
+            selection={selection}
+            wrap={wrap}
+            onWrap={setWrap}
+            onAction={runRegion}
+          />
+        )}
         {mode === "text" && (
           <TextView
             api={props.textApi}

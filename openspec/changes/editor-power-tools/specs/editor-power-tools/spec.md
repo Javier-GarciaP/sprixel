@@ -22,7 +22,7 @@ The core SHALL have a command for each editor tool. Each one MUST use the same p
 - **THEN** the command fails with `frame_busy` and nothing changes
 
 ### Requirement: Selection actions
-The editor SHALL show a selection bar when a selection exists, with buttons and shortcuts to flip horizontally, flip vertically, rotate 90, 180 and 270, and mirror a half onto the other half. The arrow keys SHALL move the selected pixels one pixel, with an option to wrap.
+The editor SHALL show a selection bar when a selection exists, with buttons and shortcuts to flip horizontally, flip vertically, rotate 90, 180 and 270, and mirror a half onto the other half. The arrow keys SHALL move the pixels inside the selection (the whole frame if nothing is selected) one pixel, with an option to wrap.
 
 #### Scenario: Flip
 - **WHEN** the person presses Flip horizontal with a selection
@@ -34,7 +34,7 @@ The editor SHALL show a selection bar when a selection exists, with buttons and 
 
 #### Scenario: Arrow move
 - **WHEN** the person presses the right arrow with a selection
-- **THEN** the pixels move one pixel right, pixels that leave are lost unless wrap is on, and the selection follows
+- **THEN** the pixels inside the selection move one pixel right, pixels that leave the selection are lost unless wrap is on, and the selection stays where it is
 
 ### Requirement: Copy and paste
 The editor SHALL copy the selected region and paste it into any frame or sprite that uses the same palette. When the palette differs it MUST show a clear message and change nothing.

@@ -9,8 +9,8 @@
 ## 2. Selection actions
 
 - [x] 2.1 Add the editor API functions and the commands in the registry (with default shortcuts, `en.json`, `es.json`) and verify the registry tests
-- [ ] 2.2 Add the selection bar (flip, rotate, mirror half) and verify each button with a UI test, the rectangle rotate message and the busy frame
-- [ ] 2.3 Add the arrow keys move with the wrap option and verify the move, the wrap and that the selection follows
+- [x] 2.2 Add the selection bar (flip, rotate, mirror half) and verify each button with a UI test, the rectangle rotate message and the busy frame
+- [x] 2.3 Add the arrow keys move with the wrap option and verify the move, the wrap and that the selection stays
 
 ## 3. Copy and paste
 

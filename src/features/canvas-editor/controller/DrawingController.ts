@@ -31,6 +31,8 @@ export type Events = {
   // The Eyedropper picked a color: the main one (left button) or the
   // secondary one (right button).
   onPick: (hex: string, button: Button) => void;
+  // The selection changed (or was cleared): the selection bar shows it.
+  onSelect?: (area: Rect | null) => void;
 };
 
 export type Modifiers = { shift: boolean };
@@ -175,6 +177,7 @@ export class DrawingController {
     const old = this.selection;
     this.selection = next;
     for (const area of [old, next]) if (area) this.events.onDirty(area);
+    this.events.onSelect?.(next);
   }
 
   // The part of a rectangle that is inside the sprite, or null.
