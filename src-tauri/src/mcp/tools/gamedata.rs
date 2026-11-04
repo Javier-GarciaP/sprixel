@@ -138,7 +138,7 @@ fn remove_anchor(ctx: &Ctx, input: &Value) -> ToolResult {
 }
 
 /// The keys of one frame with all layers stacked (the last layer on top).
-fn flat_keys(sprite: &crate::document::Sprite, frame: usize) -> Vec<u8> {
+pub(crate) fn flat_keys(sprite: &crate::document::Sprite, frame: usize) -> Vec<u8> {
     let mut flat = vec![crate::document::TRANSPARENT as u8; sprite.width as usize * sprite.height as usize];
     for layer in &sprite.layers {
         for (at, key) in layer.frames[frame].pixels.iter().enumerate() {

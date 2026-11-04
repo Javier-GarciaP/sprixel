@@ -71,10 +71,10 @@ fn region_schema(description: &str) -> Value {
     }})
 }
 
-type Rect = (u32, u32, u32, u32);
+pub(crate) type Rect = (u32, u32, u32, u32);
 
 /// The pixels of a rectangle of a frame.
-fn cut(pixels: &[u8], sprite_width: u32, (x, y, w, h): Rect) -> Vec<u8> {
+pub(crate) fn cut(pixels: &[u8], sprite_width: u32, (x, y, w, h): Rect) -> Vec<u8> {
     (y..y + h)
         .flat_map(|row| {
             let start = (row * sprite_width + x) as usize;
@@ -84,7 +84,7 @@ fn cut(pixels: &[u8], sprite_width: u32, (x, y, w, h): Rect) -> Vec<u8> {
 }
 
 /// The pixels that change when `new` replaces the rectangle.
-fn changes(current: &[u8], sprite_width: u32, (x, y, w, _): Rect, new: &[u8]) -> Vec<PixelChange> {
+pub(crate) fn changes(current: &[u8], sprite_width: u32, (x, y, w, _): Rect, new: &[u8]) -> Vec<PixelChange> {
     let old = {
         let h = new.len() as u32 / w;
         cut(current, sprite_width, (x, y, w, h))

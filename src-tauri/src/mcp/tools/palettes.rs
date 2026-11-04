@@ -124,11 +124,11 @@ fn ramp_schema() -> Value {
 }
 
 /// The arguments of a ramp: `base`, `steps` (default 5), `hue_shift` and `name`.
-struct RampArgs {
-    base: String,
-    steps: usize,
-    hue_shift: f64,
-    name: Option<String>,
+pub(crate) struct RampArgs {
+    pub(crate) base: String,
+    pub(crate) steps: usize,
+    pub(crate) hue_shift: f64,
+    pub(crate) name: Option<String>,
 }
 
 fn read_ramp(input: &Value) -> Result<RampArgs, ToolError> {
@@ -148,7 +148,7 @@ fn read_ramp(input: &Value) -> Result<RampArgs, ToolError> {
 
 /// Adds the tones of a ramp to `palette`. Returns the keys of all the tones,
 /// dark to light. A tone with a hex the palette already has reuses its key.
-fn add_ramp(palette: &mut Palette, ramp_args: &RampArgs) -> Result<Vec<Color>, ToolError> {
+pub(crate) fn add_ramp(palette: &mut Palette, ramp_args: &RampArgs) -> Result<Vec<Color>, ToolError> {
     let tones = ramp(&ramp_args.base, ramp_args.steps, ramp_args.hue_shift)?;
     let prefix = ramp_args.name.clone().unwrap_or_else(|| ramp_args.base.trim_start_matches('#').to_string());
     let dark = ramp_args.steps - 1 - (ramp_args.steps - 1) / 2;
