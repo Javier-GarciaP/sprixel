@@ -44,12 +44,26 @@ macro_rules! workflow {
     };
 }
 
+/// The rules for animations. The same text is in the server instructions, the
+/// guide `animations-from-base` and the Claude Code skill (a test checks all
+/// three). A macro, so `concat!` can use it.
+macro_rules! animation_rules {
+    () => {
+        "\
+Animation rules: draw the base frame first. Then make ONE named animation per action (idle, walk, attack) with `create_animation`, which copies the base for you, and change only what moves in those frames (`transform_region` or `copy_region` with `frames`, or `apply_grid` with a region). \
+NEVER make pixels outside the app (scripts, image libraries) unless the person agrees. If the tools are not enough, say so first and ask."
+    };
+}
+
+/// The rules for animations (see `animation_rules!`).
+pub const ANIMATION_RULES: &str = animation_rules!();
+
 /// The sentence that lists the topics. The same text is in the server
 /// instructions, the Claude Code skill and `docs/ai-and-mcp.md` (a test checks
 /// all three). A macro, so `concat!` can use it.
 macro_rules! guide_list {
     () => {
-        "Guides (`get_guide`, argument `topic`): `design`, `animation`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`."
+        "Guides (`get_guide`, argument `topic`): `design`, `animation`, `animations-from-base`, `palette`, `large-sprites`, `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` and `tools`."
     };
 }
 
@@ -158,6 +172,9 @@ Workflow:\n",
 \n",
     guide_list!(),
     "\n\
+\n",
+    animation_rules!(),
+    "\n\
 \n\
 Pixels: x and y count from 0 at the top left; frames count from 1; a color is a one-character palette key; `.` is always transparent. \
 A text grid is one character per pixel, one row per line; the exact format is in the description of `apply_grid`. \
@@ -173,8 +190,8 @@ The person can stop you (`stopped_by_user`) and undo your last action."
 );
 
 /// The topics of `get_guide`, in the order they are listed.
-pub const GUIDE_TOPICS: [&str; 8] =
-    ["design", "animation", "palette", "large-sprites", "faces-and-animals", "walk-and-attack-cycles", "game-ready", "tools"];
+pub const GUIDE_TOPICS: [&str; 9] =
+    ["design", "animation", "animations-from-base", "palette", "large-sprites", "faces-and-animals", "walk-and-attack-cycles", "game-ready", "tools"];
 
 /// The sentence that lists the topics (see `guide_list!`).
 pub const GUIDE_LIST: &str = guide_list!();
@@ -204,13 +221,37 @@ Animation guide: how to make a sprite move\n\
 1. Key poses first. Draw the main poses as whole frames before anything else (an idle needs 2 frames; a walk needs contact and passing poses). Add the in-between frames after.\n\
 2. Same palette in every frame. Do not add new colors for one frame. Keep the same light direction and the same outline.\n\
 3. Keep the size and the ground line. The body must not grow or jump by accident between frames: feet stay on the same row unless the pose is a jump.\n\
-4. Change little. Start a new frame with `add_frame` and `copy_of`, then change only what moves, with `set_pixels` or `apply_grid` and `x` and `y`.\n\
-5. The loop closes. The last frame must lead back to the first without a jump. Then make the animation with `create_tag` (mode loop, 6 to 12 fps).\n\
+4. Change little. Start from a copy of the base (`create_animation`, or `add_frame` with `copy_of`), then change only what moves, with `transform_region`, `set_pixels` or `apply_grid` and `x` and `y`.\n\
+5. The loop closes. The last frame must lead back to the first without a jump. Then make the animation with `create_animation` (it copies the base; mode loop, 6 to 12 fps) or, for frames you already drew, `create_tag`. How to organize many animations: the guide `animations-from-base`.\n\
 6. Look at the whole animation with `render_frames` (all frames in one image, `labels` true shows the numbers) and at the movement with `render_onion` (earlier frames tinted red under the last one). Fix what looks wrong before you say you are done. All previews take a `background` (checker, light, dark or transparent).\n\
 7. Game data. Give a frame its own time with `set_frame_duration` (milliseconds) when it must last longer, like a hit or a pause (`milliseconds` null goes back to the animation speed; `get_sprite` shows `null` in `frame_durations` for those frames). Mark the points the game needs (feet, hand) with `set_anchor`, and keep them on the same pixel when the pose does not move.\n\
 8. Support foot. Put the anchor `feet` on the foot that carries the weight and keep it on the same pixel in every frame where that foot stays down. `analyze_sprite` then follows it: `ground_kept` is true when the `feet` anchor has the same y in the next frame (without the anchor it compares the lowest row with a pixel). A lifted foot does not make it false; a support foot that moves does.\n\
 9. A body that moves has a bob. In a walk or run the body goes 1 pixel up and down (the passing pose is the high one), the arms swing opposite to the legs, and the head follows the body. A body that stays at one height looks stiff.\n\
 10. Actions touch what they hit. A peck, a stomp or a hit reaches the row where it lands (a peck reaches the ground row); do not stop one pixel short. Check it in the frame of the strike with `render_preview`.";
+
+/// How to organize animations: a base frame and one named animation per
+/// action. Also available as the topic `animations-from-base`.
+pub const ANIMATIONS_FROM_BASE_GUIDE: &str = concat!("\
+Animations from the base: how to organize the frames of a sprite\n\
+\n\
+A sprite has a base frame and several named animations. Each animation owns its own frames, and no frame belongs to two animations.\n\
+\n\
+1. Draw the base first: frame 1, the sprite at rest, finished (shape, colors, outline). Everything else is made from it.\n\
+2. One animation per action. Call `create_animation` with `sprite`, `name` (idle, walk, attack), `frames` and `fps`. It copies the base `frames` times at the end of the sprite and tags the copies, in one call and one Undo step, with no pixels sent. `base_frame` copies another frame; `mode` is loop, once or pingpong.\n\
+3. Change only what moves. In the frames of the animation use `transform_region` and `copy_region` with `frames` (a list like [8, 9] or a range as text like \"8-13\"): the same region and operation on every frame in ONE step. For a different pose per frame use `apply_grid` with `x`, `y` and `frame` on the part that moves.\n\
+4. Look at each animation. `render_frames` with `from`, `to` and `labels` shows its frames in one image; `render_onion` shows the movement. Fix what looks wrong before the next animation.\n\
+5. Variants and fixes. `duplicate_animation` copies an animation under a new name (a fast walk); `rename_animation` renames; `delete_animation` removes the name and keeps the frames, unless `with_frames` is true; `move_frame` puts a frame in another place and the animations follow their frames.\n\
+6. Errors. `name_exists`: the animation name is used (names ignore case). `animation_overlap`: the frames belong to another animation; use `at` to place the new frames after it, or `create_tag` on frames that belong to none.\n\
+\n",
+    animation_rules!(),
+    "\n\
+\n\
+Example: a walk with 6 frames, then an attack.\n\
+1. `create_animation` {\"sprite\":\"goat\",\"name\":\"walk\",\"frames\":6,\"fps\":10}\n\
+2. `transform_region` {\"name\":\"goat\",\"frames\":\"3-5\",\"region\":{\"x\":20,\"y\":4,\"width\":12,\"height\":10},\"operation\":\"move\",\"dx\":0,\"dy\":1}\n\
+3. `render_frames` {\"name\":\"goat\",\"from\":2,\"to\":7,\"labels\":true}, and LOOK at it.\n\
+4. `create_animation` {\"sprite\":\"goat\",\"name\":\"attack\",\"frames\":4,\"fps\":12,\"mode\":\"once\"}"
+);
 
 /// How to choose and build the colors. Also available as the topic `palette`.
 pub const PALETTE_GUIDE: &str = "\
@@ -524,7 +565,7 @@ Tools guide: which tool for which job\n\
 2. See: `render_preview` (one frame), `render_frames` (many frames, `labels`), `render_onion` (the movement), `render_tiled` (a tile 3 by 3), `open_sprite` (shows a sprite to the person). Every pixel write also returns an image.\n\
 3. Create: `create_folder`, `create_sprite` (`own_palette` for a palette of its own), `add_frame` (`copy_of` copies a frame), `delete_frame`, `delete_sprite`, `resize_sprite` (change the canvas size, with an `anchor` for where the drawing stays).\n\
 4. Draw: `apply_grid` (a frame or a region from text; best for shapes), `set_pixels` (single pixels), `draw_shape` (line, rectangle, ellipse, fill). `symmetry` and `only_over` work on all three.\n\
-5. Edit: `transform_region` (flip, mirror, move, rotate), `copy_region` (copy to another place, frame or sprite), `import_reference` (a PNG from `references/`).\n\
+5. Edit: `transform_region` (flip, mirror, move, rotate), `copy_region` (copy to another place, frame or sprite; both take `frames` to change many frames in one step), `import_reference` (a PNG from `references/`).\n\
 6. Finish: `auto_outline` when the shape is done, `auto_shade` for lit and shadow tones.\n\
 7. Check: `analyze_sprite` (loose pixels, outline gaps, unused colors, what changes between frames), `check_tile` (seams of a tile).\n\
 8. Colors: `set_palette_color`, `generate_ramp`, `create_palette`, `set_sprite_palette`, `remove_unused_colors`.\n\
@@ -595,6 +636,7 @@ pub fn guide(topic: &str) -> Option<&'static str> {
     match topic {
         "design" => Some(DESIGN_GUIDE),
         "animation" => Some(ANIMATION_GUIDE),
+        "animations-from-base" => Some(ANIMATIONS_FROM_BASE_GUIDE),
         "palette" => Some(PALETTE_GUIDE),
         "large-sprites" => Some(LARGE_SPRITES_GUIDE),
         "faces-and-animals" => Some(FACES_GUIDE),
@@ -608,7 +650,7 @@ pub fn guide(topic: &str) -> Option<&'static str> {
 pub fn tools() -> Vec<Tool> {
     vec![Tool {
         name: "get_guide",
-        description: "Returns the pixel art guide for a topic: `design` (palette ramps, light, silhouette, shading, outline, how to review your work), `animation` (key poses, loops), `palette` (how to choose colors), `large-sprites` (more than 32x32), `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` (anchors, times, tiles, export) or `tools` (which tool for which job). Read `design` before you draw a new sprite. It changes nothing and needs no permission.",
+        description: "Returns the pixel art guide for a topic: `design` (palette ramps, light, silhouette, shading, outline, how to review your work), `animation` (key poses, loops), `animations-from-base` (a base frame and one named animation per action), `palette` (how to choose colors), `large-sprites` (more than 32x32), `faces-and-animals`, `walk-and-attack-cycles`, `game-ready` (anchors, times, tiles, export) or `tools` (which tool for which job). Read `design` before you draw a new sprite. It changes nothing and needs no permission.",
         schema: json!({ "type": "object", "required": ["topic"], "properties": {
             "topic": { "type": "string", "enum": GUIDE_TOPICS, "description": "The guide to read. `tools` is a map of the tools." },
         }}),

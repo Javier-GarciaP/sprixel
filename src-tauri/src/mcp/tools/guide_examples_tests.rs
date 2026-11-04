@@ -2,6 +2,7 @@
 //! real tools, so a guide cannot teach calls that do not work.
 
 use super::docs::{
+    ANIMATIONS_FROM_BASE_GUIDE,
     CAT_GRID, FACES_GUIDE, GAME_READY_GUIDE, GEM_GRID, GRASS_GRID, LARGE_SPRITES_GUIDE, MUSHROOM_CAP_GRID, MUSHROOM_STEM_GRID, TOOLS_GUIDE, WALK_GUIDE,
     WALKER_GRID,
 };
@@ -221,4 +222,34 @@ fn the_game_ready_example_sets_anchors_fixes_a_tile_and_exports() {
     let files = done["files"].as_array().unwrap_or_else(|| panic!("{done}"));
     assert!(files.iter().any(|f| f.as_str().unwrap().ends_with(".png")) && files.iter().any(|f| f.as_str().unwrap().ends_with(".json")), "{done}");
     assert!(files.iter().all(|f| f.as_str().unwrap().starts_with("assets/sprites")), "{done}");
+}
+
+// Checks the example of the `animations-from-base` guide: the calls make the
+// walk (frames 2 to 7) and the attack (frames 8 to 11) from the base, the
+// region move changes frames 3 to 5 only, and `render_frames` accepts the range.
+#[test]
+fn the_animations_from_base_example_makes_two_animations() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    call(&core, &session, "create_sprite", json!({ "name": "goat", "width": 32, "height": 16 })).unwrap();
+    call(&core, &session, "set_pixels", json!({ "name": "goat", "pixels": [{ "x": 22, "y": 5, "key": "R" }] })).unwrap();
+    for line in [
+        r#"`create_animation` {"sprite":"goat","name":"walk","frames":6,"fps":10}"#,
+        r#"`transform_region` {"name":"goat","frames":"3-5","region":{"x":20,"y":4,"width":12,"height":10},"operation":"move","dx":0,"dy":1}"#,
+        r#"`render_frames` {"name":"goat","from":2,"to":7,"labels":true}"#,
+        r#"`create_animation` {"sprite":"goat","name":"attack","frames":4,"fps":12,"mode":"once"}"#,
+    ] {
+        assert!(ANIMATIONS_FROM_BASE_GUIDE.contains(line), "the guide does not print {line}");
+        let (tool, arguments) = line[1..].split_once("` ").unwrap();
+        call(&core, &session, tool, serde_json::from_str(arguments).unwrap()).unwrap();
+    }
+    let at = |frame: usize| rows(&host, &[], "goat", frame).split('/').nth(5).unwrap().to_string();
+    assert_eq!(at(1).find('R'), Some(22));
+    assert_eq!(at(2).find('R'), Some(22), "frame 2 was not in the range");
+    assert_eq!(at(3).find('R'), None, "frame 3 moved down");
+    assert_eq!(rows(&host, &[], "goat", 3).split('/').nth(6).unwrap().find('R'), Some(22));
+    assert_eq!(at(6).find('R'), Some(22));
+    let sprite = call(&core, &session, "get_sprite", json!({ "name": "goat" })).unwrap();
+    assert_eq!(sprite["animations"][0]["from"], 2);
+    assert_eq!(sprite["animations"][1], json!({ "name": "attack", "from": 8, "to": 11, "fps": 12, "mode": "once" }));
 }

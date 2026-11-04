@@ -16,6 +16,16 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Animations organized like in other tools: a base frame and one named animation
+  per action, with no shared frames. New AI tools `create_animation` (copies the
+  base frame, tags the copies, one Undo step), `duplicate_animation`,
+  `rename_animation`, `delete_animation` (with or without its frames) and
+  `move_frame`; `transform_region` and `copy_region` accept `frames` (a list or
+  a range like `"8-13"`) as one step. New guide `animations-from-base` and a
+  rule for agents: never make pixels outside the app (scripts, image libraries)
+  without the agreement of the person. New editor commands `animation_create`,
+  `animation_duplicate`, `animation_rename` and `animation_delete`. A new
+  animation that shares a frame with another one is refused (`animation_overlap`).
 - Power tools for people in the editor, the same ones the AI has: a selection
   bar (flip, rotate, mirror a half, move with the arrow keys and wrap), copy
   and paste between frames and sprites, a symmetry mode with the axis on the
