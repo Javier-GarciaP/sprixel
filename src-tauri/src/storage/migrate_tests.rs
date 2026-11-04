@@ -175,3 +175,69 @@ fn reading_a_file_with_another_version_explains_why() {
     let text = manifest_from_text(r##"{ "formatVersion": "1", "name": "x" }"##).unwrap_err();
     assert!(text.contains("formatVersion"), "{text}");
 }
+
+fn add_field(name: &'static str) -> fn(&mut Value, FileKind) -> Result<(), String> {
+    match name {
+        "a" => |v, _| {
+            v["a"] = Value::from(true);
+            Ok(())
+        },
+        _ => |v, _| {
+            // Step 2 can only run after step 1 added "a".
+            if v.get("a").is_none() {
+                return Err("step 2 ran before step 1".into());
+            }
+            v["b"] = Value::from(true);
+            Ok(())
+        },
+    }
+}
+
+// Checks that a file several versions old runs one step per version, in
+// order, and gets the version of the last step, keeping its other fields.
+#[test]
+fn a_chain_runs_one_step_per_version_in_order() {
+    // The steps are given in the wrong order on purpose: the chain follows `from`.
+    let migrator = Migrator::new(vec![
+        Step { from: 2, run: add_field("b") },
+        Step { from: 1, run: add_field("a") },
+    ]);
+    let mut value: Value = serde_json::from_str(r#"{ "formatVersion": 1, "keep": "me" }"#).unwrap();
+
+    migrator.run_steps(&mut value, FileKind::Manifest, 3).unwrap();
+
+    assert_eq!(value["formatVersion"], 3);
+    assert_eq!(value["a"], true);
+    assert_eq!(value["b"], true);
+    assert_eq!(value["keep"], "me");
+}
+
+// Checks that a chain with a missing step stops with a clear error instead of skipping a version.
+#[test]
+fn a_chain_with_a_missing_step_fails() {
+    let migrator = Migrator::new(vec![Step { from: 2, run: add_field("b") }]);
+    let mut value: Value = serde_json::from_str(r#"{ "formatVersion": 1 }"#).unwrap();
+
+    let error = migrator.run_steps(&mut value, FileKind::Manifest, 3).unwrap_err();
+
+    assert!(error.contains("no migration from format version 1"), "{error}");
+}
+
+// Checks that a sprite saved by a newer Sprixel is reported as damaged and is
+// not modified (the rest of the project still opens).
+#[test]
+fn a_newer_sprite_file_is_left_untouched() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    old_project(root);
+    fs::write(root.join("sprixel.json"), r##"{ "formatVersion": 1, "name": "Kit" }"##).unwrap();
+    fs::write(root.join("palettes/dungeon16.palette.json"), r##"{ "formatVersion": 1, "colors": [] }"##).unwrap();
+    let newer = r##"{ "formatVersion": 9, "palette": "dungeon16", "anything": [1, 2] }"##;
+    fs::write(root.join("sprites/Personajes/hero.sprite.json"), newer).unwrap();
+
+    let session = Session::open(root).unwrap();
+
+    assert_eq!(session.damaged().len(), 1);
+    assert!(session.damaged()[0].reason.contains("newer Sprixel"), "{:?}", session.damaged());
+    assert_eq!(fs::read_to_string(root.join("sprites/Personajes/hero.sprite.json")).unwrap(), newer);
+}
