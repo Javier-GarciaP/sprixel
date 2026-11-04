@@ -175,3 +175,99 @@ fn paste_checks_the_palette_and_the_size() {
     let error = region_paste(&host.project, &host.agents, &slime(), 1, &clip, 7, 7, false).unwrap_err();
     assert_eq!(error.code, "region_out");
 }
+
+// ---- outline, shade, review, tile check ----
+
+fn outline(key: &str) -> OutlineArgs {
+    OutlineArgs { key: key.into(), connectivity: 8, outside_only: false, inner: false }
+}
+
+// Checks that the Outline preview lists the pixels that Apply then changes,
+// that the preview writes nothing (same revision, no entry), and that Apply
+// gives the picture `auto_outline` gives to an agent.
+#[test]
+fn outline_preview_apply_and_the_agent_tool_agree() {
+    let (host, core, session) = drawn();
+    let (before, revision, rows_before) = (entries(&host), crate::mcp::testing::revision(&host), rows(&host, &[], "slime", 1));
+    let preview = outline_preview(&host.project, &slime(), 1, &outline("G")).unwrap();
+    assert!(!preview.pixels.is_empty());
+    assert_eq!((entries(&host), crate::mcp::testing::revision(&host), rows(&host, &[], "slime", 1)), (before, revision, rows_before));
+
+    outline_apply(&host.project, &host.agents, &slime(), 1, &outline("G")).unwrap();
+    assert_eq!(entries(&host), before + 1);
+    let by_person = rows(&host, &[], "slime", 1);
+    let grid: Vec<&str> = by_person.split('/').collect();
+    for (x, y, key) in &preview.pixels {
+        assert_eq!(&grid[*y as usize][*x as usize..*x as usize + 1], key, "the preview shows what Apply writes");
+    }
+    browser::undo(&host.project).unwrap();
+    call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "G" })).unwrap();
+    assert_eq!(by_person, rows(&host, &[], "slime", 1));
+}
+
+// Checks the same for Shade, and that a bad ramp is refused.
+#[test]
+fn shade_preview_apply_and_the_agent_tool_agree() {
+    let (host, core, session) = drawn();
+    let args = ShadeArgs { light: "top-left".into(), base: "R".into(), keys: vec!["G".into(), "R".into()], region: None };
+    let preview = shade_preview(&host.project, &slime(), 1, &args).unwrap();
+    assert_eq!(entries(&host), 1, "the preview made no entry");
+    shade_apply(&host.project, &host.agents, &slime(), 1, &args).unwrap();
+    let by_person = rows(&host, &[], "slime", 1);
+    browser::undo(&host.project).unwrap();
+    call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top-left", "base": "R", "keys": ["G", "R"] })).unwrap();
+    assert_eq!(by_person, rows(&host, &[], "slime", 1));
+    assert_eq!(preview.pixels.len(), by_person.matches('G').count() - 2, "only the shaded pixels are in the preview");
+
+    let bad = ShadeArgs { keys: vec!["G".into()], ..args.clone() };
+    assert_eq!(shade_preview(&host.project, &slime(), 1, &bad).unwrap_err().code, "bad_argument");
+    let missing = ShadeArgs { base: "Z".into(), ..args };
+    assert_eq!(shade_preview(&host.project, &slime(), 1, &missing).unwrap_err().code, "unknown_key");
+}
+
+// Checks the busy frame and the key checks of Outline.
+#[test]
+fn outline_refuses_a_busy_frame_and_a_bad_key() {
+    let (host, _core, _session) = drawn();
+    assert_eq!(outline_preview(&host.project, &slime(), 1, &outline(".")).unwrap_err().code, "unknown_key");
+    host.agents.begin(crate::ipc::editor::AgentWrite { agent: "Claude Code".into(), sprite: slime(), frame: 1 });
+    assert_eq!(outline_apply(&host.project, &host.agents, &slime(), 1, &outline("G")).unwrap_err().code, "frame_busy");
+}
+
+// Checks that the review finds what `analyze_sprite` finds.
+#[test]
+fn review_equals_analyze_sprite() {
+    let (host, core, session) = drawn();
+    let mine = review(&host.project, &slime(), Some("G"), 2).unwrap();
+    let theirs = call(&core, &session, "analyze_sprite", json!({ "name": "slime", "outline_key": "G" })).unwrap();
+    let frame = &theirs["frame_reports"][0];
+    assert_eq!(mine.frames[0].loose.len() as u64, frame["loose_pixels"]["count"].as_u64().unwrap());
+    assert_eq!(mine.frames[0].gaps.len() as u64, frame["outline_gaps"]["count"].as_u64().unwrap());
+    assert_eq!(mine.unused.len(), theirs["colors"]["unused"].as_array().unwrap().len());
+    // The demo picture has a loose pixel at the bottom right.
+    assert!(mine.frames[0].loose.contains(&(7, 7)));
+    assert!(review(&host.project, &slime(), Some("Z"), 2).is_err());
+}
+
+// Checks the comparison of frames when a sprite has more than one.
+#[test]
+fn review_compares_each_frame_with_the_next() {
+    let (host, core, session) = drawn();
+    open_demo_project_frame_two(&host);
+    let mine = review(&host.project, &slime(), None, 2).unwrap();
+    let theirs = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+    assert_eq!(mine.changes.len(), 1);
+    assert_eq!(mine.changes[0].changed_pixels as u64, theirs["changes"][0]["changed_pixels"].as_u64().unwrap());
+    assert_eq!(mine.changes[0].ground_kept, theirs["changes"][0]["ground_kept"].as_bool().unwrap());
+}
+
+// Checks that the tile check gives the verdict of `check_tile`.
+#[test]
+fn tile_check_equals_check_tile() {
+    let (host, core, session) = drawn();
+    let mine = tile_check(&host.project, &slime(), 1).unwrap();
+    let theirs = call(&core, &session, "check_tile", json!({ "name": "slime" })).unwrap();
+    assert_eq!(mine.seamless, theirs["seamless"].as_bool().unwrap());
+    assert_eq!(mine.mismatches.len() as u64, theirs["mismatch_count"].as_u64().unwrap());
+    assert!(!mine.seamless, "the demo picture has different edges");
+}

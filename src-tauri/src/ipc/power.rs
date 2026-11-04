@@ -8,7 +8,9 @@
 use super::browser::{CHANGED_EVENT, ChangedEvent, TargetInfo};
 use super::editor::{EditorError, EditorState, HistoryState, SpriteArg, history_of};
 use super::project::{self, ProjectState};
+use crate::analysis::{self, Connectivity, Light, OutlineOptions, Region, ShadeOptions, View};
 use crate::document::{Operation, PixelChange, Sprite};
+use crate::mcp::tools::gamedata::flat_keys;
 use crate::mcp::tools::region::{self, Direction, Rect as Box4, changes, cut};
 use serde::{Deserialize, Serialize};
 
@@ -201,6 +203,217 @@ pub fn region_paste(
     })
 }
 
+/// The options of the Outline dialog (the same as `auto_outline`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutlineArgs {
+    pub key: String,
+    /// 4 or 8.
+    pub connectivity: u32,
+    pub outside_only: bool,
+    pub inner: bool,
+}
+
+/// The options of the Shade dialog (the same as `auto_shade`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ShadeArgs {
+    pub light: String,
+    pub base: String,
+    /// The ramp from dark to light; it includes `base`.
+    pub keys: Vec<String>,
+    pub region: Option<Rect>,
+}
+
+/// The pixels a preview would change, as `[x, y, key]`. Nothing is written.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Preview {
+    pub pixels: Vec<(u32, u32, String)>,
+}
+
+fn preview_of(changes: &[PixelChange]) -> Preview {
+    Preview { pixels: changes.iter().map(|c| (c.x, c.y, c.key.to_string())).collect() }
+}
+
+fn palette_keys(session: &crate::storage::Session, sprite: &Sprite) -> Vec<char> {
+    session.project.palette(&sprite.palette).map(|p| p.colors.iter().map(|c| c.key).collect()).unwrap_or_default()
+}
+
+fn view_of(sprite: &Sprite, frame: u32) -> View<'_> {
+    View::new(&sprite.layers[0].frames[frame as usize - 1].pixels, sprite.width as usize, sprite.height as usize)
+}
+
+/// One color key of the palette (not transparent).
+fn color_key(text: &str, palette: &[char], what: &str) -> Result<char, Failure> {
+    let mut chars = text.chars();
+    match (chars.next(), chars.next()) {
+        (Some(key), None) if palette.contains(&key) => Ok(key),
+        _ => Err(fail("unknown_key", format!("{what} {text:?} is not a color of the palette"))),
+    }
+}
+
+fn outline_changes(session: &crate::storage::Session, sprite: &Sprite, frame: u32, args: &OutlineArgs) -> Result<Vec<PixelChange>, Failure> {
+    let key = color_key(&args.key, &palette_keys(session, sprite), "the outline key")?;
+    let connectivity = match args.connectivity {
+        4 => Connectivity::Four,
+        8 => Connectivity::Eight,
+        _ => return Err(fail("bad_argument", "connectivity must be 4 or 8")),
+    };
+    let options = OutlineOptions { key, connectivity, outside_only: args.outside_only, inner: args.inner };
+    Ok(analysis::auto_outline(view_of(sprite, frame), &options).changes)
+}
+
+fn shade_changes(session: &crate::storage::Session, sprite: &Sprite, frame: u32, args: &ShadeArgs) -> Result<Vec<PixelChange>, Failure> {
+    let palette = palette_keys(session, sprite);
+    let light = Light::parse(&args.light).ok_or_else(|| fail("bad_argument", format!("{:?} is not a light direction", args.light)))?;
+    let base = color_key(&args.base, &palette, "the base key")?;
+    let keys = args.keys.iter().map(|k| color_key(k, &palette, "the ramp key")).collect::<Result<Vec<char>, _>>()?;
+    let mut sorted = keys.clone();
+    sorted.sort();
+    sorted.dedup();
+    if !(2..=8).contains(&keys.len()) || sorted.len() != keys.len() || !keys.contains(&base) {
+        return Err(fail("bad_argument", "the ramp needs 2 to 8 different keys and must include the base"));
+    }
+    let region = args.region.map(|r| inside(sprite, Some(r)).map(|r| Region { x: r.x, y: r.y, width: r.width, height: r.height })).transpose()?;
+    Ok(analysis::auto_shade(view_of(sprite, frame), &ShadeOptions { light, base, keys: &keys, region }).changes)
+}
+
+/// Reads a frame and gives the pixels a preview or an apply would change.
+fn look(
+    state: &ProjectState,
+    target: &SpriteArg,
+    frame: u32,
+    find: impl FnOnce(&crate::storage::Session, &Sprite) -> Result<Vec<PixelChange>, Failure>,
+) -> Result<Preview, Failure> {
+    project::read(state, |session| {
+        let sprite = sprite_of(session, target)?;
+        check_frame(sprite, frame)?;
+        Ok(preview_of(&find(session, sprite)?))
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
+pub fn outline_preview(state: &ProjectState, target: &SpriteArg, frame: u32, args: &OutlineArgs) -> Result<Preview, Failure> {
+    look(state, target, frame, |session, sprite| outline_changes(session, sprite, frame, args))
+}
+
+pub fn outline_apply(state: &ProjectState, agents: &EditorState, target: &SpriteArg, frame: u32, args: &OutlineArgs) -> Result<(Applied, ChangedEvent), Failure> {
+    write_pixels(state, agents, target, frame, |session, sprite| outline_changes(session, sprite, frame, args))
+}
+
+pub fn shade_preview(state: &ProjectState, target: &SpriteArg, frame: u32, args: &ShadeArgs) -> Result<Preview, Failure> {
+    look(state, target, frame, |session, sprite| shade_changes(session, sprite, frame, args))
+}
+
+pub fn shade_apply(state: &ProjectState, agents: &EditorState, target: &SpriteArg, frame: u32, args: &ShadeArgs) -> Result<(Applied, ChangedEvent), Failure> {
+    write_pixels(state, agents, target, frame, |session, sprite| shade_changes(session, sprite, frame, args))
+}
+
+/// What is wrong in one frame.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct FrameReview {
+    pub frame: u32,
+    pub loose: Vec<(u32, u32)>,
+    /// Empty unless an outline key was given.
+    pub gaps: Vec<(u32, u32)>,
+}
+
+/// How a frame differs from the next one.
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeReview {
+    pub from: u32,
+    pub to: u32,
+    pub changed_pixels: usize,
+    pub bbox: Option<Rect>,
+    pub ground_kept: bool,
+}
+
+/// The same checks as `analyze_sprite`, without the limit of 50 per list.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Review {
+    pub used: Vec<String>,
+    pub unused: Vec<String>,
+    pub frames: Vec<FrameReview>,
+    pub changes: Vec<ChangeReview>,
+}
+
+pub fn review(state: &ProjectState, target: &SpriteArg, outline_key: Option<&str>, ground_rows: usize) -> Result<Review, Failure> {
+    project::read(state, |session| {
+        let sprite = sprite_of(session, target)?;
+        let palette = palette_keys(session, sprite);
+        let outline = outline_key.map(|k| color_key(k, &palette, "the outline key")).transpose()?;
+        let count = sprite.frame_count() as u32;
+        let views: Vec<View> = (1..=count).map(|n| view_of(sprite, n)).collect();
+        let (used, unused) = analysis::colors(&views, &palette);
+        let text = |keys: Vec<char>| keys.iter().map(char::to_string).collect::<Vec<_>>();
+        let frames = views
+            .iter()
+            .enumerate()
+            .map(|(i, view)| FrameReview {
+                frame: i as u32 + 1,
+                loose: analysis::loose_pixels(*view),
+                gaps: outline.map(|key| analysis::outline_gaps(*view, key)).unwrap_or_default(),
+            })
+            .collect();
+        let changes = views
+            .windows(2)
+            .enumerate()
+            .map(|(i, pair)| {
+                let change = analysis::compare(pair[0], pair[1], ground_rows.max(1));
+                ChangeReview {
+                    from: i as u32 + 1,
+                    to: i as u32 + 2,
+                    changed_pixels: change.changed_pixels,
+                    bbox: change.bbox.map(|b| Rect { x: b.x, y: b.y, width: b.width, height: b.height }),
+                    ground_kept: change.ground_kept,
+                }
+            })
+            .collect();
+        Ok(Review { used: text(used), unused: text(unused), frames, changes })
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
+/// A pair of pixels that should be equal when the tile repeats.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Mismatch {
+    /// `left_right` or `top_bottom`.
+    pub edge: String,
+    pub a: (u32, u32),
+    pub b: (u32, u32),
+}
+
+/// The edges of a tile: the first and the last column, the first and the
+/// last row (the same rule as `check_tile`).
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TileCheck {
+    pub seamless: bool,
+    pub mismatches: Vec<Mismatch>,
+}
+
+pub fn tile_check(state: &ProjectState, target: &SpriteArg, frame: u32) -> Result<TileCheck, Failure> {
+    project::read(state, |session| {
+        let sprite = sprite_of(session, target)?;
+        check_frame(sprite, frame)?;
+        let (w, h) = (sprite.width as usize, sprite.height as usize);
+        let flat = flat_keys(sprite, frame as usize - 1);
+        let mut found = Vec::new();
+        for y in 0..h {
+            if flat[y * w] != flat[y * w + w - 1] {
+                found.push(Mismatch { edge: "left_right".into(), a: (0, y as u32), b: (w as u32 - 1, y as u32) });
+            }
+        }
+        for x in 0..w {
+            if flat[x] != flat[(h - 1) * w + x] {
+                found.push(Mismatch { edge: "top_bottom".into(), a: (x as u32, 0), b: (x as u32, h as u32 - 1) });
+            }
+        }
+        Ok(TileCheck { seamless: found.is_empty(), mismatches: found })
+    })
+    .ok_or_else(|| fail("no_project", "no project is open"))?
+}
+
 fn announce(app: &tauri::AppHandle, event: ChangedEvent) {
     let _ = tauri::Emitter::emit(app, CHANGED_EVENT, event);
 }
@@ -246,6 +459,54 @@ pub fn power_paste(
     let (applied, event) = region_paste(&state, &agents, &sprite, frame, &clip, x, y, skip_transparent)?;
     announce(&app, event);
     Ok(applied)
+}
+
+#[tauri::command]
+pub fn power_outline_preview(state: tauri::State<ProjectState>, sprite: SpriteArg, frame: u32, args: OutlineArgs) -> Result<Preview, Failure> {
+    outline_preview(&state, &sprite, frame, &args)
+}
+
+#[tauri::command]
+pub fn power_outline_apply(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    agents: tauri::State<EditorState>,
+    sprite: SpriteArg,
+    frame: u32,
+    args: OutlineArgs,
+) -> Result<Applied, Failure> {
+    let (applied, event) = outline_apply(&state, &agents, &sprite, frame, &args)?;
+    announce(&app, event);
+    Ok(applied)
+}
+
+#[tauri::command]
+pub fn power_shade_preview(state: tauri::State<ProjectState>, sprite: SpriteArg, frame: u32, args: ShadeArgs) -> Result<Preview, Failure> {
+    shade_preview(&state, &sprite, frame, &args)
+}
+
+#[tauri::command]
+pub fn power_shade_apply(
+    app: tauri::AppHandle,
+    state: tauri::State<ProjectState>,
+    agents: tauri::State<EditorState>,
+    sprite: SpriteArg,
+    frame: u32,
+    args: ShadeArgs,
+) -> Result<Applied, Failure> {
+    let (applied, event) = shade_apply(&state, &agents, &sprite, frame, &args)?;
+    announce(&app, event);
+    Ok(applied)
+}
+
+#[tauri::command]
+pub fn power_review(state: tauri::State<ProjectState>, sprite: SpriteArg, outline_key: Option<String>) -> Result<Review, Failure> {
+    review(&state, &sprite, outline_key.as_deref(), 2)
+}
+
+#[tauri::command]
+pub fn power_tile_check(state: tauri::State<ProjectState>, sprite: SpriteArg, frame: u32) -> Result<TileCheck, Failure> {
+    tile_check(&state, &sprite, frame)
 }
 
 #[cfg(test)]

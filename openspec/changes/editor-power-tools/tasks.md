@@ -3,7 +3,7 @@
 ## 1. IPC layer
 
 - [x] 1.1 Add `ipc/power.rs` with the region commands (flip, rotate, move, mirror, copy, paste) and verify each equals the MCP `transform_region` / `copy_region` result, is one entry, and fails on a busy frame, a rectangle rotate and a different palette
-- [ ] 1.2 Add the outline and shade commands (preview and apply), the review command and the tile check command, and verify they equal the MCP tool results and that preview writes nothing
+- [x] 1.2 Add the outline and shade commands (preview and apply), the review command and the tile check command, and verify they equal the MCP tool results and that preview writes nothing
 - [ ] 1.3 Add the palette commands (generate ramp, list unused, remove unused) and the frame commands (duration, set anchor, remove anchor, durations and anchors in the frame info), and verify them against the MCP tools
 
 ## 2. Selection actions
