@@ -7,6 +7,19 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0-beta.1] - 2026-11-04
+
+First public beta of Sprixel. Known limits:
+
+- Only tested by hand on Linux. Windows and macOS are checked by the automatic
+  tests only.
+- GIF export is not ready yet (the button is disabled). Trimming, pivot and a
+  progress bar for big exports come later too.
+- The app and the installers are not signed, so your system may show a warning
+  the first time.
+- If an AI tool loses its connection, the app does not show it after 10 seconds
+  yet.
+
 ### Fixed
 
 - The frames column is tidier: the groups are the only selector of the
