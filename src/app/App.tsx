@@ -238,6 +238,10 @@ function Main({ initialRecents }: { initialRecents: RecentProject[] }) {
           setStartFrame(frame);
         }}
         onCommands={registerEditorCommands}
+        hint={(id) => {
+          const shortcut = commands.find((c) => c.id === id)?.shortcut;
+          return shortcut && formatShortcut(shortcut, platform, t);
+        }}
         onGoToProject={() => setTab("project")}
       />
     );

@@ -35,7 +35,6 @@ import type {
   SpriteRef,
 } from "../api/types";
 import { powerErrorText } from "../powerError";
-import { SelectionBar } from "./SelectionBar";
 import { OutlinePanel } from "./OutlinePanel";
 import { ShadePanel } from "./ShadePanel";
 import { ReviewPanel } from "./ReviewPanel";
@@ -88,6 +87,8 @@ type Props = {
   // The clock of the preview. The tests give a manual one.
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
+  // The shortcut of a command, ready to show ("Ctrl+Z"), if it has one.
+  hint?: (command: string) => string | undefined;
   // With no sprite open, the button that leads to the Project tab.
   onGoToProject?: () => void;
   // An agent edits another sprite: the app may show it (see `useFollowAgent`).
@@ -105,6 +106,7 @@ export function EditorScreen({
   textApi = coreTextApi,
   clock,
   onCommands,
+  hint,
   onGoToProject,
   onFollow,
   startFrame,
@@ -145,6 +147,7 @@ export function EditorScreen({
       textApi={textApi}
       clock={clock}
       onCommands={onCommands}
+      hint={hint}
       strokeActive={strokeActive}
       startFrame={startFrame}
       clip={clip}
@@ -162,6 +165,7 @@ function OpenSprite({
   textApi,
   clock,
   onCommands,
+  hint,
   strokeActive,
   startFrame,
   clip,
@@ -178,6 +182,8 @@ function OpenSprite({
   textApi: TextApi;
   clock?: Clock;
   onCommands?: (handlers: CommandHandlers | null) => void;
+  // The shortcut of a command, ready to show ("Ctrl+Z"), if it has one.
+  hint?: (command: string) => string | undefined;
   strokeActive: RefObject<boolean>;
 }) {
   const t = useT();
@@ -228,6 +234,7 @@ function OpenSprite({
         reload();
       }}
       onCommands={onCommands}
+      hint={hint}
       strokeActive={strokeActive}
       clip={clip}
       onClip={onClip}
@@ -270,6 +277,8 @@ type ReadyProps = {
   textApi: TextApi;
   onFramesChanged: (select?: number) => void;
   onCommands?: (handlers: CommandHandlers | null) => void;
+  // The shortcut of a command, ready to show ("Ctrl+Z"), if it has one.
+  hint?: (command: string) => string | undefined;
   strokeActive: RefObject<boolean>;
   // Reads the sprite from the core again.
   reload: () => void;
@@ -777,17 +786,14 @@ function Ready(props: ReadyProps) {
           }
           mode={mode}
           onMode={setMode}
+          selection={mode === "canvas" ? selection : null}
+          onAction={runRegion}
+          onCopy={copy}
+          onPaste={props.clip ? paste : null}
+          wrap={wrap}
+          onWrap={setWrap}
+          hint={props.hint}
         />
-        {mode === "canvas" && selection && (
-          <SelectionBar
-            selection={selection}
-            wrap={wrap}
-            onWrap={setWrap}
-            onAction={runRegion}
-            onCopy={copy}
-            onPaste={props.clip ? paste : null}
-          />
-        )}
         {mode === "text" && (
           <TextView
             api={props.textApi}

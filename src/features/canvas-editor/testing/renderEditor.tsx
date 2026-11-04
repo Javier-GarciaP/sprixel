@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { configure, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
+import { commands } from "@/app/commands/registry";
+import { formatShortcut } from "@/app/commands/shortcut";
 import { useShortcuts } from "@/app/commands/useShortcuts";
 import { I18nProvider } from "@/shared/lib/i18n";
 import {
@@ -124,6 +126,10 @@ function Host({
       textApi={textApi}
       clock={testClock}
       onCommands={register}
+      hint={(id) => {
+        const key = commands.find((c) => c.id === id)?.shortcut;
+        return key && formatShortcut(key, "other");
+      }}
       onGoToProject={onGoToProject}
       onFollow={onFollow}
     />
