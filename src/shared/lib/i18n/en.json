@@ -213,7 +213,7 @@
   "shade.ramp": "Ramp: pick 2 to 8 colors, the base included",
   "shade.region": "Only inside the selection",
   "shade.needRamp": "Pick the base color and at least one more color for the ramp.",
-  "shade.count": "{count} pixels will change ({lit} lighter, {shadow} darker)",
+  "shade.count": "Pixels to change: {count}",
   "shade.none": "Nothing would change.",
   "light.top-left": "Top left",
   "light.top": "Top",

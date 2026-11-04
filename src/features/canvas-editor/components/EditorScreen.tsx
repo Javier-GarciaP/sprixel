@@ -33,6 +33,7 @@ import type {
 import { powerErrorText } from "../powerError";
 import { SelectionBar } from "./SelectionBar";
 import { OutlinePanel } from "./OutlinePanel";
+import { ShadePanel } from "./ShadePanel";
 import {
   useEditorCommands,
   type CommandHandlers,
@@ -713,6 +714,22 @@ function Ready(props: ReadyProps) {
             sprite={sprite}
             frame={props.frame}
             palette={palette}
+            onPreview={setPreview}
+            onApplied={(result) => {
+              setHistory(result);
+              setPanel(null);
+              props.reload();
+            }}
+            onClose={() => setPanel(null)}
+          />
+        )}
+        {panel === "shade" && (
+          <ShadePanel
+            api={props.powerApi}
+            sprite={sprite}
+            frame={props.frame}
+            palette={palette}
+            selection={selection}
             onPreview={setPreview}
             onApplied={(result) => {
               setHistory(result);
