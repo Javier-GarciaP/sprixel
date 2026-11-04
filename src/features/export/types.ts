@@ -16,6 +16,9 @@ export type Options = {
   spacing: number;
   // `null` is the default pattern.
   naming: string | null;
+  // The layout of the JSON file of the sheet. `aseprite` is the one that the
+  // Godot and Unity importers read.
+  jsonFormat: "sprixel" | "aseprite";
 };
 
 // What an export would do (see `SummaryInfo` in the core).

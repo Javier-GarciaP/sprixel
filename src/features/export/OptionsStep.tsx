@@ -4,13 +4,14 @@ import { useT } from "@/shared/lib/i18n";
 import type { Options } from "./types";
 
 const scales: Options["scale"][] = [1, 2, 4, 8];
+const jsonFormats: Options["jsonFormat"][] = ["sprixel", "aseprite"];
 
 type Props = {
   options: Options;
   onOptions: (options: Options) => void;
   output: string;
   onOutput: (output: string) => void;
-  // True when the format has no sheet to space (PNG files).
+  // True when the format has no sheet to space and no JSON (PNG files).
   noSpacing: boolean;
   // The output folder can be typed in after "Change" (or "Change folder").
   editing: boolean;
@@ -74,6 +75,24 @@ export function OptionsStep({
           className="w-20 rounded-md border border-border bg-surface-2 px-2 py-1 text-sm"
         />
       </label>
+      <div className="flex items-center justify-between text-sm">
+        <span>{t("export.jsonFormat")}</span>
+        <div className="flex gap-1">
+          {jsonFormats.map((id) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={options.jsonFormat === id}
+              disabled={noSpacing}
+              title={t(`export.jsonFormat.${id}Hint`)}
+              onClick={() => onOptions({ ...options, jsonFormat: id })}
+              className={`rounded border px-2 py-0.5 text-xs disabled:opacity-40 ${options.jsonFormat === id ? "border-amber bg-amber/20" : "border-border bg-surface-2 text-text-muted"}`}
+            >
+              {t(`export.jsonFormat.${id}`)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex flex-col gap-1 text-sm">
         <label htmlFor="export-output">{t("export.output")}</label>
         <div className="flex gap-2">
