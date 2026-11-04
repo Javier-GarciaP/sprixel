@@ -25,6 +25,7 @@ pub fn tools() -> Vec<Tool> {
                 "x": { "type": "integer", "minimum": 0, "description": "With `x` and `y` the grid is written as a region whose top left pixel is (x, y). Without them it is a whole frame." },
                 "y": { "type": "integer", "minimum": 0 },
                 "skip_transparent": { "type": "boolean", "description": "A `.` in the grid keeps the pixel that is there, instead of erasing it." },
+                "dry_run": dry_run_arg(),
                 "preview": preview_arg(),
                 "background": super::read::background_arg(),
                 "base_revision": base_revision(),
@@ -81,6 +82,11 @@ pub fn tools() -> Vec<Tool> {
 /// The `preview` argument of the three drawing tools.
 pub(super) fn preview_arg() -> Value {
     json!({ "type": "boolean", "description": "Default true: the result carries an image of the edited frame (at most 512 pixels on a side). LOOK at it and fix what is wrong. Set false to skip it." })
+}
+
+/// The `dry_run` argument of the tools that can show their result first.
+pub(super) fn dry_run_arg() -> Value {
+    json!({ "type": "boolean", "description": "Default false. With true nothing is written (no new revision, no history entry): the answer has the same counts and an image of what the frame WOULD look like, with `dry_run` true and `would_change`. Use it to try before you commit." })
 }
 
 /// The keys a sprite accepts: those of its palette and `.`.

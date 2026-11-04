@@ -2,7 +2,7 @@
 
 ## 1. Dry run
 
-- [ ] 1.1 Add `dry_run` to `write()` (copy of the project, no history, revision, replay or event) and to `apply_grid`, `auto_outline`, `auto_shade`, `transform_region`, `copy_region`; verify no change, counts, preview, `base_revision` and a legend color not added
+- [x] 1.1 Add `dry_run` to `write()` (copy of the project, no history, revision, replay or event) and to `apply_grid`, `auto_outline`, `auto_shade`, `transform_region`, `copy_region`; verify no change, counts, preview, `base_revision` and a legend color not added
 
 ## 2. Warnings
 

@@ -27,7 +27,7 @@ It is atomic: if anything is wrong nothing changes, and `errors` lists every pro
 (codes: row_length, row_count, unknown_key, no_frame, bad_frame, too_big, region_out, palette_full, bad_legend). \
 A `palette:` line is never ignored: another existing palette is `palette_mismatch` (use `set_sprite_palette` or drop the line) and an unknown one is `palette_not_found`. \
 If a legend line gives an existing key a different color, the old color stays, the pixels move to a free key and the answer has `remapped` and `warnings`. \
-The answer has the new `revision`; pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. The person can undo the call. The answer has an image of the edited frame: LOOK at it and fix what is wrong (send `preview` false to skip it).";
+The answer has the new `revision`; pass `base_revision` (the revision you last read) to fail with `stale_revision` instead of overwriting newer changes. With `dry_run` true nothing is written: you get the counts and an image of what WOULD happen. The person can undo the call. The answer has an image of the edited frame: LOOK at it and fix what is wrong (send `preview` false to skip it).";
 
 /// The steps every agent follows. The same text is in the server instructions
 /// and in the Claude Code skill (a test checks both). A macro, so `concat!`

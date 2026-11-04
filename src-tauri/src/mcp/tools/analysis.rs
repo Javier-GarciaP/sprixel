@@ -5,7 +5,7 @@
 
 use super::args;
 use super::create::base_revision;
-use super::draw::{key_of, preview_arg, valid_keys};
+use super::draw::{dry_run_arg, key_of, preview_arg, valid_keys};
 use super::read::{check_frame, read};
 use super::write::{Plan, write};
 use crate::analysis::{self, Connectivity, Light, OutlineOptions, Region, ShadeOptions, View};
@@ -26,6 +26,7 @@ pub fn tools() -> Vec<Tool> {
                 "connectivity": { "type": "integer", "enum": [4, 8], "description": "Default 8." },
                 "outside_only": { "type": "boolean", "description": "Do not outline holes. Default false." },
                 "inner": { "type": "boolean", "description": "Outline inside the shape. Default false." },
+                "dry_run": dry_run_arg(),
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
@@ -46,6 +47,7 @@ pub fn tools() -> Vec<Tool> {
                     "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 },
                     "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
                 }},
+                "dry_run": dry_run_arg(),
                 "preview": preview_arg(),
                 "base_revision": base_revision(),
             }}),
