@@ -18,7 +18,11 @@ export function useShortcuts(
       for (const command of commands) {
         const handler = handlers[command.id];
         if (!command.shortcut || !handler) continue;
-        if (typing && !command.shortcut.includes("Mod")) continue;
+        if (
+          typing &&
+          (!command.shortcut.includes("Mod") || command.notWhileTyping)
+        )
+          continue;
         if (matchesShortcut(event, command.shortcut, platform)) {
           event.preventDefault();
           handler();

@@ -1,7 +1,11 @@
 import { useT, type TranslationKey } from "@/shared/lib/i18n";
 import type { RegionAction } from "../api/types";
 import type { Rect } from "../types";
+import { Icon } from "@/shared/components";
 import { EditorIcon, type EditorIconName } from "./icons";
+
+const barButton =
+  "flex h-7 w-7 items-center justify-center rounded-md border border-border bg-surface text-text";
 
 type Props = {
   selection: Rect;
@@ -9,6 +13,9 @@ type Props = {
   wrap: boolean;
   onWrap: (wrap: boolean) => void;
   onAction: (action: RegionAction) => void;
+  onCopy: () => void;
+  // Paste needs something copied.
+  onPaste: (() => void) | null;
 };
 
 const buttons: {
@@ -66,7 +73,14 @@ const buttons: {
 // The bar under the canvas bar while a rectangle is selected: flip, turn and
 // mirror what is inside it. Each button is one action of the core, so one
 // click is one step of Undo.
-export function SelectionBar({ selection, wrap, onWrap, onAction }: Props) {
+export function SelectionBar({
+  selection,
+  wrap,
+  onWrap,
+  onAction,
+  onCopy,
+  onPaste,
+}: Props) {
   const t = useT();
   return (
     <div
@@ -87,11 +101,31 @@ export function SelectionBar({ selection, wrap, onWrap, onAction }: Props) {
           aria-label={t(label)}
           title={t(label)}
           onClick={() => onAction(action)}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-surface text-text"
+          className={barButton}
         >
           <EditorIcon name={icon} className="h-4 w-4" />
         </button>
       ))}
+      <span className="mx-1 h-5 border-l border-border" aria-hidden />
+      <button
+        type="button"
+        aria-label={t("command.edit.copy")}
+        title={t("command.edit.copy")}
+        onClick={onCopy}
+        className={barButton}
+      >
+        <Icon name="copy" className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        aria-label={t("command.edit.paste")}
+        title={t("command.edit.paste")}
+        disabled={!onPaste}
+        onClick={() => onPaste?.()}
+        className={`${barButton} disabled:cursor-not-allowed disabled:opacity-40`}
+      >
+        <EditorIcon name="paste" className="h-4 w-4" />
+      </button>
       <label className="ml-3 flex items-center gap-1 text-xs text-text-muted">
         <input
           type="checkbox"

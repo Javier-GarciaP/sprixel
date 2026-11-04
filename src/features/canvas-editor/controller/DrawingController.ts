@@ -172,6 +172,11 @@ export class DrawingController {
     this.finish();
   }
 
+  // Selects an area from outside (after a paste, to move what was pasted).
+  select(area: Rect | null) {
+    this.setSelection(area);
+  }
+
   // Changes the selection and asks to repaint the old and the new area.
   private setSelection(next: Rect | null) {
     const old = this.selection;

@@ -14,7 +14,7 @@
 
 ## 3. Copy and paste
 
-- [ ] 3.1 Add copy and paste of a region between frames and sprites and verify paste in another frame, the palette message and the shortcuts
+- [x] 3.1 Add copy and paste of a region between frames and sprites and verify paste in another frame, the palette message and the shortcuts
 
 ## 4. Symmetry
 

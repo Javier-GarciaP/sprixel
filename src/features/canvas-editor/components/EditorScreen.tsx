@@ -23,6 +23,7 @@ import { usePreferences } from "@/shared/lib/preferences";
 import { coreEditorApi } from "../api/editor";
 import { corePowerApi } from "../api/power";
 import type {
+  Clip,
   EditorApi,
   PowerApi,
   RegionAction,
@@ -95,6 +96,9 @@ export function EditorScreen({
   startFrame,
 }: Props) {
   const t = useT();
+  // The copied piece. It lives here, above the open sprite, so it stays when
+  // another sprite is opened and can be pasted there.
+  const [clip, setClip] = useState<Clip | null>(null);
   // True while the person has a stroke in progress (set by the open sprite).
   const strokeActive = useRef(false);
   useFollowAgent(api, sprite, strokeActive, onFollow);
@@ -129,6 +133,8 @@ export function EditorScreen({
       onCommands={onCommands}
       strokeActive={strokeActive}
       startFrame={startFrame}
+      clip={clip}
+      onClip={setClip}
     />
   );
 }
@@ -144,7 +150,11 @@ function OpenSprite({
   onCommands,
   strokeActive,
   startFrame,
+  clip,
+  onClip,
 }: {
+  clip: Clip | null;
+  onClip: (clip: Clip) => void;
   startFrame?: number;
   sprite: SpriteRef;
   api: EditorApi;
@@ -200,6 +210,8 @@ function OpenSprite({
       }}
       onCommands={onCommands}
       strokeActive={strokeActive}
+      clip={clip}
+      onClip={onClip}
       reload={reload}
       sprite={sprite}
       info={data.info}
@@ -227,6 +239,8 @@ function OpenSprite({
 }
 
 type ReadyProps = {
+  clip: Clip | null;
+  onClip: (clip: Clip) => void;
   api: EditorApi;
   powerApi: PowerApi;
   clock?: Clock;
@@ -316,6 +330,8 @@ function Ready(props: ReadyProps) {
     canRedo: info.canRedo,
   });
   const [notice, setNotice] = useState<string | null>(null);
+  // A message that is not an error (for example "Copied").
+  const [message, setMessage] = useState<string | null>(null);
   const [editingPalette, setEditingPalette] = useState(false);
   // The editor shows the sprite as a canvas or as text. The sprite and the
   // frame are the same in both.
@@ -329,6 +345,11 @@ function Ready(props: ReadyProps) {
     const timer = setTimeout(() => setNotice(null), 5000);
     return () => clearTimeout(timer);
   }, [notice]);
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [message]);
   // The agent that is writing, and the strokes held while it works on the
   // frame the user is drawing on. They are sent when the agent ends.
   const { activity, endCount } = useAgentActivity(props.api);
@@ -437,6 +458,41 @@ function Ready(props: ReadyProps) {
       })
       .catch((error) => setNotice(powerErrorText(t, error)));
   };
+  // Copy the selection (the whole frame if nothing is selected), and paste it
+  // at the top left of the selection (or of the frame). What is pasted
+  // becomes the selection, so it can be moved or flipped. The `.` of the copy
+  // do not erase what is under them.
+  const copy = () =>
+    props.powerApi
+      .copy(sprite, props.frame, selectionRef.current)
+      .then((clip) => {
+        props.onClip(clip);
+        setMessage(
+          t("selection.copied", { width: clip.width, height: clip.height }),
+        );
+      })
+      .catch((error) => setNotice(powerErrorText(t, error)));
+  const paste = () => {
+    const clip = props.clip;
+    if (!clip) return setNotice(t("power.nothingToPaste"));
+    if (busyRef.current) {
+      return setNotice(powerErrorText(t, { code: "frame_busy" }));
+    }
+    const at = {
+      x: selectionRef.current?.x ?? 0,
+      y: selectionRef.current?.y ?? 0,
+    };
+    props.powerApi
+      .paste(sprite, props.frame, clip, at, true)
+      .then((result) => {
+        const area = { ...at, width: clip.width, height: clip.height };
+        selectionRef.current = area;
+        setSelection(area);
+        setHistory(result);
+        props.reload();
+      })
+      .catch((error) => setNotice(powerErrorText(t, error)));
+  };
   const nudge = (dx: number, dy: number) =>
     runRegion({ kind: "move", dx, dy, wrap });
 
@@ -468,6 +524,8 @@ function Ready(props: ReadyProps) {
     "selection.moveUp": () => nudge(0, -1),
     "selection.moveDown": () => nudge(0, 1),
     "selection.wrap": () => setWrap((on) => !on),
+    "edit.copy": copy,
+    "edit.paste": paste,
     "view.onionSkin": () =>
       props.onOnion({ ...props.onion, on: !props.onion.on }),
     "view.zoomIn": () => canvas.zoomIn(),
@@ -557,6 +615,8 @@ function Ready(props: ReadyProps) {
             wrap={wrap}
             onWrap={setWrap}
             onAction={runRegion}
+            onCopy={copy}
+            onPaste={props.clip ? paste : null}
           />
         )}
         {mode === "text" && (
@@ -653,6 +713,7 @@ function Ready(props: ReadyProps) {
         />
       )}
       {notice && <Toast tone="error" message={notice} />}
+      {!notice && message && <Toast message={message} />}
     </div>
   );
 }

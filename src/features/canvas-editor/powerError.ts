@@ -16,6 +16,8 @@ export function powerErrorText(
       return t("power.notSquare");
     case "frame_busy":
       return t("power.busy");
+    case "palette_mismatch":
+      return t("power.paletteMismatch");
     case "region_out":
       return t("power.regionOut");
     default:

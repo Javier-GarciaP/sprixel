@@ -71,4 +71,17 @@ describe("useShortcuts", () => {
       expect(calls, command.id).toEqual([command.id]);
     }
   });
+
+  // Checks that Ctrl+C and Ctrl+V in a text field are left to the field (the
+  // editor copy and paste only work outside fields).
+  it("leaves copy and paste to text fields", () => {
+    const copy = vi.fn();
+    const { getByLabelText } = render(
+      <Probe handlers={{ "edit.copy": copy }} />,
+    );
+    fireEvent.keyDown(getByLabelText("field"), { key: "c", ctrlKey: true });
+    expect(copy).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, { key: "c", ctrlKey: true });
+    expect(copy).toHaveBeenCalledTimes(1);
+  });
 });

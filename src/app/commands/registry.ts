@@ -17,6 +17,9 @@ export type Command = {
   withWheel?: boolean;
   // Draws a separator line above this item in the project menu.
   separator?: boolean;
+  // A Control key that text fields use for themselves (copy, paste): it
+  // does nothing while the person types in a field.
+  notWhileTyping?: boolean;
 };
 
 // The single list of commands. The project menu, the shortcuts and the shortcuts page all read from it. There is no "Save"
@@ -261,6 +264,20 @@ commands.push(
     labelKey: "command.selection.wrap",
     group: "editor",
     shortcut: "W",
+  },
+  {
+    id: "edit.copy",
+    labelKey: "command.edit.copy",
+    group: "editor",
+    shortcut: "Mod+C",
+    notWhileTyping: true,
+  },
+  {
+    id: "edit.paste",
+    labelKey: "command.edit.paste",
+    group: "editor",
+    shortcut: "Mod+V",
+    notWhileTyping: true,
   },
 );
 

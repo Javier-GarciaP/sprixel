@@ -25,6 +25,7 @@ const paths: Record<string, string> = {
   mirrorRightToLeft: "M12 3v18M21 12h-6M18 9l-3 3 3 3",
   mirrorTopToBottom: "M3 12h18M12 3v6M9 6l3 3 3-3",
   mirrorBottomToTop: "M3 12h18M12 21v-6M9 18l3-3 3 3",
+  paste: "M9 4h6v3H9zM7 5H5v15h14V5h-2M9 12h6M9 16h6",
 };
 
 export type EditorIconName =
@@ -40,7 +41,8 @@ export type EditorIconName =
   | "mirrorLeftToRight"
   | "mirrorRightToLeft"
   | "mirrorTopToBottom"
-  | "mirrorBottomToTop";
+  | "mirrorBottomToTop"
+  | "paste";
 
 export function EditorIcon({
   name,
