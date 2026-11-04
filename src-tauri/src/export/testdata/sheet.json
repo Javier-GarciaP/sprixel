@@ -13,6 +13,8 @@
     {
       "name": "blob_1",
       "sprite": "blob",
+      "index": 0,
+      "frame_number": 1,
       "frame": {
         "x": 0,
         "y": 0,
@@ -29,6 +31,8 @@
     {
       "name": "hero_walk_1",
       "sprite": "hero",
+      "index": 1,
+      "frame_number": 1,
       "frame": {
         "x": 3,
         "y": 0,
@@ -38,7 +42,7 @@
       "duration": 83,
       "pivot": {
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "anchors": [
         {
@@ -51,6 +55,8 @@
     {
       "name": "hero_walk_2",
       "sprite": "hero",
+      "index": 2,
+      "frame_number": 2,
       "frame": {
         "x": 6,
         "y": 0,
@@ -60,7 +66,7 @@
       "duration": 83,
       "pivot": {
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "anchors": [
         {
@@ -78,6 +84,8 @@
     {
       "name": "hero_3",
       "sprite": "hero",
+      "index": 3,
+      "frame_number": 3,
       "frame": {
         "x": 9,
         "y": 0,
@@ -86,8 +94,8 @@
       },
       "duration": 250,
       "pivot": {
-        "x": 0,
-        "y": 0
+        "x": 1,
+        "y": 1
       },
       "anchors": [
         {

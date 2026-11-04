@@ -19,8 +19,8 @@ files stay valid):
 
 - `anchors` in a sprite file (named points). A sprite without anchors does not
   write the field.
-- `frameDurations` was in the first sprite files of the repository, but the
-  reader also accepts a sprite file without it: every frame lasts 100 ms.
+- A sprite file without `frameDurations` (the very first files) is accepted:
+  every frame lasts 100 ms.
 
 A file **without** `formatVersion` is version 1. A `formatVersion` that is not
 a whole number is an error (the file is damaged).
