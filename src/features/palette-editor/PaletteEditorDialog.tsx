@@ -17,6 +17,7 @@ import {
   type DraftColor,
   type Removed,
 } from "./draft";
+import { RampTool } from "./RampTool";
 import type { PaletteApi } from "./types";
 
 type Props = {
@@ -115,11 +116,21 @@ export function PaletteEditorDialog({
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  // The draft as it was loaded: the tools that write at once (the ramp) only
+  // work when nothing was edited, or the edits would be lost.
+  const [loaded, setLoaded] = useState("");
+  const load = () =>
     api
       .loadPalette(name)
-      .then((info) => setDraft(draftOf(info.colors)))
+      .then((info) => {
+        const next = draftOf(info.colors);
+        setDraft(next);
+        setLoaded(JSON.stringify(next));
+        setRemoved([]);
+      })
       .catch(() => setLoadFailed(true));
+  useEffect(() => {
+    void load();
   }, [api, name]);
 
   const title = t("palette.title", { name });
@@ -180,6 +191,7 @@ export function PaletteEditorDialog({
   };
 
   const keys = changedKeys(draft);
+  const dirty = JSON.stringify(draft) !== loaded || removed.length > 0;
   const rgb = current ? toRgb(current.hex) : [0, 0, 0];
   // The colors that stay (and already existed) can take the pixels of a
   // removed color.
@@ -349,6 +361,16 @@ export function PaletteEditorDialog({
               ))}
             </div>
           )}
+          <RampTool
+            api={api}
+            name={name}
+            startHex={current?.hex ?? "#808080"}
+            disabled={dirty}
+            onAdded={() => {
+              void load();
+              onApplied();
+            }}
+          />
           <p className="text-xs text-text-muted">{t("palette.appliesToAll")}</p>
         </div>
       </div>

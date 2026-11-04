@@ -76,6 +76,37 @@ export class FakePaletteApi implements PaletteApi {
     return name;
   }
 
+  // The ramp tools: the calls are recorded. A ramp adds unused colors; Remove
+  // unused drops the colors with `used: false`.
+  rampCalls: { name: string; base: string; steps: number; hueShift: number }[] =
+    [];
+  removeCalls: string[] = [];
+
+  async rampPreview(base: string, steps: number): Promise<string[]> {
+    void base;
+    return Array.from(
+      { length: steps },
+      (_, i) => `#${(i * 20 + 10).toString(16).padStart(2, "0").repeat(3)}`,
+    );
+  }
+
+  async rampApply(name: string, base: string, steps: number, hueShift: number) {
+    this.rampCalls.push({ name, base, steps, hueShift });
+    const tones = await this.rampPreview(base, steps);
+    const keys = tones.map((_, i) => String.fromCharCode(97 + i));
+    tones.forEach((hex, i) =>
+      this.colors.push({ key: keys[i], name: `tone${i}`, hex, used: false }),
+    );
+    return { keys };
+  }
+
+  async removeUnused(name: string): Promise<string[]> {
+    this.removeCalls.push(name);
+    const removed = this.colors.filter((c) => !c.used).map((c) => c.key);
+    this.colors = this.colors.filter((c) => c.used);
+    return removed;
+  }
+
   async createPalette(name: string, preset: string | null): Promise<string> {
     if (this.createFailWith) throw this.createFailWith;
     this.created.push({ name, preset });

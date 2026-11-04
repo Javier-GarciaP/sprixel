@@ -267,6 +267,18 @@ export class FakeEditorApi
     return name;
   }
 
+  async rampPreview(): Promise<string[]> {
+    return [];
+  }
+
+  async rampApply(): Promise<{ keys: string[] }> {
+    return { keys: [] };
+  }
+
+  async removeUnused(): Promise<string[]> {
+    return [];
+  }
+
   async pickPaletteFile(): Promise<string | null> {
     return null;
   }

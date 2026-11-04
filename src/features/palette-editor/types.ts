@@ -43,4 +43,17 @@ export interface PaletteApi {
   pickPaletteFile(): Promise<string | null>;
   // Makes a palette from the colors of a file. Gives its name.
   importPalette(name: string, path: string): Promise<string>;
+  // The tones a ramp would add (`#RRGGBB`, dark to light). Writes nothing.
+  rampPreview(base: string, steps: number, hueShift: number): Promise<string[]>;
+  // Adds a ramp to a palette as one undoable action. Gives the keys of its
+  // tones (a tone the palette already has keeps its key).
+  rampApply(
+    name: string,
+    base: string,
+    steps: number,
+    hueShift: number,
+  ): Promise<{ keys: string[] }>;
+  // Removes the colors no sprite uses, as one undoable action. Gives the
+  // removed keys.
+  removeUnused(name: string): Promise<string[]>;
 }
