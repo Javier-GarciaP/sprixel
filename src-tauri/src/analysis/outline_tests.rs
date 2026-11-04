@@ -146,3 +146,39 @@ fn only_real_changes_are_listed() {
     assert!(out.changes.is_empty());
     assert_eq!(out.clipped, 0);
 }
+
+// Task 2.1: `thin_regions` finds the parts of a shape that `inner` would turn
+// entirely into outline.
+
+fn inner_options() -> OutlineOptions {
+    OutlineOptions { key: 'K', connectivity: Connectivity::Eight, outside_only: false, inner: true }
+}
+
+fn thin(rows: &[&str]) -> Vec<(u32, u32, u32, u32)> {
+    let f = frame(rows);
+    let out = auto_outline(view(&f), &inner_options());
+    super::thin_regions(view(&f), &out.changes).iter().map(|r| (r.x, r.y, r.width, r.height)).collect()
+}
+
+// Checks a brim 2 rows high on a crown 3 rows high: the two overhangs are not
+// part of any 3x3 square of the shape, so each one is a thin region with its
+// box. The pixels under the crown are covered and are not reported.
+#[test]
+fn a_brim_two_rows_high_is_thin() {
+    let boxes = thin(&["..BBBB..", "..BBBB..", "..BBBB..", "BBBBBBBB", "BBBBBBBB", "........"]);
+    assert_eq!(boxes, [(0, 3, 2, 2), (6, 3, 2, 2)]);
+}
+
+// Checks a brim alone: all 12 pixels are one thin region.
+#[test]
+fn a_flat_strip_is_one_thin_region() {
+    let boxes = thin(&["........", "........", ".BBBBBB.", ".BBBBBB.", "........"]);
+    assert_eq!(boxes, [(1, 2, 6, 2)]);
+}
+
+// Checks that a thick shape has no thin region: its rim is covered by 3x3 squares.
+#[test]
+fn a_thick_shape_has_no_thin_region() {
+    let boxes = thin(&["........", ".BBBBB..", ".BBBBB..", ".BBBBB..", ".BBBBB..", ".BBBBB..", "........", "........"]);
+    assert!(boxes.is_empty());
+}

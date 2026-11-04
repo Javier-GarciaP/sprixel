@@ -245,14 +245,18 @@ fn analyze_sprite_reports_loose_pixels_colors_and_changes() {
     assert_eq!(report["colors"], json!({ "count": 2, "used": ["R", "G"], "unused": [] }));
     // Frame 1: R at (0,0) and G at (3,3) touch nothing.
     assert_eq!(report["frame_reports"][0]["loose_pixels"], json!({ "count": 2, "at": [[0, 0], [3, 3]] }));
-    assert!(report["frame_reports"][0]["outline_gaps"].is_null(), "no outline_key, no gaps");
+    // No `outline_key`: G is on 5 of the 6 edge pixels of the two frames, so it is detected.
+    assert_eq!(report["outline_key_used"], "G");
+    assert_eq!(report["frame_reports"][0]["outline_gaps"]["count"], 1, "R at (0,0) is open to the outside");
     // Frame 2: only (3,0) is alone (the R of frame 1 is gone; (0,3),(1,3),(1,2) touch).
     assert_eq!(report["frame_reports"][1]["loose_pixels"], json!({ "count": 1, "at": [[3, 0]] }));
     let change = &report["changes"][0];
     assert_eq!((change["from"].as_u64(), change["to"].as_u64()), (Some(1), Some(2)));
     assert_eq!(change["changed_pixels"], 6);
     assert_eq!(change["bbox"], json!({ "x": 0, "y": 0, "width": 4, "height": 4 }));
-    assert_eq!(change["ground_kept"], false, "the bottom rows changed");
+    // Both frames stand on row 3, so the support did not move; the old measure sees the changed bottom rows.
+    assert_eq!((change["ground_kept"].as_bool(), change["ground_rule"].as_str()), (Some(true), Some("lowest_row")));
+    assert_eq!(change["bottom_rows_equal"], false, "the bottom rows changed");
     assert_eq!((revision(&host), core.activity().len()), before);
     assert_eq!(entries(&host), 0);
 }
@@ -295,4 +299,127 @@ fn analyze_sprite_cuts_long_lists() {
 
     assert_eq!(report["frame_reports"][0]["loose_pixels"]["count"], 64);
     assert_eq!(report["frame_reports"][0]["loose_pixels"]["at"].as_array().unwrap().len(), 50);
+}
+
+// Task 2.1: `inner` warns about a brim 2 rows high and gives its boxes; a
+// dry run gives the same warning and writes nothing; a thick shape and an
+// outside outline give no warning.
+#[test]
+fn inner_outline_warns_about_thin_parts() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let hat = "frame 1\n........\n..GGGG..\n..GGGG..\n..GGGG..\nGGGGGGGG\nGGGGGGGG\n........\n........\n";
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": hat })).unwrap();
+    let before = revision(&host);
+
+    let dry = call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R", "inner": true, "dry_run": true })).unwrap();
+    assert_eq!(dry["thin_regions"], json!([
+        { "x": 0, "y": 4, "width": 2, "height": 2 }, { "x": 6, "y": 4, "width": 2, "height": 2 }
+    ]));
+    let warning = dry["warnings"][0].as_str().unwrap();
+    assert!(warning.contains("2 part(s)") && warning.contains("x 0, y 4, 2x2"), "{warning}");
+    assert_eq!(revision(&host), before);
+
+    let outside = call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R", "dry_run": true })).unwrap();
+    assert!(outside.get("warnings").is_none() && outside.get("thin_regions").is_none());
+}
+
+// Task 2.2: shading a 2x2 block makes two lone pixels: the answer counts them
+// and warns. The 6x6 square of the other tests has none and no warning.
+#[test]
+fn auto_shade_warns_about_speckles() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    block(&host, &core, &session);
+    let grid = "legend\n  Y yellow #FFFF00\nframe 1\nY.......\n........\n........\n........\n........\n........\n........\n........\n";
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "grid": grid, "x": 0, "y": 0, "skip_transparent": true })).unwrap();
+
+    let done = call(&core, &session, "auto_shade", json!({ "name": "slime", "light": "top-left", "base": "G", "keys": ["R", "G", "Y"], "dry_run": true })).unwrap();
+
+    assert_eq!((done["pixels_changed"].as_u64(), done["speckled_pixels"].as_u64()), (Some(2), Some(2)));
+    assert!(done["warnings"][0].as_str().unwrap().starts_with("2 shaded pixel(s)"));
+}
+
+// Task 3.1: the report says what it checked. A ringed block: the key R is
+// detected, `outline_gaps` is reported and `outline` is in `checked`; one
+// frame means frame changes and ground are not checked.
+#[test]
+fn analyze_sprite_detects_the_outline_and_lists_what_it_checked() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    block(&host, &core, &session);
+    call(&core, &session, "auto_outline", json!({ "name": "slime", "key": "R" })).unwrap();
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+
+    assert_eq!(report["outline_key_used"], "R");
+    assert_eq!(report["checked"], json!(["colors", "loose_pixels", "outline"]));
+    assert_eq!(report["not_checked"], json!(["frame_changes", "ground"]));
+    assert_eq!(report["frame_reports"][0]["outline_gaps"]["count"], 0);
+    // A key the caller gives is used as it is.
+    let given = call(&core, &session, "analyze_sprite", json!({ "name": "slime", "outline_key": "G" })).unwrap();
+    assert_eq!(given["outline_key_used"], "G");
+    assert!(given["frame_reports"][0]["outline_gaps"]["count"].as_u64().unwrap() > 0);
+}
+
+// Task 3.1: when it cannot decide (an empty sprite, or a block with no outline
+// whose edge is half R and half G) `outline` is NOT checked and there are no
+// `outline_gaps`, so "no gaps" is never said by mistake.
+#[test]
+fn analyze_sprite_says_when_it_cannot_find_the_outline() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    let empty = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+    assert_eq!(empty["not_checked"], json!(["outline", "frame_changes", "ground"]));
+    assert!(empty.get("outline_key_used").is_none() && empty["frame_reports"][0].get("outline_gaps").is_none());
+
+    call(&core, &session, "apply_grid", json!({ "name": "slime", "frame": 1, "x": 2, "y": 2, "grid": "RG\nRG\n" })).unwrap();
+    let tie = call(&core, &session, "analyze_sprite", json!({ "name": "slime" })).unwrap();
+    assert_eq!(tie["not_checked"], json!(["outline", "frame_changes", "ground"]));
+    assert!(tie["frame_reports"][0].get("outline_gaps").is_none());
+}
+
+/// A walker 8x8 with two frames: both feet on row 7 in frame 1, and in frame 2
+/// the right foot is lifted to row 6.
+fn walker(core: &crate::mcp::Core, session: &str) {
+    call(core, session, "create_sprite", json!({ "name": "walker", "width": 8, "height": 8 })).unwrap();
+    call(core, session, "add_frame", json!({ "name": "walker" })).unwrap();
+    let body = "..GGGG..\n..GGGG..\n..GGGG..\n..GGGG..\n..GGGG..\n..GGGG..\n";
+    let grid = format!("frame 1\n{body}..G..G..\n..G..G..\nframe 2\n{body}..G..G..\n..G.....\n");
+    call(core, session, "apply_grid", json!({ "name": "walker", "grid": grid })).unwrap();
+}
+
+// Task 3.2: a walk with a lifted foot. The lowest row is 7 in both frames, so
+// `ground_kept` is true; the old measure (bottom 2 rows equal) is false.
+#[test]
+fn a_lifted_foot_does_not_break_ground_kept() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    walker(&core, &session);
+
+    let report = call(&core, &session, "analyze_sprite", json!({ "name": "walker" })).unwrap();
+
+    let change = &report["changes"][0];
+    assert_eq!((change["ground_kept"].as_bool(), change["ground_rule"].as_str()), (Some(true), Some("lowest_row")));
+    assert_eq!(change["bottom_rows_equal"], false);
+    assert_eq!(change["changed_pixels"], 1);
+}
+
+// Task 3.2: with a `feet` anchor the anchor decides. Same y in both frames:
+// true. The support foot moves up in frame 2: false, even if some pixel is on
+// the lowest row. The anchor of a frame wins over the one of the whole sprite,
+// and the name ignores case.
+#[test]
+fn ground_kept_follows_the_feet_anchor() {
+    let (host, core, session) = setup();
+    open_demo_project(&host);
+    walker(&core, &session);
+    call(&core, &session, "set_anchor", json!({ "sprite": "walker", "name": "Feet", "x": 2, "y": 7 })).unwrap();
+
+    let same = call(&core, &session, "analyze_sprite", json!({ "name": "walker" })).unwrap();
+    assert_eq!((same["changes"][0]["ground_kept"].as_bool(), same["changes"][0]["ground_rule"].as_str()), (Some(true), Some("feet_anchor")));
+
+    call(&core, &session, "set_anchor", json!({ "sprite": "walker", "name": "feet", "x": 2, "y": 6, "frame": 2 })).unwrap();
+    let moved = call(&core, &session, "analyze_sprite", json!({ "name": "walker" })).unwrap();
+    assert_eq!((moved["changes"][0]["ground_kept"].as_bool(), moved["changes"][0]["ground_rule"].as_str()), (Some(false), Some("feet_anchor")));
 }

@@ -5,7 +5,7 @@ use super::args;
 use super::create::base_revision;
 use super::read::{check_frame, read};
 use super::write::{Plan, write};
-use crate::document::{Anchor, Operation};
+use crate::document::{Anchor, DEFAULT_FRAME_MS, Operation};
 use crate::mcp::{Ctx, Need, Output, Tool, ToolError, ToolResult};
 use serde_json::{Value, json};
 
@@ -13,12 +13,12 @@ pub fn tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "set_frame_duration",
-            description: concat!("Sets how long one frame lasts, in milliseconds (10 to 10000). Frames are numbered from 1. `get_sprite` lists the durations in `frame_durations`. A frame that keeps exactly 100 ms is treated as having no duration of its own: inside an animation it lasts 1000 / fps. Set any other value to fix the time of the frame.", write_note!()),
+            description: concat!("Sets how long one frame lasts, in milliseconds (10 to 10000). Frames are numbered from 1. `get_sprite` lists the durations in `frame_durations`. `frame_durations` has `null` for a frame that follows the animation speed (inside an animation it lasts 1000 / fps) and a number for a frame with its own time. Send `milliseconds` null to give a frame back to the animation speed. Note: the file stores one number per frame and 100 ms means \"no time of its own\", so you cannot set an explicit 100 ms: it is read back as null.", write_note!()),
             schema: json!({ "type": "object", "required": ["name", "frame", "milliseconds"], "properties": {
                 "name": { "type": "string" },
                 "folder": { "type": "string" },
                 "frame": { "type": "integer", "minimum": 1 },
-                "milliseconds": { "type": "integer", "minimum": 10, "maximum": 10000 },
+                "milliseconds": { "type": ["integer", "null"], "minimum": 10, "maximum": 10000, "description": "Milliseconds, or null to follow the animation speed." },
                 "base_revision": base_revision(),
             }}),
             need: Need::Edit,
@@ -88,7 +88,12 @@ const MAX_LISTED: usize = 50;
 
 fn set_frame_duration(ctx: &Ctx, input: &Value) -> ToolResult {
     let frame = args::required_u32(input, "frame")?;
-    let ms = args::required_u32(input, "milliseconds")?;
+    // `null` means "follow the animation speed": the model stores DEFAULT_FRAME_MS for it.
+    let ms = match input.get("milliseconds") {
+        None => return Err(ToolError::new("bad_argument", "`milliseconds` must be given: a number from 10 to 10000, or null for the animation speed").with("argument", "milliseconds")),
+        Some(Value::Null) => DEFAULT_FRAME_MS,
+        Some(_) => args::required_u32(input, "milliseconds")?,
+    };
     if !(10..=10000).contains(&ms) {
         return Err(ToolError::new("bad_argument", "`milliseconds` must be from 10 to 10000").with("argument", "milliseconds"));
     }
@@ -97,7 +102,11 @@ fn set_frame_duration(ctx: &Ctx, input: &Value) -> ToolResult {
         let sprite = session.project.find_sprite(&target).expect("just found");
         check_frame(sprite, frame)?;
         let ops = vec![Operation::SetFrameDuration { sprite: target.clone(), frame, duration_ms: ms }];
-        Ok(Plan::new(ops, json!({ "frame": frame, "milliseconds": ms })).about(&target))
+        let mut answer = json!({ "frame": frame, "milliseconds": if ms == DEFAULT_FRAME_MS { Value::Null } else { json!(ms) } });
+        if ms == DEFAULT_FRAME_MS {
+            answer["note"] = json!("this frame now follows the animation speed (1000 / fps); 100 ms is the same as having no time of its own");
+        }
+        Ok(Plan::new(ops, answer).about(&target))
     })
 }
 

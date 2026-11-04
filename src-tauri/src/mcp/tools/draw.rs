@@ -25,6 +25,7 @@ pub fn tools() -> Vec<Tool> {
                 "x": { "type": "integer", "minimum": 0, "description": "With `x` and `y` the grid is written as a region whose top left pixel is (x, y). Without them it is a whole frame." },
                 "y": { "type": "integer", "minimum": 0 },
                 "skip_transparent": { "type": "boolean", "description": "A `.` in the grid keeps the pixel that is there, instead of erasing it." },
+                "dry_run": dry_run_arg(),
                 "preview": preview_arg(),
                 "background": super::read::background_arg(),
                 "base_revision": base_revision(),
@@ -81,6 +82,11 @@ pub fn tools() -> Vec<Tool> {
 /// The `preview` argument of the three drawing tools.
 pub(super) fn preview_arg() -> Value {
     json!({ "type": "boolean", "description": "Default true: the result carries an image of the edited frame (at most 512 pixels on a side). LOOK at it and fix what is wrong. Set false to skip it." })
+}
+
+/// The `dry_run` argument of the tools that can show their result first.
+pub(super) fn dry_run_arg() -> Value {
+    json!({ "type": "boolean", "description": "Default false. With true nothing is written (no new revision, no history entry): the answer has the same counts and an image of what the frame WOULD look like, with `dry_run` true and `would_change`. Use it to try before you commit." })
 }
 
 /// The keys a sprite accepts: those of its palette and `.`.
@@ -195,7 +201,11 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
     let text = args::required_str(input, "grid")?.to_string();
     let frame = args::optional_u32(input, "frame")?;
     let (x, y) = (args::optional_u32(input, "x")?, args::optional_u32(input, "y")?);
-    let skip_transparent = args::optional_bool(input, "skip_transparent")?.unwrap_or(false);
+    // A region (`x` or `y`) keeps what is under a `.` unless the call says
+    // `skip_transparent: false`; a whole frame erases, as always.
+    let region_form = x.is_some() || y.is_some();
+    let explicit_skip = args::optional_bool(input, "skip_transparent")?;
+    let skip_transparent = explicit_skip.unwrap_or(region_form);
     write(ctx, input, |session| {
         let project = &session.project;
         let target = args::sprite(project, input)?;
@@ -254,6 +264,14 @@ fn apply_grid(ctx: &Ctx, input: &Value) -> ToolResult {
                 remap.keys.iter().map(|(from, to)| (from.to_string(), to.to_string().into())).collect();
             extra["remapped"] = moved.into();
             extra["warnings"] = remap.warnings.into();
+        }
+        let erased = super::write::count_erased(project, &ops);
+        if region_form && explicit_skip == Some(false) && erased > 0 {
+            let warning = format!("{erased} opaque pixel(s) were erased by a `.` of the region grid (`skip_transparent` is false). Send `skip_transparent` true to keep what is under a `.`");
+            match extra["warnings"].as_array_mut() {
+                Some(list) => list.push(warning.into()),
+                None => extra["warnings"] = json!([warning]),
+            }
         }
         let plan = Plan::new(ops, extra).preview();
         Ok(match busy {

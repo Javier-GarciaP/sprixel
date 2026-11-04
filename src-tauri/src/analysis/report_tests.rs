@@ -87,3 +87,35 @@ fn ground_rows_are_clamped_to_the_height() {
     let change = pair(&["B.", ".."], &[".B", ".."], 9);
     assert!(!change.ground_kept);
 }
+
+// Task 3.1: `detect_outline_key` picks the key that most of the silhouette edge
+// has, and nothing when it cannot decide.
+
+#[test]
+fn the_outline_key_is_the_most_common_edge_key() {
+    use super::support_tests::{frame, view};
+    // A G block with a K ring: all 12 edge pixels are K.
+    let ringed = frame(&["......", ".KKKK.", ".KGGK.", ".KGGK.", ".KKKK.", "......"]);
+    assert_eq!(super::detect_outline_key(&[view(&ringed)]), Some('K'));
+    // Two keys in equal numbers: no decision.
+    let tie = frame(&["......", ".KKGG.", ".KKGG.", "......"]);
+    assert_eq!(super::detect_outline_key(&[view(&tie)]), None);
+    // Nothing drawn: no decision.
+    let empty = frame(&["...", "..."]);
+    assert_eq!(super::detect_outline_key(&[view(&empty)]), None);
+    // Just over half is enough; exactly half is not: 3 K and 3 G edge pixels.
+    let half = frame(&["....", ".KKK", ".GGG", "...."]);
+    assert_eq!(super::detect_outline_key(&[view(&half)]), None);
+}
+
+// Task 3.2: `lowest_row` is the row where the sprite stands. A lifted foot
+// does not change it while the other foot stays down.
+#[test]
+fn the_lowest_row_ignores_a_lifted_foot() {
+    use super::support_tests::{frame, view};
+    let both = frame(&["..B..B..", "..B..B..", "..B..B.."]);
+    let lifted = frame(&["..B..B..", "..B..B..", "..B....."]);
+    assert_eq!(super::lowest_row(view(&both)), Some(2));
+    assert_eq!(super::lowest_row(view(&lifted)), Some(2));
+    assert_eq!(super::lowest_row(view(&frame(&["...", "..."]))), None);
+}

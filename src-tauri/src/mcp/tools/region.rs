@@ -6,7 +6,7 @@
 
 use super::args;
 use super::create::base_revision;
-use super::draw::preview_arg;
+use super::draw::{dry_run_arg, preview_arg};
 use super::read::check_frame;
 use super::write::{Plan, write};
 use crate::document::{Operation, PixelChange, TRANSPARENT};
@@ -32,7 +32,8 @@ pub fn tools() -> Vec<Tool> {
             "dy": { "type": "integer", "description": "For `move`: pixels down (negative: up)." },
             "wrap": { "type": "boolean", "description": "For `move`: what leaves one side comes back on the other. Default false." },
             "degrees": { "type": "integer", "enum": [90, 180, 270], "description": "For `rotate`, clockwise." },
-            "preview": preview_arg(),
+            "dry_run": dry_run_arg(),
+                "preview": preview_arg(),
             "base_revision": base_revision(),
         }}),
         need: Need::Edit,
@@ -55,7 +56,8 @@ pub fn tools() -> Vec<Tool> {
             "to_x": { "type": "integer", "minimum": 0 },
             "to_y": { "type": "integer", "minimum": 0 },
             "skip_transparent": { "type": "boolean", "description": "A `.` of the source keeps the destination pixel. Default false." },
-            "preview": preview_arg(),
+            "dry_run": dry_run_arg(),
+                "preview": preview_arg(),
             "base_revision": base_revision(),
         }}),
         need: Need::Edit,
