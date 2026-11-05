@@ -7,6 +7,16 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Sprixel appears in the applications menu with its icon on Linux (a `.desktop`
+  entry and an icon) and on Windows (a Start Menu shortcut). The app writes its
+  own entry, so it works with the install script and with a manual download.
+  `sprixel-app --register-menu` (or `Sprixel.exe --register-menu`) writes it
+  without opening a window; the install scripts and `sprixel update` use it.
+  `sprixel uninstall` removes it. To have no entry, create `~/.sprixel/no-menu-entry`.
+  Not checked on a real Windows or macOS machine yet, only by automatic tests.
+
 ## [0.1.0] - 2026-11-04
 
 First public version of Sprixel. It is an early version (0.x), so expect rough

@@ -64,6 +64,8 @@ What the script does:
 - Shows the MIT license notice first.
 - Adds the `sprixel` command to your PATH if needed. **Open a new terminal
   afterwards.**
+- Puts Sprixel in your applications menu with its icon (on Linux and Windows the
+  app writes the entry; on macOS the app in `~/Applications` is the entry).
 - Is safe to run again. It upgrades or repairs the install and keeps your
   projects, settings and tokens.
 
@@ -140,6 +142,21 @@ Copy-Item .\sprixel-windows-x64.exe "$dir\bin\sprixel.exe"
 `~/.local/bin` on Linux and macOS, `%LOCALAPPDATA%\Sprixel\bin` on Windows.
 Open a new terminal and run `sprixel doctor`.
 
+**4. Put Sprixel in the applications menu** (Linux and Windows). Start the app
+once, or run it with `--register-menu`: it writes the entry and exits with no
+window.
+
+```sh
+~/.local/bin/sprixel-app --register-menu       # Linux
+```
+
+```powershell
+& "$env:LOCALAPPDATA\Sprixel\Sprixel.exe" --register-menu   # Windows
+```
+
+On macOS the app in `~/Applications` already shows in Launchpad and Spotlight.
+To have no entry, create the empty file `~/.sprixel/no-menu-entry`.
+
 > The app alone is enough to draw by hand. Without the `sprixel` command you
 > cannot use `sprixel mcp add` to connect an AI (see
 > [Connect without the command](ai-and-mcp.md#connect-without-the-command)).
@@ -165,8 +182,8 @@ sprixel uninstall           # remove Sprixel (your projects stay)
 ```
 
 `sprixel update` checks the SHA-256 of every file before it replaces anything.
-`sprixel uninstall` asks before it removes the app, the command, the PATH entry
-and the AI registrations. **It never removes your projects.**
+`sprixel uninstall` asks before it removes the app, its menu entry, the command, the PATH
+entry and the AI registrations. **It never removes your projects.**
 
 More about install paths and options: [Usage guide](usage.md#install).
 

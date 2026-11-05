@@ -56,6 +56,24 @@ describe("install documentation", () => {
     );
   });
 
+  // The menu entry files and the opt-out file are named in the usage guide.
+  // If the app or the command change a path, this points at the page to fix.
+  it("the documented menu entry files are the ones the app and the command write", () => {
+    expect(usage).toContain("~/.local/share/applications/sprixel.desktop");
+    expect(read("src-tauri/src/menu/linux.rs")).toContain(
+      ".local/share/applications/sprixel.desktop",
+    );
+    expect(read("cli/internal/release/menu.go")).toContain('"sprixel.desktop"');
+    expect(usage).toContain("~/.sprixel/no-menu-entry");
+    expect(read("src-tauri/src/menu/mod.rs")).toContain('"no-menu-entry"');
+    expect(sh).toContain("--register-menu");
+    expect(ps1).toContain("--register-menu");
+    for (const doc of [guide, guideEs]) {
+      expect(doc).toContain("--register-menu");
+      expect(doc).toContain("no-menu-entry");
+    }
+  });
+
   it("the documented update and uninstall flags are implemented", () => {
     expect(usage).toContain("sprixel update --check");
     expect(updateGo).toContain('"--check"');

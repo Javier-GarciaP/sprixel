@@ -65,8 +65,8 @@ irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.p
 ```
 
 Instala solo para tu usuario, comprueba el SHA-256 de cada descarga, añade
-`sprixel` a tu PATH y se puede ejecutar otra vez sin problema. Abre una terminal
-nueva al terminar.
+`sprixel` a tu PATH, pone Sprixel en el menú de aplicaciones con su icono y se
+puede ejecutar otra vez sin problema. Abre una terminal nueva al terminar.
 
 ### Método 2: descargar desde GitHub
 
@@ -88,7 +88,8 @@ sprixel doctor
 
 ## Inicio rápido
 
-1. Abre Sprixel desde el menú de aplicaciones, o ejecuta `sprixel start`.
+1. Abre Sprixel desde el menú de aplicaciones (ahí tiene su icono), o ejecuta
+   `sprixel start`.
 2. Crea un proyecto y un sprite, y dibuja. Añade frames y ponle nombre a una
    animación.
 3. Exporta una hoja de sprites y un archivo JSON desde la pestaña **Export**.
