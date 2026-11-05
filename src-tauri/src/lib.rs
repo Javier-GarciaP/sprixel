@@ -5,11 +5,17 @@ mod document;
 mod export;
 mod history;
 mod mcp;
+mod menu;
 mod render;
 mod storage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // `--register-menu` only writes the entry of the applications menu. No window.
+    if menu::wants_register_only(std::env::args()) {
+        menu::register_only();
+        return;
+    }
     // There is no window menu: every command is in the project menu inside the
     // app. Tauri 2 only creates a default menu on macOS (see `App::build`), so
     // Linux and Windows get no menu bar. macOS keeps that default menu on
@@ -20,6 +26,7 @@ pub fn run() {
         .manage(ipc::project::ProjectState::default())
         .manage(ipc::editor::EditorState::default())
         .setup(|app| {
+            menu::register_at_start();
             // The MCP server starts with the app. If it cannot start (for
             // example the home folder is read-only) the app still works, only
             // without AI agents.
