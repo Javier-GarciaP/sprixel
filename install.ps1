@@ -100,6 +100,27 @@ function Install-Sprixel {
         Copy-Item -LiteralPath (Join-Path $tmp "THIRD-PARTY.md") -Destination (Join-Path $home_ "THIRD-PARTY.md") -Force
         $installed = (Get-Content (Join-Path $tmp "VERSION") -Raw).Trim()
 
+        # 4b. Ask the app to put itself in the Start Menu (a shortcut with its
+        # icon). A problem here is a warning, never an error: the app does the
+        # same the first time it opens. The app has no console window, so it
+        # is started with Start-Process and waited for, with a time limit.
+        Write-Host ""
+        Write-Host "Adding Sprixel to the Start Menu..."
+        $menuOk = $false
+        try {
+            $registered = Start-Process -FilePath (Join-Path $home_ "Sprixel.exe") -ArgumentList "--register-menu" -PassThru -WindowStyle Hidden
+            if ($registered.WaitForExit(30000)) { $menuOk = ($registered.ExitCode -eq 0) }
+            else { $registered.Kill() }
+        } catch {
+            $menuOk = $false
+        }
+        if ($menuOk) {
+            Write-Host "Sprixel is in the Start Menu."
+        } else {
+            Write-Host "Sprixel could not be added to the Start Menu. It will try again the first"
+            Write-Host "time you open the app, or you can run: Sprixel.exe --register-menu"
+        }
+
         # 5. Make sure `sprixel` is on the PATH of new terminals.
         $newTerminal = $false
         if ($env:SPRIXEL_SKIP_PATH -ne "1") {
