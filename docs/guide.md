@@ -69,6 +69,34 @@ What the script does:
 - Is safe to run again. It upgrades or repairs the install and keeps your
   projects, settings and tokens.
 
+#### The questions of the script
+
+On a terminal the script prints a summary of what it will install and where, and
+asks you to confirm (Enter means yes). Then it asks:
+
+1. **Add Sprixel to your applications menu?** (Linux and Windows.) A "no" is
+   kept in the file `~/.sprixel/no-menu-entry`, so the app does not add the
+   entry by itself later.
+2. **Connect an AI tool now?** It lists only the tools it finds on your
+   computer (Claude Code, OpenCode), plus "No, I will do it later". If it
+   finds none, it does not ask.
+
+Every download shows its name, a counter and a progress bar. If something fails
+(an AI tool that cannot be connected, a menu entry that cannot be written), you
+get one warning that says how to retry, and the install still ends well.
+
+To skip the questions (for a script), use `--yes`. Other options: `--no-menu`
+and `--connect claude|opencode|both|none`. With no terminal, the script never
+asks and uses the default answers (install, add the menu entry, connect no AI).
+
+```sh
+curl -fsSL https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.sh | sh -s -- --yes --no-menu --connect claude
+```
+
+```powershell
+$env:SPRIXEL_YES = "1"; $env:SPRIXEL_CONNECT = "claude"; irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.ps1 | iex
+```
+
 To install a specific version:
 
 ```sh

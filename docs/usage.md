@@ -35,6 +35,38 @@ sprixel doctor
 
 Start the app from your applications menu (Sprixel is there with its icon), or with `sprixel start`.
 
+### What the installer shows and asks
+
+On a terminal, the install script prints a summary (version, system, what goes
+where), asks you to confirm, and asks two questions:
+
+1. Whether to add Sprixel to your applications menu (Linux and Windows).
+2. Whether to connect an AI now. It offers only the tools it finds on your
+   computer (Claude Code and OpenCode), or "No, I will do it later".
+
+Each download shows its name, a counter (`[2/6]`) and a progress bar. With no
+terminal, or with `--yes`, the script asks nothing: it installs, adds the menu
+entry and connects no AI. The release smoke tests run it this way.
+
+| Meaning | `install.sh` | PowerShell (variables) |
+| --- | --- | --- |
+| No questions | `--yes` or `-y` (or `SPRIXEL_YES=1`) | `SPRIXEL_YES=1` |
+| No menu entry | `--no-menu` (or `SPRIXEL_MENU=0`) | `SPRIXEL_MENU=0` |
+| Connect an AI | `--connect claude`, `opencode`, `both` or `none` (or `SPRIXEL_CONNECT`) | `SPRIXEL_CONNECT` |
+| A version | `--version X.Y.Z` | `SPRIXEL_VERSION` |
+
+```sh
+curl -fsSL https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.sh | sh -s -- --yes --no-menu --connect claude
+```
+
+```powershell
+$env:SPRIXEL_YES = "1"; $env:SPRIXEL_CONNECT = "claude"; irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.ps1 | iex
+```
+
+The answers are read from your terminal, not from the script, so the questions
+also work with `curl ... | sh` and `irm ... | iex`. Colors are used only on a
+terminal, and never when `NO_COLOR` is set.
+
 ### Where the installer puts things
 
 | System | App | `sprixel` command | License and notices |

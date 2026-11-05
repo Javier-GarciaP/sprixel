@@ -68,6 +68,11 @@ Instala solo para tu usuario, comprueba el SHA-256 de cada descarga, añade
 `sprixel` a tu PATH, pone Sprixel en el menú de aplicaciones con su icono y se
 puede ejecutar otra vez sin problema. Abre una terminal nueva al terminar.
 
+En una terminal muestra un resumen, te pide confirmar, y pregunta si quieres la
+entrada del menú y si quieres conectar tu IA ahora, con una barra de progreso
+para cada descarga. Para saltar las preguntas, añade `--yes` (mira la
+[guía](docs/guide.es.md#las-preguntas-del-script)).
+
 ### Método 2: descargar desde GitHub
 
 Descarga la app y el comando `sprixel` de tu sistema, más `checksums.txt`, desde

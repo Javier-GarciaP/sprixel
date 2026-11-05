@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The install scripts are friendlier. On a terminal they show a summary, ask for
+  confirmation, ask if you want the menu entry and if you want to connect Claude
+  Code or OpenCode now (only the tools they find), and show a progress bar for
+  every download. With no terminal, or with `--yes`, they ask nothing and behave
+  as before. Options for scripts: `--yes`, `--no-menu`, `--connect`; PowerShell
+  uses `SPRIXEL_YES`, `SPRIXEL_MENU` and `SPRIXEL_CONNECT`.
 - Sprixel appears in the applications menu with its icon on Linux (a `.desktop`
   entry and an icon) and on Windows (a Start Menu shortcut). The app writes its
   own entry, so it works with the install script and with a manual download.
