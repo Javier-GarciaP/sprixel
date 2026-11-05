@@ -16,7 +16,12 @@ const sha256 = (file) =>
  */
 export function makeRelease(
   dir,
-  { version = "0.2.0", wrongChecksum, registerMenuFails = false } = {},
+  {
+    version = "0.2.0",
+    wrongChecksum,
+    registerMenuFails = false,
+    mcpAddFails = false,
+  } = {},
 ) {
   fs.mkdirSync(dir, { recursive: true });
   const write = (name, text) => fs.writeFileSync(path.join(dir, name), text);
@@ -32,7 +37,13 @@ export function makeRelease(
 
   // The command: a shell script that prints the version.
   for (const target of ["linux-x64", "macos-arm64", "macos-x64"]) {
-    add(`sprixel-${target}`, `#!/bin/sh\necho ${version}\n`);
+    // `sprixel mcp ...` notes the call in $HOME/.fake-cli-calls (and can fail,
+    // for a test); any other call prints the version.
+    const mcp = mcpAddFails ? "exit 1" : "exit 0";
+    add(
+      `sprixel-${target}`,
+      `#!/bin/sh\nif [ "$1" = "mcp" ]; then\n  echo "$@" >> "$HOME/.fake-cli-calls"\n  ${mcp}\nfi\necho ${version}\n`,
+    );
   }
   add("sprixel-windows-x64.exe", `fake exe ${version}\n`);
 
