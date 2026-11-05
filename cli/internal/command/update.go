@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Javier-GarciaP/sprixel/cli/internal/release"
 	"github.com/Javier-GarciaP/sprixel/cli/internal/runtime"
@@ -20,7 +21,9 @@ func init() {
 
 // installLayout finds the folders of the installers for this system.
 func (c *invocation) installLayout() release.Layout {
-	return release.LayoutFor(c.env.goos(), c.env.Home, c.env.getenv("LOCALAPPDATA"))
+	l := release.LayoutFor(c.env.goos(), c.env.Home, c.env.getenv("LOCALAPPDATA"))
+	l.MenuFiles = release.MenuFilesFor(c.env.goos(), c.env.Home, c.env.getenv("APPDATA"), c.env.getenv("LOCALAPPDATA"))
+	return l
 }
 
 // exePath is the running command, with links resolved.
@@ -87,10 +90,16 @@ func runUpdate(c *invocation, args []string) int {
 	}
 
 	text := fmt.Sprintf("Updated Sprixel from %s to %s.\n", current, latest)
+	// The new app writes its own menu entry. A problem is only a warning.
+	menuWarning := ""
+	if _, err := release.RegisterMenu(c.env.goos(), c.env.Home, layout, 30*time.Second); err != nil {
+		menuWarning = "Sprixel could not be added to the applications menu (" + err.Error() + "). Open the app once, or run: " + layout.App + " --register-menu"
+		text += "warning: " + menuWarning + "\n"
+	}
 	_, running := runtime.Running(c.dir)
 	if running {
 		text += "The app is running: close it and open it again to use the new version.\n"
 	}
-	c.p.Print(text, map[string]any{"updated": true, "available": false, "current": current, "latest": latest, "from": current, "to": latest, "restartApp": running})
+	c.p.Print(text, map[string]any{"updated": true, "available": false, "current": current, "latest": latest, "from": current, "to": latest, "restartApp": running, "menuWarning": menuWarning})
 	return ExitOK
 }

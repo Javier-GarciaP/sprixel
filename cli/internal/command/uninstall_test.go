@@ -293,3 +293,40 @@ func TestUninstallDeletesTheSkill(t *testing.T) {
 		t.Error("another skill was removed")
 	}
 }
+
+// Checks the scenario "Uninstall" of app-menu-entries: the menu entry and the
+// icon are removed with the app, and the projects stay.
+func TestUninstallRemovesTheMenuEntryAndKeepsProjects(t *testing.T) {
+	in := newReady(t)
+	menu := release.MenuFilesFor("linux", in.home, "", "")
+	for _, path := range menu {
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		if err := os.WriteFile(path, []byte("entry"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	r := in.runWith("y\nn\n", "uninstall")
+
+	if r.code != ExitOK {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+	for _, path := range menu {
+		if in.exists(path) {
+			t.Errorf("%s was not removed", path)
+		}
+	}
+	in.checkKept(userFiles)
+}
+
+// A menu entry that was never made (an install from before this feature) is
+// not an error.
+func TestUninstallWithoutAMenuEntryIsFine(t *testing.T) {
+	in := newReady(t)
+
+	r := in.runWith("y\nn\n", "uninstall")
+
+	if r.code != ExitOK || !strings.Contains(r.stdout, "Sprixel was removed.") {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+}
