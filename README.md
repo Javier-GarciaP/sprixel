@@ -66,6 +66,11 @@ It installs for your user only, checks the SHA-256 of every download, adds
 `sprixel` to your PATH, puts Sprixel in your applications menu with its icon and
 is safe to run again. Open a new terminal afterwards.
 
+On a terminal it shows a summary, asks you to confirm, and asks if you want the
+menu entry and if you want to connect your AI now, with a progress bar for each
+download. To skip the questions, add `--yes` (see the
+[guide](docs/guide.md#the-questions-of-the-script)).
+
 ### Method 2: download from GitHub
 
 Download the app and the `sprixel` command for your system, plus

@@ -74,6 +74,24 @@ describe("install documentation", () => {
     }
   });
 
+  // The options of the scripts are written in the usage guide. If a script
+  // changes an option, this points at the page to fix.
+  it("the documented installer options exist in the scripts", () => {
+    for (const flag of ["--yes", "--no-menu", "--connect"]) {
+      expect(usage, flag).toContain(flag);
+      expect(sh, flag).toContain(flag);
+    }
+    for (const name of ["SPRIXEL_YES", "SPRIXEL_MENU", "SPRIXEL_CONNECT"]) {
+      expect(usage, name).toContain(name);
+      expect(ps1, name).toContain(name);
+      expect(sh, name).toContain(name);
+    }
+    for (const doc of [guide, guideEs]) {
+      expect(doc).toContain("--yes");
+      expect(doc).toContain("SPRIXEL_YES");
+    }
+  });
+
   it("the documented update and uninstall flags are implemented", () => {
     expect(usage).toContain("sprixel update --check");
     expect(updateGo).toContain('"--check"');
