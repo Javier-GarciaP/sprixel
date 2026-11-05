@@ -195,7 +195,7 @@ tener entrada, crea el archivo vacío `~/.sprixel/no-menu-entry`.
 
 ### La primera vez que lo abres
 
-La versión 0.1.0 **no está firmada**, así que tu sistema puede mostrar un aviso.
+Esta versión **no está firmada**, así que tu sistema puede mostrar un aviso.
 Es normal.
 
 - **macOS:** haz clic derecho en Sprixel dentro de `~/Applications`, elige

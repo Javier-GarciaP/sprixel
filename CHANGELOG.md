@@ -7,6 +7,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-05
+
+Sprixel shows up in the applications menu and the install scripts ask and show
+their progress. The same known limits of 0.1.0 apply: the app is only tested by
+hand on Linux, GIF export is not ready, and the app is not signed.
+
 ### Added
 
 - The install scripts are friendlier. On a terminal they show a summary, ask for

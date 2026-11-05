@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-0.1.0-F5C542?style=flat-square&labelColor=17171c">
+  <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-0.1.1-F5C542?style=flat-square&labelColor=17171c">
   <img alt="Plataformas" src="https://img.shields.io/badge/plataformas-Linux%20%7C%20Windows%20%7C%20macOS-F5C542?style=flat-square&labelColor=17171c">
   <img alt="Licencia" src="https://img.shields.io/badge/licencia-MIT-F5C542?style=flat-square&labelColor=17171c">
   <a href="README.md"><img alt="English" src="https://img.shields.io/badge/idioma-English-F5C542?style=flat-square&labelColor=17171c"></a>
@@ -88,7 +88,7 @@ sprixel doctor
 ```
 
 > **La primera vez que abras la app**, tu sistema puede mostrar un aviso, porque
-> la versión 0.1.0 no está firmada. Es normal. Mira
+> esta versión no está firmada. Es normal. Mira
 > [qué hacer](docs/guide.es.md#la-primera-vez-que-lo-abres).
 
 ## Inicio rápido
@@ -151,7 +151,7 @@ uso de la app y todo sobre la IA y el MCP. Las demás páginas están en inglés
 
 ## Estado
 
-La versión 0.1.0 es la primera versión pública. Es temprana, así que espera
+Sprixel está en sus primeras versiones (0.1.x). Es temprano, así que espera
 detalles por pulir:
 
 - Está probada a mano en Linux. Windows y macOS solo se revisan con las pruebas
