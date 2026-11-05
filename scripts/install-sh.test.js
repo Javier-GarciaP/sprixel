@@ -23,12 +23,16 @@ function install(args = [], env = {}) {
   return spawnSync("sh", [script, ...args], {
     encoding: "utf8",
     env: {
-      PATH: process.env.PATH,
+      // A clean PATH, so the AI tools of the machine that runs the tests (a
+      // real claude or opencode) never change the result.
+      PATH: "/usr/bin:/bin",
       HOME: home,
       SHELL: "/bin/bash",
       SPRIXEL_BASE_URL: `file://${release}`,
       SPRIXEL_OS: "Linux",
       SPRIXEL_ARCH: "x86_64",
+      // No terminal unless a test gives one: a real /dev/tty must never be read.
+      SPRIXEL_TTY: "",
       ...env,
     },
   });
@@ -49,6 +53,42 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
     expect(fs.existsSync(file(".local/share/sprixel/THIRD-PARTY.md"))).toBe(
       true,
     );
+  });
+
+  // Checks the scenario "Entry after the install script": the script asks the
+  // new app to put itself in the applications menu, before the first launch.
+  it("asks the Linux app to register its menu entry", () => {
+    makeRelease(release);
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.readFileSync(file(".fake-app-calls"), "utf8")).toBe(
+      "--register-menu\n",
+    );
+    expect(r.stdout).toContain("menu entry created: fake");
+  });
+
+  // Checks the scenario "Read-only menu folder": a failure to register is a
+  // warning that says how to retry, and the install still ends well.
+  it("still installs when the app cannot register its entry", () => {
+    makeRelease(release, { registerMenuFails: true });
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("could not be added to the applications menu");
+    expect(r.stdout).toContain("sprixel-app --register-menu");
+    expect(fs.existsSync(file(".local/bin/sprixel-app"))).toBe(true);
+  });
+
+  // Checks the macOS rule: the app bundle is the menu entry, so the script
+  // adds no step for it.
+  it("adds no menu step on macOS", () => {
+    makeRelease(release);
+    const r = install([], { SPRIXEL_OS: "Darwin", SPRIXEL_ARCH: "arm64" });
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).not.toContain("applications menu");
+    expect(fs.existsSync(file(".fake-app-calls"))).toBe(false);
   });
 
   it("prints the license notice and the source URL before installing", () => {
@@ -258,5 +298,286 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
     makeRelease(release, { version: "0.3.0" });
     install([], mac);
     expect(fs.readFileSync(exe, "utf8")).toContain("0.3.0");
+  });
+
+  // ---- The questions, the progress and the summary (installer-experience) ----
+
+  // A terminal for a test: the answers the person would type, one per line.
+  const answers = (...lines) => {
+    const tty = path.join(root, "tty");
+    fs.writeFileSync(tty, lines.map((l) => l + "\n").join(""));
+    return { SPRIXEL_TTY: tty };
+  };
+  // Fake AI tools on the PATH: an executable file with that name.
+  const withTools = (...names) => {
+    const bin = path.join(root, "tools");
+    fs.mkdirSync(bin, { recursive: true });
+    for (const name of names) {
+      fs.writeFileSync(path.join(bin, name), "#!/bin/sh\n", { mode: 0o755 });
+    }
+    return { PATH: `${bin}:/usr/bin:/bin` };
+  };
+  const cliCalls = () => {
+    try {
+      return fs.readFileSync(file(".fake-cli-calls"), "utf8");
+    } catch {
+      return "";
+    }
+  };
+  const installed = () => fs.existsSync(file(".local/bin/sprixel"));
+
+  describe("summary and confirmation", () => {
+    // Checks "Summary before any download": the version, the system and the
+    // folders are printed before the first download, also with no terminal.
+    it("prints the summary before it downloads anything", () => {
+      makeRelease(release);
+      const out = install().stdout;
+
+      expect(out).toContain("linux x64");
+      expect(out).toContain("~/.local/bin");
+      expect(out.indexOf("linux x64")).toBeLessThan(out.indexOf("[1/6]"));
+    });
+
+    // Checks "No terminal, no questions": nothing is asked and it installs.
+    it("asks nothing when there is no terminal", () => {
+      makeRelease(release);
+      const r = install();
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).not.toMatch(/\[Y\/n\]/);
+      expect(installed()).toBe(true);
+    });
+
+    // Checks "The person accepts": Enter is yes.
+    it("asks for confirmation on a terminal and Enter accepts", () => {
+      makeRelease(release);
+      const r = install([], answers("", ""));
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toContain("Install Sprixel? [Y/n]");
+      expect(installed()).toBe(true);
+    });
+
+    // Checks "The person declines": nothing is downloaded or changed, exit 0.
+    it("installs nothing when the answer is no", () => {
+      makeRelease(release);
+      const r = install([], answers("n"));
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toContain("Nothing was installed.");
+      expect(r.stdout).not.toContain("[1/6]");
+      expect(fs.existsSync(file(".local"))).toBe(false);
+    });
+
+    // Checks that an answer that is not y or n is asked again.
+    it("asks again after an answer it does not understand", () => {
+      makeRelease(release);
+      const r = install([], answers("maybe", "n"));
+
+      expect(r.stdout).toContain("Please answer y or n.");
+      expect(r.stdout).toContain("Nothing was installed.");
+    });
+
+    // Checks that --yes and SPRIXEL_YES skip every question, even on a terminal.
+    it("--yes and SPRIXEL_YES=1 ask nothing even on a terminal", () => {
+      makeRelease(release);
+      const tty = answers("n", "n");
+
+      expect(install(["--yes"], tty).status).toBe(0);
+      expect(installed()).toBe(true);
+      fs.rmSync(file(".local"), { recursive: true });
+      expect(install([], { ...tty, SPRIXEL_YES: "1" }).status).toBe(0);
+      expect(installed()).toBe(true);
+    });
+
+    // Checks that a terminal that ends (nobody types) uses the defaults.
+    it("uses the default answers when the terminal gives no more lines", () => {
+      makeRelease(release);
+      const r = install([], answers());
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(installed()).toBe(true);
+    });
+  });
+
+  describe("progress", () => {
+    // Checks "Visible download progress": one plain line per file, with a
+    // counter, when the output is not a terminal.
+    it("prints one counted line for each file when it is not a terminal", () => {
+      makeRelease(release);
+      const out = install().stdout;
+
+      expect(out).toContain("[1/6] checksums.txt ... done");
+      expect(out).toContain("[4/6] Sprixel-linux-x64.AppImage ... done");
+      expect(out).toContain("[6/6] THIRD-PARTY.md ... done");
+    });
+
+    // Checks "Plain output": no color or control codes in a saved output.
+    it("has no control codes when the output is not a terminal", () => {
+      makeRelease(release);
+      const out = install([], answers("", "")).stdout;
+
+      expect(out).not.toContain("\x1b");
+    });
+
+    // Checks "Checks still come first": the counted downloads happen, then the
+    // checks, then the copy.
+    it("still checks every file before it copies anything", () => {
+      makeRelease(release, { wrongChecksum: "LICENSE" });
+      const r = install();
+
+      expect(r.status).toBe(1);
+      expect(r.stdout).toContain("[6/6]");
+      expect(installed()).toBe(false);
+    });
+  });
+
+  describe("the menu question", () => {
+    it("asks about the menu entry on Linux and creates it on yes", () => {
+      makeRelease(release);
+      const r = install([], answers("", "y"));
+
+      expect(r.stdout).toContain("applications menu");
+      expect(fs.readFileSync(file(".fake-app-calls"), "utf8")).toBe(
+        "--register-menu\n",
+      );
+      expect(fs.existsSync(file(".sprixel/no-menu-entry"))).toBe(false);
+    });
+
+    // Checks that a "no" is kept in the file the app reads, and the app is not
+    // asked to register.
+    it("keeps a no in .sprixel/no-menu-entry and does not register", () => {
+      makeRelease(release);
+      const r = install([], answers("", "n"));
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(fs.existsSync(file(".sprixel/no-menu-entry"))).toBe(true);
+      expect(fs.existsSync(file(".fake-app-calls"))).toBe(false);
+    });
+
+    it("--no-menu does the same without asking", () => {
+      makeRelease(release);
+      const r = install(["--no-menu"]);
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(fs.existsSync(file(".sprixel/no-menu-entry"))).toBe(true);
+      expect(fs.existsSync(file(".fake-app-calls"))).toBe(false);
+    });
+
+    it("SPRIXEL_MENU=0 does the same", () => {
+      makeRelease(release);
+      install([], { SPRIXEL_MENU: "0" });
+
+      expect(fs.existsSync(file(".sprixel/no-menu-entry"))).toBe(true);
+    });
+
+    // Checks that a later yes (a new install without the flag) removes the
+    // old no, because the app then registers again.
+    it("an install that says yes removes an old no", () => {
+      makeRelease(release);
+      fs.mkdirSync(file(".sprixel"), { recursive: true });
+      fs.writeFileSync(file(".sprixel/no-menu-entry"), "");
+
+      install();
+
+      expect(fs.existsSync(file(".sprixel/no-menu-entry"))).toBe(false);
+    });
+
+    it("does not ask about a menu on macOS", () => {
+      makeRelease(release);
+      const r = install([], {
+        ...answers(""),
+        SPRIXEL_OS: "Darwin",
+        SPRIXEL_ARCH: "arm64",
+      });
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).not.toContain("applications menu");
+    });
+  });
+
+  describe("connecting an AI", () => {
+    // Checks the question offers only the tools that exist on the computer.
+    it("offers only the AI tools it finds", () => {
+      makeRelease(release);
+      const r = install([], {
+        ...answers("", "", "2"),
+        ...withTools("claude"),
+      });
+
+      expect(r.stdout).toContain("Claude Code");
+      expect(r.stdout).not.toContain("OpenCode");
+      expect(cliCalls()).toBe("mcp add claude\n");
+    });
+
+    it("offers both and a way to connect both", () => {
+      makeRelease(release);
+      install([], {
+        ...answers("", "", "4"),
+        ...withTools("claude", "opencode"),
+      });
+
+      expect(cliCalls()).toBe("mcp add claude\nmcp add opencode\n");
+    });
+
+    it("connects nothing on the default answer", () => {
+      makeRelease(release);
+      install([], { ...answers("", "", ""), ...withTools("claude") });
+
+      expect(cliCalls()).toBe("");
+    });
+
+    // Checks "No AI tool found": the question is not asked.
+    it("does not ask when no AI tool is found", () => {
+      makeRelease(release);
+      const r = install([], answers("", ""));
+
+      expect(r.stdout).not.toContain("Connect an AI");
+    });
+
+    // Checks "Flags for a script".
+    it("--connect works with no terminal and --connect none connects nothing", () => {
+      makeRelease(release);
+      install(["--connect", "claude"]);
+      expect(cliCalls()).toBe("mcp add claude\n");
+
+      fs.rmSync(file(".fake-cli-calls"));
+      install(["--connect", "none"]);
+      expect(cliCalls()).toBe("");
+      install([], { SPRIXEL_CONNECT: "opencode" });
+      expect(cliCalls()).toBe("mcp add opencode\n");
+    });
+
+    it("rejects a --connect value it does not know", () => {
+      makeRelease(release);
+      const r = install(["--connect", "vim"]);
+
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain("--connect");
+      expect(installed()).toBe(false);
+    });
+
+    // Checks "Connecting fails": a warning, and the install still succeeds.
+    it("a failing connection is a warning and the install succeeds", () => {
+      makeRelease(release, { mcpAddFails: true });
+      const r = install(["--connect", "claude"]);
+
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toContain("could not connect Claude Code");
+      expect(r.stdout).toContain("sprixel mcp add claude");
+    });
+  });
+
+  describe("the final summary", () => {
+    it("lists what was installed, where, and the choices", () => {
+      makeRelease(release);
+      const out = install(["--no-menu", "--connect", "claude"]).stdout;
+
+      expect(out).toContain("Sprixel 0.2.0 is installed");
+      expect(out).toContain("~/.local/bin/sprixel-app");
+      expect(out).toContain("menu entry: no");
+      expect(out).toContain("AI tools: Claude Code");
+      expect(out).toContain("sprixel doctor");
+    });
   });
 });

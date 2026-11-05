@@ -3,4 +3,4 @@ package version
 
 // Version is the current version. The build can override it with
 // -ldflags "-X .../internal/version.Version=X.Y.Z".
-var Version = "0.1.0"
+var Version = "0.1.1"

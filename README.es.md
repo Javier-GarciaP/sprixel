@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-0.1.0-F5C542?style=flat-square&labelColor=17171c">
+  <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-0.1.1-F5C542?style=flat-square&labelColor=17171c">
   <img alt="Plataformas" src="https://img.shields.io/badge/plataformas-Linux%20%7C%20Windows%20%7C%20macOS-F5C542?style=flat-square&labelColor=17171c">
   <img alt="Licencia" src="https://img.shields.io/badge/licencia-MIT-F5C542?style=flat-square&labelColor=17171c">
   <a href="README.md"><img alt="English" src="https://img.shields.io/badge/idioma-English-F5C542?style=flat-square&labelColor=17171c"></a>
@@ -65,8 +65,13 @@ irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.p
 ```
 
 Instala solo para tu usuario, comprueba el SHA-256 de cada descarga, añade
-`sprixel` a tu PATH y se puede ejecutar otra vez sin problema. Abre una terminal
-nueva al terminar.
+`sprixel` a tu PATH, pone Sprixel en el menú de aplicaciones con su icono y se
+puede ejecutar otra vez sin problema. Abre una terminal nueva al terminar.
+
+En una terminal muestra un resumen, te pide confirmar, y pregunta si quieres la
+entrada del menú y si quieres conectar tu IA ahora, con una barra de progreso
+para cada descarga. Para saltar las preguntas, añade `--yes` (mira la
+[guía](docs/guide.es.md#las-preguntas-del-script)).
 
 ### Método 2: descargar desde GitHub
 
@@ -83,12 +88,13 @@ sprixel doctor
 ```
 
 > **La primera vez que abras la app**, tu sistema puede mostrar un aviso, porque
-> la versión 0.1.0 no está firmada. Es normal. Mira
+> esta versión no está firmada. Es normal. Mira
 > [qué hacer](docs/guide.es.md#la-primera-vez-que-lo-abres).
 
 ## Inicio rápido
 
-1. Abre Sprixel desde el menú de aplicaciones, o ejecuta `sprixel start`.
+1. Abre Sprixel desde el menú de aplicaciones (ahí tiene su icono), o ejecuta
+   `sprixel start`.
 2. Crea un proyecto y un sprite, y dibuja. Añade frames y ponle nombre a una
    animación.
 3. Exporta una hoja de sprites y un archivo JSON desde la pestaña **Export**.
@@ -145,7 +151,7 @@ uso de la app y todo sobre la IA y el MCP. Las demás páginas están en inglés
 
 ## Estado
 
-La versión 0.1.0 es la primera versión pública. Es temprana, así que espera
+Sprixel está en sus primeras versiones (0.1.x). Es temprano, así que espera
 detalles por pulir:
 
 - Está probada a mano en Linux. Windows y macOS solo se revisan con las pruebas

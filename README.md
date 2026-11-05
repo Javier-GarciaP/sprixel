@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-F5C542?style=flat-square&labelColor=17171c">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.1-F5C542?style=flat-square&labelColor=17171c">
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-F5C542?style=flat-square&labelColor=17171c">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-F5C542?style=flat-square&labelColor=17171c">
   <a href="README.es.md"><img alt="Español" src="https://img.shields.io/badge/idioma-Espa%C3%B1ol-F5C542?style=flat-square&labelColor=17171c"></a>
@@ -63,7 +63,13 @@ irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.p
 ```
 
 It installs for your user only, checks the SHA-256 of every download, adds
-`sprixel` to your PATH and is safe to run again. Open a new terminal afterwards.
+`sprixel` to your PATH, puts Sprixel in your applications menu with its icon and
+is safe to run again. Open a new terminal afterwards.
+
+On a terminal it shows a summary, asks you to confirm, and asks if you want the
+menu entry and if you want to connect your AI now, with a progress bar for each
+download. To skip the questions, add `--yes` (see the
+[guide](docs/guide.md#the-questions-of-the-script)).
 
 ### Method 2: download from GitHub
 
@@ -80,12 +86,13 @@ sprixel doctor
 ```
 
 > **The first time you open the app**, your system may show a warning, because
-> version 0.1.0 is not signed. This is expected. See
+> this version is not signed. This is expected. See
 > [what to do](docs/guide.md#the-first-time-you-open-it).
 
 ## Quick start
 
-1. Open Sprixel from your applications menu, or run `sprixel start`.
+1. Open Sprixel from your applications menu (it has its icon there), or run
+   `sprixel start`.
 2. Create a project and a sprite, and draw. Add frames and name an animation.
 3. Export a sprite sheet and a JSON file from the **Export** tab.
 
@@ -139,7 +146,7 @@ use of the app and everything about the AI and MCP.
 
 ## Status
 
-Version 0.1.0 is the first public version. It is early, so expect rough edges:
+Sprixel is in its first versions (0.1.x). It is early, so expect rough edges:
 
 - It is tested by hand on Linux. Windows and macOS are checked only by the
   automatic tests.

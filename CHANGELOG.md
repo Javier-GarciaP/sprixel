@@ -7,6 +7,28 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-05
+
+Sprixel shows up in the applications menu and the install scripts ask and show
+their progress. The same known limits of 0.1.0 apply: the app is only tested by
+hand on Linux, GIF export is not ready, and the app is not signed.
+
+### Added
+
+- The install scripts are friendlier. On a terminal they show a summary, ask for
+  confirmation, ask if you want the menu entry and if you want to connect Claude
+  Code or OpenCode now (only the tools they find), and show a progress bar for
+  every download. With no terminal, or with `--yes`, they ask nothing and behave
+  as before. Options for scripts: `--yes`, `--no-menu`, `--connect`; PowerShell
+  uses `SPRIXEL_YES`, `SPRIXEL_MENU` and `SPRIXEL_CONNECT`.
+- Sprixel appears in the applications menu with its icon on Linux (a `.desktop`
+  entry and an icon) and on Windows (a Start Menu shortcut). The app writes its
+  own entry, so it works with the install script and with a manual download.
+  `sprixel-app --register-menu` (or `Sprixel.exe --register-menu`) writes it
+  without opening a window; the install scripts and `sprixel update` use it.
+  `sprixel uninstall` removes it. To have no entry, create `~/.sprixel/no-menu-entry`.
+  Not checked on a real Windows or macOS machine yet, only by automatic tests.
+
 ## [0.1.0] - 2026-11-04
 
 First public version of Sprixel. It is an early version (0.x), so expect rough

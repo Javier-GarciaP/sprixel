@@ -49,8 +49,8 @@ func RemoveProfileLines(path string) (bool, error) {
 	return true, os.WriteFile(path, []byte(strings.Join(keep, "\n")), info.Mode().Perm())
 }
 
-// Uninstall removes the program files of an installation: the app, the
-// license and notices, and the command last. It never removes projects or the
+// Uninstall removes the program files of an installation: the menu entry of
+// the app, the app, the license and notices, and the command last. It never removes projects or the
 // data folder (~/.sprixel). It returns what was removed. A path that is
 // already gone is skipped.
 func Uninstall(goos string, l Layout) ([]string, error) {
@@ -80,6 +80,12 @@ func Uninstall(goos string, l Layout) ([]string, error) {
 		return nil
 	}
 
+	// The menu entry first: it points to the app that is about to go.
+	for _, path := range l.MenuFiles {
+		if err := remove(path, false); err != nil {
+			return removed, err
+		}
+	}
 	if err := remove(l.App, true); err != nil {
 		return removed, err
 	}

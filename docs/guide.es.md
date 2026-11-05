@@ -66,8 +66,40 @@ Qué hace el script:
 - Muestra primero el aviso de la licencia MIT.
 - Añade el comando `sprixel` a tu PATH si hace falta. **Abre una terminal nueva
   al terminar.**
+- Pone Sprixel en el menú de aplicaciones con su icono (en Linux y Windows la
+  app escribe la entrada; en macOS la app de `~/Applications` es la entrada).
 - Se puede ejecutar otra vez sin problema. Actualiza o repara la instalación y
   conserva tus proyectos, ajustes y tokens.
+
+#### Las preguntas del script
+
+En una terminal, el script muestra un resumen de lo que va a instalar y dónde, y
+te pide confirmar (Enter significa sí). Después pregunta:
+
+1. **¿Añadir Sprixel al menú de aplicaciones?** (Linux y Windows.) Un "no" se
+   guarda en el archivo `~/.sprixel/no-menu-entry`, así la app no añade la
+   entrada por sí sola más tarde.
+2. **¿Conectar una herramienta de IA ahora?** Lista solo las que encuentra en tu
+   equipo (Claude Code, OpenCode), más "No, lo haré después". Si no encuentra
+   ninguna, no pregunta.
+
+Cada descarga muestra su nombre, un contador y una barra de progreso. Si algo
+falla (una IA que no se puede conectar, una entrada de menú que no se puede
+escribir), recibes un solo aviso que dice cómo reintentar, y la instalación
+termina bien.
+
+Para saltar las preguntas (en un script), usa `--yes`. Otras opciones:
+`--no-menu` y `--connect claude|opencode|both|none`. Sin terminal, el script
+nunca pregunta y usa las respuestas por defecto (instalar, añadir la entrada de
+menú, no conectar ninguna IA).
+
+```sh
+curl -fsSL https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.sh | sh -s -- --yes --no-menu --connect claude
+```
+
+```powershell
+$env:SPRIXEL_YES = "1"; $env:SPRIXEL_CONNECT = "claude"; irm https://github.com/Javier-GarciaP/sprixel/releases/latest/download/install.ps1 | iex
+```
 
 Para instalar una versión concreta:
 
@@ -142,13 +174,28 @@ Copy-Item .\sprixel-windows-x64.exe "$dir\bin\sprixel.exe"
 `sprixel`. Es `~/.local/bin` en Linux y macOS, y `%LOCALAPPDATA%\Sprixel\bin` en
 Windows. Abre una terminal nueva y ejecuta `sprixel doctor`.
 
+**4. Pon Sprixel en el menú de aplicaciones** (Linux y Windows). Abre la app una
+vez, o ejecútala con `--register-menu`: escribe la entrada y termina sin abrir
+ventana.
+
+```sh
+~/.local/bin/sprixel-app --register-menu       # Linux
+```
+
+```powershell
+& "$env:LOCALAPPDATA\Sprixel\Sprixel.exe" --register-menu   # Windows
+```
+
+En macOS la app de `~/Applications` ya sale en Launchpad y en Spotlight. Para no
+tener entrada, crea el archivo vacío `~/.sprixel/no-menu-entry`.
+
 > La app sola basta para dibujar a mano. Sin el comando `sprixel` no puedes usar
 > `sprixel mcp add` para conectar una IA (mira
 > [Connect without the command](ai-and-mcp.md#connect-without-the-command)).
 
 ### La primera vez que lo abres
 
-La versión 0.1.0 **no está firmada**, así que tu sistema puede mostrar un aviso.
+Esta versión **no está firmada**, así que tu sistema puede mostrar un aviso.
 Es normal.
 
 - **macOS:** haz clic derecho en Sprixel dentro de `~/Applications`, elige
@@ -168,8 +215,8 @@ sprixel uninstall           # quita Sprixel (tus proyectos se quedan)
 ```
 
 `sprixel update` comprueba el SHA-256 de cada archivo antes de reemplazar nada.
-`sprixel uninstall` pregunta antes de quitar la app, el comando, la entrada del
-PATH y los registros de la IA. **Nunca borra tus proyectos.**
+`sprixel uninstall` pregunta antes de quitar la app, su entrada del menú, el comando,
+la entrada del PATH y los registros de la IA. **Nunca borra tus proyectos.**
 
 Más sobre rutas y opciones de instalación: [Usage guide](usage.md#install).
 

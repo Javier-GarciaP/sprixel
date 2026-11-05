@@ -77,10 +77,26 @@ describe("Frame durations", { timeout: 20000 }, () => {
     renderEditor(api);
     // The box shows the own time that the core gave (not something typed).
     await waitFor(() => expect(field(1).value).toBe("250"));
-    fireEvent.change(field(1), { target: { value: "" } });
-    fireEvent.blur(field(1));
-    await waitFor(() =>
-      expect(api.durationCalls).toEqual([{ frame: 1, ms: 100 }]),
+    const typedBox = field(1);
+    fireEvent.change(typedBox, { target: { value: "" } });
+    fireEvent.blur(typedBox);
+    await waitFor(
+      () => expect(api.durationCalls).toEqual([{ frame: 1, ms: 100 }]),
+      {
+        // This test failed once on a slow runner and could not be repeated.
+        // If it fails again, the message says what the box looked like.
+        onTimeout: (error) =>
+          new Error(
+            `${error.message}\n${JSON.stringify({
+              boxStillInThePage: typedBox.isConnected,
+              boxIsTheSameElement:
+                screen.queryByLabelText("Duration of frame 1 (ms)") ===
+                typedBox,
+              boxValueNow: (typedBox as HTMLInputElement).value,
+              calls: api.durationCalls,
+            })}`,
+          ),
+      },
     );
     await waitFor(() => expect(field(1).value).toBe(""));
     expect(field(1).placeholder).toBe("125");

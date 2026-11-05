@@ -43,6 +43,48 @@ describe("install.ps1 (static checks)", () => {
     expect(text).toContain("$MyInvocation.MyCommand.Path");
   });
 
+  // Checks the scenario "Shortcut after the install script": the script asks
+  // the new app to make its Start Menu shortcut, after it is copied, waits for
+  // it with a limit, and treats a problem as a warning.
+  it("asks the app to register its Start Menu shortcut after copying it", () => {
+    expect(text).toContain("--register-menu");
+    expect(text.indexOf("--register-menu")).toBeGreaterThan(
+      text.indexOf('Put-File (Join-Path $unpacked "Sprixel.exe")'),
+    );
+    expect(text).toContain("WaitForExit(30000)");
+    expect(text).toContain("could not be added to the Start Menu");
+  });
+
+  // Checks the "Confirmation" and "No terminal, no questions" requirements:
+  // the questions are behind a terminal check, and SPRIXEL_YES skips them.
+  it("asks only on a terminal and SPRIXEL_YES skips the questions", () => {
+    expect(text).toContain("Install Sprixel? [Y/n]");
+    expect(text).toContain("[Console]::IsInputRedirected");
+    expect(text).toContain("$env:SPRIXEL_YES");
+    expect(text).toContain("Nothing was installed.");
+  });
+
+  // Checks "Visible download progress": curl.exe draws the bar, and without a
+  // terminal each file is one plain counted line.
+  it("shows the progress of each download", () => {
+    expect(text).toContain("curl.exe");
+    expect(text).toContain("--progress-bar");
+    expect(text).toContain("/$total]");
+    expect(text).toContain('$ProgressPreference = "SilentlyContinue"');
+  });
+
+  // Checks that the answer "no" is kept in the file that the app reads.
+  it("keeps a no to the Start Menu in .sprixel\\no-menu-entry", () => {
+    expect(text).toContain("no-menu-entry");
+    expect(text).toContain("$env:SPRIXEL_MENU");
+  });
+
+  it("connects the chosen AI tools by the full path of the command", () => {
+    expect(text).toContain('(Join-Path $bin "sprixel.exe") mcp add');
+    expect(text).toContain("could not connect");
+    expect(text).toContain("$env:SPRIXEL_CONNECT");
+  });
+
   it("uses the same file names as the release", () => {
     expect(text).toContain("sprixel-windows-x64.exe");
     expect(text).toContain("Sprixel-windows-x64.zip");
@@ -60,6 +102,7 @@ describe.skipIf(!pwsh)(
       local = path.join(root, "local");
       release = path.join(root, "release");
       fs.mkdirSync(local);
+      fs.mkdirSync(path.join(root, "home"));
     });
     afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
@@ -69,6 +112,12 @@ describe.skipIf(!pwsh)(
         env: {
           ...process.env,
           LOCALAPPDATA: local,
+          // A home folder of the test: the script writes and removes a file in
+          // it, and the real one must never be touched.
+          USERPROFILE: path.join(root, "home"),
+          HOME: path.join(root, "home"),
+          // No terminal unless a test gives one.
+          SPRIXEL_TTY: "none",
           SPRIXEL_BASE_URL: pathToFileURL(release).href,
           SPRIXEL_SKIP_PATH: "1",
           // The script reads the CPU from a Windows variable: say it is x64, so
@@ -88,6 +137,116 @@ describe.skipIf(!pwsh)(
       );
       expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
       expect(fs.existsSync(path.join(local, "Sprixel/LICENSE"))).toBe(true);
+    });
+
+    // The fake Sprixel.exe of the fixture cannot run, like an app that cannot
+    // start: the shortcut step fails, and the install must still end well.
+    it("still installs when the app cannot register its shortcut", () => {
+      makeRelease(release);
+      const r = install();
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).toContain("could not be added to the Start Menu");
+      expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
+    });
+
+    // A terminal for a test: the answers the person would type.
+    const answers = (...lines) => {
+      const tty = path.join(root, "tty.txt");
+      fs.writeFileSync(tty, lines.join("\n") + "\n");
+      return { SPRIXEL_TTY: tty };
+    };
+    const noMenuFile = () =>
+      path.join(root, "home", ".sprixel", "no-menu-entry");
+
+    it("prints the summary before it downloads anything", () => {
+      makeRelease(release);
+      const out = install().stdout;
+
+      expect(out).toContain("This will install:");
+      expect(out).toContain("System    windows x64");
+      expect(out.indexOf("System    windows x64")).toBeLessThan(
+        out.indexOf("[1/6]"),
+      );
+    });
+
+    it("asks nothing when there is no terminal", () => {
+      makeRelease(release);
+      const r = install();
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).not.toContain("[Y/n]");
+    });
+
+    it("asks for confirmation on a terminal and Enter accepts", () => {
+      makeRelease(release);
+      const r = install(answers("", ""));
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).toContain("Install Sprixel? [Y/n]");
+      expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
+    });
+
+    it("installs nothing when the answer is no", () => {
+      makeRelease(release);
+      const r = install(answers("n"));
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).toContain("Nothing was installed.");
+      expect(fs.existsSync(path.join(local, "Sprixel"))).toBe(false);
+    });
+
+    it("SPRIXEL_YES skips the questions even on a terminal", () => {
+      makeRelease(release);
+      const r = install({ ...answers("n", "n"), SPRIXEL_YES: "1" });
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
+    });
+
+    it("prints one counted line for each file when it is not a terminal", () => {
+      makeRelease(release);
+      const out = install().stdout;
+
+      expect(out).toContain("[1/6] checksums.txt ... done");
+      expect(out).toContain("[6/6] THIRD-PARTY.md ... done");
+    });
+
+    it("keeps a no to the Start Menu in no-menu-entry", () => {
+      makeRelease(release);
+      const r = install({ SPRIXEL_MENU: "0" });
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(fs.existsSync(noMenuFile())).toBe(true);
+    });
+
+    it("an install that says yes removes an old no", () => {
+      makeRelease(release);
+      fs.mkdirSync(path.dirname(noMenuFile()), { recursive: true });
+      fs.writeFileSync(noMenuFile(), "");
+
+      install();
+
+      expect(fs.existsSync(noMenuFile())).toBe(false);
+    });
+
+    // The fake command of the fixture cannot run on Windows (it is text), so a
+    // chosen AI tool fails to connect: that must be a warning only.
+    it("a failing AI connection is a warning and the install succeeds", () => {
+      makeRelease(release);
+      const r = install({ SPRIXEL_CONNECT: "claude" });
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).toContain("could not connect Claude Code");
+    });
+
+    it("rejects a SPRIXEL_CONNECT value it does not know", () => {
+      makeRelease(release);
+      const r = install({ SPRIXEL_CONNECT: "vim" });
+
+      expect(r.status).toBe(1);
+      expect(r.stdout + r.stderr).toContain("SPRIXEL_CONNECT must be");
+      expect(fs.existsSync(path.join(local, "Sprixel"))).toBe(false);
     });
 
     it("stops and installs nothing when a checksum is wrong", () => {

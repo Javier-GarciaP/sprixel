@@ -14,7 +14,15 @@ const sha256 = (file) =>
  * `wrongChecksum` is the name of a file whose checksum is made wrong on
  * purpose, to test that installers stop.
  */
-export function makeRelease(dir, { version = "0.2.0", wrongChecksum } = {}) {
+export function makeRelease(
+  dir,
+  {
+    version = "0.2.0",
+    wrongChecksum,
+    registerMenuFails = false,
+    mcpAddFails = false,
+  } = {},
+) {
   fs.mkdirSync(dir, { recursive: true });
   const write = (name, text) => fs.writeFileSync(path.join(dir, name), text);
   const names = [];
@@ -29,11 +37,25 @@ export function makeRelease(dir, { version = "0.2.0", wrongChecksum } = {}) {
 
   // The command: a shell script that prints the version.
   for (const target of ["linux-x64", "macos-arm64", "macos-x64"]) {
-    add(`sprixel-${target}`, `#!/bin/sh\necho ${version}\n`);
+    // `sprixel mcp ...` notes the call in $HOME/.fake-cli-calls (and can fail,
+    // for a test); any other call prints the version.
+    const mcp = mcpAddFails ? "exit 1" : "exit 0";
+    add(
+      `sprixel-${target}`,
+      `#!/bin/sh\nif [ "$1" = "mcp" ]; then\n  echo "$@" >> "$HOME/.fake-cli-calls"\n  ${mcp}\nfi\necho ${version}\n`,
+    );
   }
   add("sprixel-windows-x64.exe", `fake exe ${version}\n`);
 
-  add("Sprixel-linux-x64.AppImage", `#!/bin/sh\necho app ${version}\n`);
+  // The Linux app also answers `--register-menu` like the real one: it notes
+  // the call in $HOME/.fake-app-calls and prints a line (or fails, for a test).
+  const registerMenu = registerMenuFails
+    ? "echo 'fuse: not found' >&2; exit 1"
+    : 'echo "menu entry created: fake"; exit 0';
+  add(
+    "Sprixel-linux-x64.AppImage",
+    `#!/bin/sh\nif [ "$1" = "--register-menu" ]; then\n  echo "$@" >> "$HOME/.fake-app-calls"\n  ${registerMenu}\nfi\necho app ${version}\n`,
+  );
 
   // macOS apps are .app folders packed in a .tar.gz.
   for (const arch of ["arm64", "x64"]) {
