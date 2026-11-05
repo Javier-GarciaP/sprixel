@@ -191,7 +191,7 @@ To have no entry, create the empty file `~/.sprixel/no-menu-entry`.
 
 ### The first time you open it
 
-Version 0.1.0 is **not signed**, so your system may warn you. This is expected.
+This version is **not signed**, so your system may warn you. This is expected.
 
 - **macOS:** right-click Sprixel in `~/Applications`, choose **Open** and
   confirm once. A file you download with the browser is marked by macOS; the
