@@ -28,11 +28,24 @@ type Options struct {
 	WrongChecksum string
 	// Without lists files that are left out of the folder.
 	Without []string
+	// RegisterMenuFails makes the fake Linux app fail when it is asked to
+	// register its menu entry (like an app that cannot start).
+	RegisterMenuFails bool
 }
 
 // Contents of the fake programs, so tests can tell the versions apart.
 func CommandText(version string) string { return "command " + version + "\n" }
-func AppText(version string) string     { return "app " + version + "\n" }
+func AppText(version string) string     { return appText(version, false) }
+
+// appText is the fake Linux app: a script. Asked to register its menu entry it
+// notes the call in $HOME/.fake-app-calls and prints one line (or fails).
+func appText(version string, registerMenuFails bool) string {
+	register := "echo \"menu entry created: fake\"\n  exit 0"
+	if registerMenuFails {
+		register = "echo \"fuse: not found\" >&2\n  exit 1"
+	}
+	return "#!/bin/sh\nif [ \"$1\" = \"--register-menu\" ]; then\n  echo \"$@\" >> \"$HOME/.fake-app-calls\"\n  " + register + "\nfi\necho app " + version + "\n"
+}
 
 // Make writes the release of `version` into dir for every target.
 func Make(t testing.TB, dir, version string, opts Options) {
@@ -46,7 +59,7 @@ func Make(t testing.TB, dir, version string, opts Options) {
 		files[target.CLIName()] = []byte(CommandText(version))
 		switch target.OS {
 		case "linux":
-			files[target.AppName()] = []byte(AppText(version))
+			files[target.AppName()] = []byte(appText(version, opts.RegisterMenuFails))
 		case "macos":
 			files[target.AppName()] = appTarGz(t, version)
 		default:

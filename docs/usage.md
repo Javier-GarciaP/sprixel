@@ -33,7 +33,7 @@ installing, check everything with:
 sprixel doctor
 ```
 
-Start the app from your applications menu, or with `sprixel start`.
+Start the app from your applications menu (Sprixel is there with its icon), or with `sprixel start`.
 
 ### Where the installer puts things
 
@@ -51,6 +51,30 @@ on macOS). Open a new terminal after that.
 Running the installer again upgrades or repairs the installation. It never
 touches your projects, `~/.sprixel` (the token, the approved AI clients) or your
 settings.
+
+### The applications menu
+
+Sprixel appears in the applications menu of your system with its icon. The app
+writes its own entry, so it works the same whether you used the install script
+or put the files in place by hand.
+
+| System | The entry | Written by |
+| --- | --- | --- |
+| Linux | `~/.local/share/applications/sprixel.desktop` and the icon `~/.local/share/icons/hicolor/256x256/apps/sprixel.png` | the app, when it starts as an AppImage, or the install script |
+| Windows | a shortcut `Sprixel.lnk` in your Start Menu (`%APPDATA%\Microsoft\Windows\Start Menu\Programs`) and a small file `%LOCALAPPDATA%\Sprixel\menu-entry.txt` | the app, in a release build, or the install script |
+| macOS | the app `~/Applications/Sprixel.app` itself, nothing else | the install script |
+
+- The install script and `sprixel update` ask the app to write the entry right
+  away, with `Sprixel.exe --register-menu` (Windows) or
+  `~/.local/bin/sprixel-app --register-menu` (Linux). It writes the entry, prints
+  one line and exits, with no window.
+- If the entry is already right, nothing is written. If you move the app, the
+  next start rewrites the entry for the new place.
+- **To have no entry**, create the empty file `~/.sprixel/no-menu-entry`. The app
+  then does not write the entry by itself. `--register-menu` always works, and it
+  removes that file.
+- `sprixel uninstall` removes the entry and the icon.
+- A failure to write the entry is only a warning: the install and the app go on.
 
 ### Update
 

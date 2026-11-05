@@ -43,6 +43,18 @@ describe("install.ps1 (static checks)", () => {
     expect(text).toContain("$MyInvocation.MyCommand.Path");
   });
 
+  // Checks the scenario "Shortcut after the install script": the script asks
+  // the new app to make its Start Menu shortcut, after it is copied, waits for
+  // it with a limit, and treats a problem as a warning.
+  it("asks the app to register its Start Menu shortcut after copying it", () => {
+    expect(text).toContain("--register-menu");
+    expect(text.indexOf("--register-menu")).toBeGreaterThan(
+      text.indexOf('Put-File (Join-Path $unpacked "Sprixel.exe")'),
+    );
+    expect(text).toContain("WaitForExit(30000)");
+    expect(text).toContain("could not be added to the Start Menu");
+  });
+
   it("uses the same file names as the release", () => {
     expect(text).toContain("sprixel-windows-x64.exe");
     expect(text).toContain("Sprixel-windows-x64.zip");
@@ -88,6 +100,17 @@ describe.skipIf(!pwsh)(
       );
       expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
       expect(fs.existsSync(path.join(local, "Sprixel/LICENSE"))).toBe(true);
+    });
+
+    // The fake Sprixel.exe of the fixture cannot run, like an app that cannot
+    // start: the shortcut step fails, and the install must still end well.
+    it("still installs when the app cannot register its shortcut", () => {
+      makeRelease(release);
+      const r = install();
+
+      expect(r.status, r.stderr + r.stdout).toBe(0);
+      expect(r.stdout).toContain("could not be added to the Start Menu");
+      expect(fs.existsSync(path.join(local, "Sprixel/Sprixel.exe"))).toBe(true);
     });
 
     it("stops and installs nothing when a checksum is wrong", () => {

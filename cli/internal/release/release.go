@@ -225,6 +225,9 @@ type Layout struct {
 	Command, App, Share string
 	// Profiles are the files where the Unix installer may add the PATH line.
 	Profiles []string
+	// MenuFiles are the files the app writes for its entry in the applications
+	// menu (see MenuFilesFor). They are not part of the installers.
+	MenuFiles []string
 }
 
 // LayoutFor gives the folders of the installers for a system. localAppData is

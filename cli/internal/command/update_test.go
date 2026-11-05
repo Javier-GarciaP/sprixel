@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
 
@@ -239,5 +240,49 @@ func TestUpdateKeepsProjectsAndSettings(t *testing.T) {
 		if data, _ := os.ReadFile(filepath.Join(in.home, name)); string(data) != text {
 			t.Errorf("%s changed", name)
 		}
+	}
+}
+
+// Checks "Update refreshes the entry": after the new app is in place, the
+// command asks it to write its menu entry. The fake app is a shell script.
+func TestUpdateAsksTheNewAppToRegisterItsMenuEntry(t *testing.T) {
+	if goruntime.GOOS == "windows" {
+		t.Skip("the fake app is a shell script")
+	}
+	in := newInstalled(t)
+	in.publish("0.2.0", testrelease.Options{})
+
+	r := in.run("update")
+
+	if r.code != ExitOK || strings.Contains(r.stdout, "warning") {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(in.home, ".fake-app-calls"))
+	if string(calls) != "--register-menu\n" {
+		t.Errorf("calls of the app = %q, want one --register-menu", calls)
+	}
+}
+
+// Checks "A failure never blocks": an app that cannot register its entry is a
+// warning with how to retry, and the update still ends well.
+func TestUpdateWarnsButSucceedsWhenTheMenuEntryFails(t *testing.T) {
+	if goruntime.GOOS == "windows" {
+		t.Skip("the fake app is a shell script")
+	}
+	in := newInstalled(t)
+	in.publish("0.2.0", testrelease.Options{RegisterMenuFails: true})
+
+	r := in.run("update")
+
+	if r.code != ExitOK {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", r.code, r.stdout, r.err)
+	}
+	for _, want := range []string{"Updated Sprixel from 0.1.0 to 0.2.0.", "warning:", "applications menu", "--register-menu"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("stdout lacks %q: %q", want, r.stdout)
+		}
+	}
+	if in.commandText() != testrelease.CommandText("0.2.0") {
+		t.Error("the command was not replaced")
 	}
 }

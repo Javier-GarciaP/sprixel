@@ -51,6 +51,42 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
     );
   });
 
+  // Checks the scenario "Entry after the install script": the script asks the
+  // new app to put itself in the applications menu, before the first launch.
+  it("asks the Linux app to register its menu entry", () => {
+    makeRelease(release);
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.readFileSync(file(".fake-app-calls"), "utf8")).toBe(
+      "--register-menu\n",
+    );
+    expect(r.stdout).toContain("menu entry created: fake");
+  });
+
+  // Checks the scenario "Read-only menu folder": a failure to register is a
+  // warning that says how to retry, and the install still ends well.
+  it("still installs when the app cannot register its entry", () => {
+    makeRelease(release, { registerMenuFails: true });
+    const r = install();
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("could not be added to the applications menu");
+    expect(r.stdout).toContain("sprixel-app --register-menu");
+    expect(fs.existsSync(file(".local/bin/sprixel-app"))).toBe(true);
+  });
+
+  // Checks the macOS rule: the app bundle is the menu entry, so the script
+  // adds no step for it.
+  it("adds no menu step on macOS", () => {
+    makeRelease(release);
+    const r = install([], { SPRIXEL_OS: "Darwin", SPRIXEL_ARCH: "arm64" });
+
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).not.toContain("applications menu");
+    expect(fs.existsSync(file(".fake-app-calls"))).toBe(false);
+  });
+
   it("prints the license notice and the source URL before installing", () => {
     makeRelease(release);
     const out = install().stdout;

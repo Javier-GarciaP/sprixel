@@ -6,7 +6,7 @@
 #
 # It installs for the current user only (no sudo). It downloads the files of a
 # GitHub Release, checks their SHA-256 and only then copies them:
-#   Linux:  ~/.local/bin/sprixel and ~/.local/bin/sprixel-app
+#   Linux:  ~/.local/bin/sprixel and ~/.local/bin/sprixel-app (and its menu entry)
 #   macOS:  ~/.local/bin/sprixel and ~/Applications/Sprixel.app
 # Your projects and the folder ~/.sprixel (settings, tokens) are never touched,
 # so running it again upgrades or repairs the installation.
@@ -140,6 +140,25 @@ case ":$PATH:" in
     say "Added $BIN to your PATH in $PROFILE."
     ;;
 esac
+
+# 6. Linux: ask the app to put itself in the applications menu (an entry and
+#    its icon). A problem here is a warning, never an error: the app does the
+#    same the first time it opens.
+if [ "$OS" = linux ]; then
+  say ""
+  say "Adding Sprixel to the applications menu..."
+  if command -v timeout >/dev/null 2>&1; then
+    run_limited() { timeout 30 "$@"; }
+  else
+    run_limited() { "$@"; }
+  fi
+  if MENU_OUT="$(run_limited "$BIN/sprixel-app" --register-menu 2>&1 </dev/null)"; then
+    say "$(printf '%s\n' "$MENU_OUT" | tail -n 1)"
+  else
+    say "Sprixel could not be added to the applications menu. It will try again the first"
+    say "time you open the app, or you can run: ~/.local/bin/sprixel-app --register-menu"
+  fi
+fi
 
 say ""
 say "Sprixel $INSTALLED is installed."
